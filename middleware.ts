@@ -12,6 +12,7 @@ const PUBLIC_PATHS = new Set(["/login", "/register", "/forgot-password", "/reset
 /** Signed-in users are sent to the dashboard from these (reset-password stays reachable for recovery links). */
 const GUEST_ONLY = new Set(["/login", "/register", "/forgot-password"]);
 
+type AppLocale = "id" | "en";
 type PendingCookie = { name: string; value: string; options: CookieOptions };
 
 /** Refreshes the Supabase session and returns whether a user is signed in. */
@@ -39,6 +40,49 @@ function withCookies(response: NextResponse, pending: PendingCookie[]) {
   return response;
 }
 
+function preferredLocale(request: NextRequest): AppLocale {
+  const value = request.cookies.get("NEXT_LOCALE")?.value;
+  return value === "en" || value === "id" ? value : routing.defaultLocale;
+}
+
+function splitLocale(pathname: string): { locale: AppLocale; rest: string } | null {
+  const match = pathname.match(/^\/(id|en)(\/.*)?$/);
+  if (!match || (match[1] !== "id" && match[1] !== "en")) return null;
+  let rest = match[2] ?? "/";
+  if (rest.length > 1 && rest.endsWith("/")) rest = rest.slice(0, -1);
+  return { locale: match[1], rest: rest || "/" };
+}
+
+function barePath(pathname: string) {
+  if (pathname === "/") return "/";
+  return pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+}
+
+/**
+ * One hop to the final page. `null` means the localized path can render as-is.
+ * `/` goes straight to dashboard or login — never `/onboarding` (that page is only
+ * for a signed-in user who still has no membership; `requireSession` sends them).
+ */
+function authTarget(locale: AppLocale, rest: string, signedIn: boolean): string | null {
+  if (rest === "/") return `/${locale}/${signedIn ? "dashboard" : "login"}`;
+  if (signedIn && GUEST_ONLY.has(rest)) return `/${locale}/dashboard`;
+  if (!signedIn && !PUBLIC_PATHS.has(rest)) return `/${locale}/login`;
+  return null;
+}
+
+function redirectTo(request: NextRequest, pathname: string, pending: PendingCookie[], search: string) {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  url.search = search;
+  return withCookies(NextResponse.redirect(url), pending);
+}
+
+/** Remember the page the guest asked for, so login can `router.replace` it. */
+function loginSearch(rest: string, request: NextRequest) {
+  if (rest === "/" || rest === "/login") return "";
+  return `?next=${encodeURIComponent(`${rest}${request.nextUrl.search}`)}`;
+}
+
 export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -46,29 +90,24 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const localeMatch = pathname.match(/^\/(id|en)(\/|$)/);
-  if (!localeMatch) {
-    return handleI18n(request);
-  }
-
   const pending: PendingCookie[] = [];
   const signedIn = await readUser(request, pending);
-  const locale = localeMatch[1] ?? routing.defaultLocale;
-  const rest = pathname.replace(/^\/(id|en)/, "") || "/";
+  const localized = splitLocale(pathname);
 
-  if (rest === "/") {
-    const dest = signedIn ? "onboarding" : "login";
-    return withCookies(NextResponse.redirect(new URL(`/${locale}/${dest}`, request.url)), pending);
+  if (!localized) {
+    const locale = preferredLocale(request);
+    const rest = barePath(pathname);
+    const localizedSamePath = `/${locale}${rest === "/" ? "" : rest}`;
+    const target = authTarget(locale, rest, signedIn) ?? localizedSamePath;
+    const search = target === localizedSamePath ? request.nextUrl.search : target.endsWith("/login") ? loginSearch(rest, request) : "";
+    return redirectTo(request, target, pending, search);
   }
 
-  if (!signedIn && !PUBLIC_PATHS.has(rest)) {
-    return withCookies(NextResponse.redirect(new URL(`/${locale}/login`, request.url)), pending);
+  const target = authTarget(localized.locale, localized.rest, signedIn);
+  if (target) {
+    const search = target.endsWith("/login") ? loginSearch(localized.rest, request) : "";
+    return redirectTo(request, target, pending, search);
   }
-
-  if (signedIn && GUEST_ONLY.has(rest)) {
-    return withCookies(NextResponse.redirect(new URL(`/${locale}/onboarding`, request.url)), pending);
-  }
-
   return withCookies(handleI18n(request), pending);
 }
 

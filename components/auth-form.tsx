@@ -17,6 +17,24 @@ const demos = [
   { email: "direksi.demo@airtek.my.id", label: "asViewer" },
 ] as const;
 
+const BLOCKED_NEXT = new Set(["/", "/login", "/register", "/forgot-password", "/reset-password", "/onboarding"]);
+
+/** `?next=` on the login URL. Locale prefix is stripped; the router adds the active locale. */
+function readNextParam() {
+  const raw = new URLSearchParams(window.location.search).get("next");
+  if (!raw) return null;
+  const value = raw.trim();
+  if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\") || value.includes("://")) return null;
+  const withoutHash = value.split("#")[0] ?? value;
+  const queryAt = withoutHash.indexOf("?");
+  const path = queryAt >= 0 ? withoutHash.slice(0, queryAt) : withoutHash;
+  const search = queryAt >= 0 ? withoutHash.slice(queryAt) : "";
+  if (path.includes("//")) return null;
+  const stripped = path.replace(/^\/(id|en)(?=\/|$)/, "") || "/";
+  if (BLOCKED_NEXT.has(stripped)) return null;
+  return `${stripped}${search}`;
+}
+
 export function AuthScreen({
   mode,
   inviteToken = null,
@@ -51,9 +69,7 @@ export function AuthScreen({
       const result = await loginAction({ email, password });
       setPending(false);
       if (!result.ok) return setError(result.error);
-      const next = result.data && typeof result.data === "object" && "next" in result.data ? "/onboarding" : "/dashboard";
-      router.push(next);
-      router.refresh();
+      router.replace(result.data?.next === "onboarding" ? "/onboarding" : (readNextParam() ?? "/dashboard"));
       return;
     }
     if (mode === "register") {
@@ -70,8 +86,7 @@ export function AuthScreen({
         if ("demoConfirmPath" in result.data && result.data.demoConfirmPath) setConfirmPath(result.data.demoConfirmPath);
         return;
       }
-      router.push("/onboarding");
-      router.refresh();
+      router.replace("/onboarding");
       return;
     }
     if (mode === "forgot") {
@@ -93,8 +108,7 @@ export function AuthScreen({
     const result = await loginAction({ email, password: DEMO_PASSWORD });
     setPending(false);
     if (!result.ok) return setError(result.error);
-    router.push("/onboarding");
-    router.refresh();
+    router.replace(result.data?.next === "onboarding" ? "/onboarding" : (readNextParam() ?? "/dashboard"));
   }
 
   async function loginDev(email: string) {
@@ -103,8 +117,7 @@ export function AuthScreen({
     const result = await devLoginAction(email);
     setPending(false);
     if (!result.ok) return setError(result.error);
-    router.push(result.data?.next === "onboarding" ? "/onboarding" : "/dashboard");
-    router.refresh();
+    router.replace(result.data?.next === "onboarding" ? "/onboarding" : (readNextParam() ?? "/dashboard"));
   }
 
   const title = mode === "login" ? t("loginTitle") : mode === "register" ? t("registerTitle") : mode === "forgot" ? t("forgotTitle") : t("resetTitle");

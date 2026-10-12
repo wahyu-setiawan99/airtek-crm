@@ -194,7 +194,7 @@ Aturan DB:
 - [ ] Web push notification untuk aktivitas jatuh tempo
 
 ### Fase 10 — Optimasi kecepatan — detail di §15 (**§15.0 langkah 1–3 DIKERJAKAN SEKARANG**, sisanya setelah Fase 9)
-- [ ] §15.0 Langkah 1 — redirect 1 lompatan (middleware & onboarding)
+- [x] §15.0 Langkah 1 — redirect 1 lompatan (middleware & onboarding)
 - [ ] §15.0 Langkah 2 — auth middleware tanpa round-trip (`getClaims`)
 - [ ] §15.0 Langkah 3 — ukur (Speed Insights + catat angka)
 - [ ] Ukur baseline (Vercel Speed Insights, Lighthouse, waktu server per halaman) (§15.1)

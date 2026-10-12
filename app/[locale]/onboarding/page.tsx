@@ -2,7 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { redirect as nextRedirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
 import { Link, redirect } from "@/i18n/navigation";
-import { getSession, getUserId } from "@/lib/session";
+import { getUserId, hasActiveMembership } from "@/lib/session";
 
 export default async function OnboardingPage({
   params,
@@ -15,7 +15,7 @@ export default async function OnboardingPage({
   const { error } = await searchParams;
   setRequestLocale(locale);
   if (!(await getUserId())) redirect({ href: "/login", locale });
-  if (await getSession()) redirect({ href: "/dashboard", locale });
+  if (await hasActiveMembership()) redirect({ href: "/dashboard", locale });
   // Provisioning sets cookies, which only a route handler may do.
   if (!error) nextRedirect("/auth/onboarding");
 

@@ -3,6 +3,7 @@ import { getLocale } from "next-intl/server";
 import { cache } from "react";
 import { redirect } from "@/i18n/navigation";
 import { ORG_COOKIE, SESSION_COOKIE } from "@/lib/constants";
+import { readStore } from "@/lib/demo/store";
 import { supabaseEnabled } from "@/lib/env";
 import { loadStore } from "@/lib/store";
 import { createClient } from "@/lib/supabase/server";
@@ -27,6 +28,19 @@ export const getUserId = cache(async (): Promise<string | null> => {
   }
   const jar = await cookies();
   return jar.get(SESSION_COOKIE)?.value ?? null;
+});
+
+/** Active membership for this user. One indexed read — does not load the CRM snapshot. */
+export const hasActiveMembership = cache(async (): Promise<boolean> => {
+  const userId = await getUserId();
+  if (!userId) return false;
+  if (supabaseEnabled) {
+    const supabase = await createClient();
+    if (!supabase) return false;
+    const { data } = await supabase.from("memberships").select("organization_id").eq("user_id", userId).is("disabled_at", null).limit(1);
+    return Boolean(data && data.length > 0);
+  }
+  return readStore().memberships.some((item) => item.user_id === userId && !item.disabled_at);
 });
 
 export const getSession = cache(async (): Promise<Session | null> => {
@@ -65,15 +79,17 @@ export function sessionScope(session: Session): CommitScope {
   };
 }
 
+/** App pages. Onboarding is only for a signed-in user who still has no organization. */
 export async function requireSession(): Promise<Session> {
+  const locale = await getLocale();
+  const userId = await getUserId();
+  if (!userId) {
+    redirect({ href: "/login", locale });
+    throw new Error("Unauthenticated");
+  }
   const session = await getSession();
   if (!session) {
-    if (await getUserId()) {
-      const locale = await getLocale();
-      redirect({ href: "/onboarding", locale });
-    }
-    const locale = await getLocale();
-    redirect({ href: "/login", locale });
+    redirect({ href: "/onboarding", locale });
     throw new Error("Unauthenticated");
   }
   return session;
