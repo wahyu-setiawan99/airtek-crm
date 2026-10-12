@@ -193,7 +193,10 @@ Aturan DB:
 - [ ] Tombol telepon/WA besar, quick-add aktivitas sekali tap
 - [ ] Web push notification untuk aktivitas jatuh tempo
 
-### Fase 10 — Optimasi kecepatan (FASE TERAKHIR, setelah Fase 9 dan Fase 7) — detail di §15
+### Fase 10 — Optimasi kecepatan — detail di §15 (**§15.0 langkah 1–3 DIKERJAKAN SEKARANG**, sisanya setelah Fase 9)
+- [ ] §15.0 Langkah 1 — redirect 1 lompatan (middleware & onboarding)
+- [ ] §15.0 Langkah 2 — auth middleware tanpa round-trip (`getClaims`)
+- [ ] §15.0 Langkah 3 — ukur (Speed Insights + catat angka)
 - [ ] Ukur baseline (Vercel Speed Insights, Lighthouse, waktu server per halaman) (§15.1)
 - [ ] Kurangi redirect berantai menjadi maksimal 1 lompatan (§15.2)
 - [ ] Ganti snapshot "muat semua tabel" dengan query per halaman (§15.3)
@@ -529,7 +532,47 @@ Odoo Online paket standar tidak membuka API eksternal, jadi pakai fitur **Export
 - Uji di Supabase lokal dulu dengan ekspor nyata dari Odoo (minimal 8 deal di screenshot awal: Gd Barak CPI, ADD Gd Sauraja CPI, Gd. Wisma Negara CPI (Pump), Mobile Fire Pump PTVI, AC Presisi UNAM, Gd. Bunker Wahidin, Lift IAIN Pare-pare, Gd. PA Mamuju) → cocokkan total "Negotiation Rp 18,463M" dan "Closing Rp 21,026M" dengan Odoo.
 - Impor dua kali → jumlah data tidak bertambah. Batalkan batch → data hilang bersih.
 
-## 15. Optimasi Kecepatan (fase akhir)
+## 15. Optimasi Kecepatan
+
+### 15.0 MULAI DARI SINI — urutan kerja (prioritas user 13 Okt 2026: "website lambat saat baru dibuka, banyak forwarding")
+
+**Kondisi terukur 13 Okt 2026 (belum login):**
+
+| URL yang diketik | Rantai sekarang | Redirect | Waktu |
+|---|---|---|---|
+| `http://airtek.my.id/` | http→https → `/`→`/id` → `/id`→`/id/login` | 3 | ±1,6 s |
+| `https://www.airtek.my.id/` | www→apex → `/`→`/id` → `/id`→`/id/login` | 3 | ±0,9 s |
+| `https://airtek.my.id/` | `/`→`/id` → `/id`→`/id/login` | 2 | ±0,5 s |
+| `https://airtek.my.id/id` | `/id`→`/id/login` | 1 | ±0,4 s |
+
+**Sudah login (dari kode `middleware.ts`, lebih parah):** `/` → `/id` (next-intl) → `/id/onboarding` (middleware `rest === "/"` dan `GUEST_ONLY` mengarah ke onboarding) → halaman `/onboarding` memanggil `getSession()` (memuat SEMUA tabel) → redirect `/id/dashboard` → dashboard memuat semua tabel lagi. = **3 redirect + 2× muat data penuh** sebelum dashboard tampil.
+
+**Langkah 1 — Redirect maksimal 1 lompatan** (file: `middleware.ts`, `lib/session.ts`, `app/[locale]/onboarding/page.tsx`, `components/auth-form.tsx`)
+1. Di `middleware.ts`, tangani path **tanpa locale** sendiri sebelum `handleI18n`: `/` (dan path lain tanpa `/id` atau `/en`) → tentukan locale (cookie `NEXT_LOCALE` → default `id`) → **langsung** redirect ke tujuan akhir: `/{locale}/dashboard` bila login, `/{locale}/login` bila belum (path lain tanpa locale: `/{locale}{path}` sekali saja).
+2. `/id` atau `/en` (`rest === "/"`): login → `/{locale}/dashboard`, belum login → `/{locale}/login`. **Jangan** ke `/onboarding`.
+3. User login yang membuka `/login`, `/register`, `/forgot-password` (`GUEST_ONLY`) → `/{locale}/dashboard`, bukan `/onboarding`.
+4. Onboarding hanya untuk user **tanpa membership**: biarkan `requireSession()` (`lib/session.ts`) yang mengarahkan ke `/onboarding` bila sesi ada tapi membership kosong. Halaman `/onboarding` jangan memuat semua tabel hanya untuk mengecek — cek membership dengan satu query ringan (`memberships` milik user, `select("organization_id").limit(1)`) lalu redirect.
+5. Setelah login sukses (`components/auth-form.tsx`): `router.replace(next)` saja (tanpa `router.refresh()` tambahan yang memicu fetch kedua); hormati param `?next=` bila ada.
+6. Semua link yang dibuat aplikasi (email template, `NEXT_PUBLIC_SITE_URL`, cron email, notifikasi) memakai URL lengkap `https://airtek.my.id/id/...` agar 0 redirect.
+7. `http→https` dan `www→apex` ditangani Vercel (masing-masing 1 lompatan, tidak bisa dihilangkan); pastikan header **HSTS** aktif (`Strict-Transport-Security` via `next.config.ts` `headers()`) agar kunjungan berikutnya langsung https.
+
+**Target setelah Langkah 1:** `https://airtek.my.id/` → 1 redirect; `http://airtek.my.id/` → 2 (http→https + 1); `/id` → 1; user login membuka `/` → 1 redirect langsung ke dashboard; tidak pernah lewat `/onboarding` bila sudah punya organisasi.
+
+**Langkah 2 — Auth di middleware tanpa round-trip** (`middleware.ts`, `lib/session.ts`)
+- Ganti `supabase.auth.getUser()` di middleware dengan `supabase.auth.getClaims()` (verifikasi JWT lokal; aktifkan **asymmetric JWT signing keys** di Supabase → Project Settings → JWT Keys bila belum). Tetap refresh cookie sesi seperti sekarang.
+- Di server, `getUserId()` (sudah `cache`) memanggil `getUser()` hanya sekali per request.
+- Halaman publik (`/login`, `/register`, `/forgot-password`, `/reset-password`, `/accept-invite`) tidak perlu verifikasi apa pun selain cek "sudah login?" untuk redirect.
+
+**Langkah 3 — Ukur & catat**
+- Pasang `@vercel/speed-insights` (dan `@vercel/analytics`) di `app/[locale]/layout.tsx`; aktifkan di Vercel → project → Speed Insights.
+- Catat sebelum/sesudah di tabel §15.1 dengan:
+  `curl -sL -o /dev/null -w "%{num_redirects} redirect, %{time_total}s
+" <url>` untuk semua URL di tabel atas, plus waktu buka dashboard setelah login (Chrome DevTools → Network, "Disable cache").
+
+**Cara uji (lokal, §18):** `pnpm db:start` → `pnpm dev:seed` → `pnpm dev`; uji sebagai **belum login** dan sebagai `sales1@airtek.test` (Masuk cepat): buka `/`, `/id`, `/id/login`, `/en` — hitung redirect di DevTools Network. Pastikan alur undangan (`/accept-invite`), onboarding Boss baru, reset password, dan `/api/cron/reminders` (401 tanpa `CRON_SECRET`) tetap jalan. Lalu `pnpm lint && pnpm typecheck && pnpm build`, commit, push.
+
+**Setelah langkah 1–3 selesai:** lanjut sisa Fase 9 (§16 jenis klien/pihak proyek/target, §13.8 QA, §14 impor Odoo setelah semua sales aktif). Langkah besar §15.3 (berhenti memuat semua tabel) & §15.5 (revalidasi sempit) dikerjakan setelah itu — dampaknya paling besar tapi perubahannya luas.
+
 
 Aplikasi terasa berat. Kerjakan **setelah fitur stabil** (Fase 9 & 7), kecuali "quick win" redirect di §15.2 yang boleh lebih awal. Setiap langkah: ukur sebelum → ubah → ukur sesudah, catat angkanya di PR/commit.
 
