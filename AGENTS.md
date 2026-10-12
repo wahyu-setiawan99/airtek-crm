@@ -302,6 +302,11 @@ Langkah deploy:
 - Template email Supabase (Konfirmasi, Undangan, Reset password) dalam Bahasa Indonesia dengan nama "Airtek CRM".
 
 ### 11.2 Undangan oleh administrator
+- **Level yang dipakai (keputusan user 12 Okt 2026):**
+  1. **Boss** = `owner` = main administrator (`BOOTSTRAP_ADMIN_EMAIL`). Akses penuh dan **tersembunyi**: tidak muncul di daftar anggota, pilihan salesperson, maupun Performa Sales bagi non-owner (`orgPeople()` di `lib/queries.ts`). Hanya owner yang bisa mengubah/mengeluarkan baris owner atau memberi role owner.
+  2. **Administrator** = `admin` (direktur). Bisa semua hal termasuk mengundang & mengatur sales. Boss menaikkan seseorang ke Administrator di Pengaturan → Anggota.
+  3. **Sales** = `sales`, diundang via email oleh Administrator/Boss.
+  - Form undangan dan pemilih role hanya menawarkan Administrator & Sales. Role `manager`/`presales`/`viewer` masih ada di DB/izin tapi tidak ditawarkan di UI.
 - Hanya `owner`/`admin` yang bisa mengundang (Pengaturan → Anggota → **Undang anggota**).
 - Form: **Email**, **Nama lengkap**, **Role**, **Tim** (opsional).
 - Role yang bisa dipilih:
