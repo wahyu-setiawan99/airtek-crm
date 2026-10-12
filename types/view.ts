@@ -76,7 +76,17 @@ export type DashboardData = {
   avgCycle: number;
   funnel: { name: string; total: number; weighted: number }[];
   forecast: { key: string; total: number; weighted: number }[];
-  sales: { name: string; won: number }[];
+  sales: {
+    id: string;
+    name: string;
+    open: number;
+    pipeline: number;
+    weighted: number;
+    won: number;
+    winRate: number | null;
+    overdue: number;
+    href: string;
+  }[];
   overdue: { id: string; subject: string; dueAt: string; href: string }[];
 };
 

@@ -42,15 +42,6 @@ const TABLES: TableName[] = [
 ];
 const STRIP: Partial<Record<TableName, string[]>> = { deal_products: ["subtotal"], deals: ["search"] };
 
-/** Demo logins by role in the seed (seed emails are placeholders). */
-const DEMO_EMAILS: Record<string, string> = {
-  owner: "admin.demo@airtek.my.id",
-  manager: "manager.demo@airtek.my.id",
-  sales: "sales1.demo@airtek.my.id",
-  presales: "presales.demo@airtek.my.id",
-  viewer: "direksi.demo@airtek.my.id",
-};
-
 function loadEnvFiles() {
   for (const file of [".env.seed.local", ".env.local"]) {
     if (!existsSync(file)) continue;
@@ -132,7 +123,7 @@ async function main() {
   for (const membership of people) {
     const profile = seed.profiles.find((item) => item.id === membership.user_id);
     if (!profile) continue;
-    const email = DEMO_EMAILS[membership.role] ?? profile.email;
+    const email = profile.email;
     const userId = await ensureUser(admin, email, password, profile.full_name);
     idMap.set(profile.id, userId);
     await admin.from("profiles").upsert({ id: userId, full_name: profile.full_name, phone: profile.phone, email, locale: "id" });

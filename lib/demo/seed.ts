@@ -1,388 +1,511 @@
 import { DEMO_PASSWORD } from "@/lib/constants";
 import { subtotal } from "@/lib/domain";
 import { jakartaDate, jakartaParts } from "@/lib/format";
-import type { Stage, StageType, Store } from "@/types/crm";
+import type { Activity, ActivityType, Deal, DealProduct, Profile, Role, Stage, StageHistory, StageType, Store } from "@/types/crm";
 
-export const STORE_VERSION = 3;
+/**
+ * Demo dataset (AGENTS.md §11.3). Used by the local demo store and by `pnpm seed:demo`.
+ * Customer names and the top eight deals come from the old Odoo pipeline; the sales team
+ * (except Fajrul) is fictional. Dates are relative to today so the demo always looks current.
+ */
+export const STORE_VERSION = 4;
 
-const id = {
-  org: "10000000-0000-4000-8000-000000000001",
-  org2: "10000000-0000-4000-8000-000000000002",
-  adi: "20000000-0000-4000-8000-000000000001",
-  sari: "20000000-0000-4000-8000-000000000002",
-  budi: "20000000-0000-4000-8000-000000000003",
-  rina: "20000000-0000-4000-8000-000000000004",
-  team: "30000000-0000-4000-8000-000000000001",
-  hvac: "40000000-0000-4000-8000-000000000001",
-  pump: "40000000-0000-4000-8000-000000000002",
-  maint: "40000000-0000-4000-8000-000000000003",
-  umum: "40000000-0000-4000-8000-000000000004",
-  nindya: "50000000-0000-4000-8000-000000000001",
-  palindo: "50000000-0000-4000-8000-000000000002",
-  bintang: "50000000-0000-4000-8000-000000000003",
-  iain: "50000000-0000-4000-8000-000000000004",
-  siloam: "50000000-0000-4000-8000-000000000005",
-  bandara: "50000000-0000-4000-8000-000000000006",
-  andi: "60000000-0000-4000-8000-000000000001",
-  dewi: "60000000-0000-4000-8000-000000000002",
-  leo: "60000000-0000-4000-8000-000000000003",
-  rahman: "60000000-0000-4000-8000-000000000004",
-  maya: "60000000-0000-4000-8000-000000000005",
-  farid: "60000000-0000-4000-8000-000000000006",
-  tagHvac: "80000000-0000-4000-8000-000000000001",
-  tagPump: "80000000-0000-4000-8000-000000000002",
-  tagTdg: "80000000-0000-4000-8000-000000000003",
-  tagLift: "80000000-0000-4000-8000-000000000004",
-  tagAc: "80000000-0000-4000-8000-000000000005",
-  reasonPrice: "81000000-0000-4000-8000-000000000001",
-  reasonCompetitor: "81000000-0000-4000-8000-000000000002",
-  reasonBudget: "81000000-0000-4000-8000-000000000003",
-  reasonNeed: "81000000-0000-4000-8000-000000000004",
-  reasonOther: "81000000-0000-4000-8000-000000000005",
+/** Deterministic UUID: group (record kind) + number. */
+const u = (group: number, n: number) => `${String(group).padStart(8, "0")}-0000-4000-8000-${String(n).padStart(12, "0")}`;
+
+const ORG = u(10, 1);
+const ORG2 = u(10, 2);
+
+const people = {
+  admin: u(20, 1),
+  fajrul: u(20, 2),
+  taufik: u(20, 3),
+  rani: u(20, 4),
+  yusuf: u(20, 5),
+  direksi: u(20, 6),
 };
 
-function stage(
-  stageId: string,
-  pipelineId: string,
-  organizationId: string,
-  name: string,
-  position: number,
-  probability: number,
-  rotting: number | null,
-  type: StageType,
-): Stage {
-  return {
-    id: stageId,
-    organization_id: organizationId,
-    pipeline_id: pipelineId,
-    name,
-    position,
-    probability,
-    rotting_days: rotting,
-    type,
-    created_at: jakartaDate(-80, 9),
-    updated_at: jakartaDate(-1, 9),
-    created_by: id.adi,
-  };
-}
+const team = u(30, 1);
+const pipe = { sales: u(40, 1), presales: u(40, 2), maint: u(40, 3), umum: u(40, 4) };
+const tag = { lift: u(80, 1), pompa: u(80, 2), ac: u(80, 3), hvac: u(80, 4) };
+const reason = { price: u(81, 1), competitor: u(81, 2), budget: u(81, 3), need: u(81, 4), other: u(81, 5) };
 
-function openStages(prefix: string, pipelineId: string, organizationId: string, names: [string, number, number][]) {
-  return names.map(([name, probability, rotting], index) =>
-    stage(`${prefix}${index + 1}`, pipelineId, organizationId, name, index, probability, rotting, "open"),
-  );
+type StageKey = "s1" | "s2" | "s3" | "s4" | "s5" | "sWon" | "sLost" | "p1" | "p2" | "p3" | "p4" | "p5" | "pWon" | "pLost" | "m1" | "m2" | "m3" | "mWon" | "mLost";
+
+const stageDefs: [StageKey, string, string, number, number | null, StageType][] = [
+  ["s1", pipe.sales, "Kualifikasi", 10, 14, "open"],
+  ["s2", pipe.sales, "Analisa Kebutuhan", 25, 14, "open"],
+  ["s3", pipe.sales, "Penawaran", 50, 21, "open"],
+  ["s4", pipe.sales, "Negosiasi", 70, 14, "open"],
+  ["s5", pipe.sales, "Closing", 90, 10, "open"],
+  ["sWon", pipe.sales, "Won", 100, null, "won"],
+  ["sLost", pipe.sales, "Lost", 0, null, "lost"],
+  ["p1", pipe.presales, "Lead Masuk", 10, 7, "open"],
+  ["p2", pipe.presales, "Survey Lokasi", 25, 10, "open"],
+  ["p3", pipe.presales, "Desain & BOQ", 40, 14, "open"],
+  ["p4", pipe.presales, "Estimasi Biaya", 60, 10, "open"],
+  ["p5", pipe.presales, "Serah ke Sales", 80, 7, "open"],
+  ["pWon", pipe.presales, "Won", 100, null, "won"],
+  ["pLost", pipe.presales, "Lost", 0, null, "lost"],
+  ["m1", pipe.maint, "Permintaan", 20, 7, "open"],
+  ["m2", pipe.maint, "Survey", 45, 10, "open"],
+  ["m3", pipe.maint, "Terjadwal", 80, 7, "open"],
+  ["mWon", pipe.maint, "Selesai", 100, null, "won"],
+  ["mLost", pipe.maint, "Batal", 0, null, "lost"],
+];
+const stageId = Object.fromEntries(stageDefs.map(([key], index) => [key, u(41, index + 1)])) as Record<StageKey, string>;
+const stageType = Object.fromEntries(stageDefs.map(([key, , , , , type]) => [key, type])) as Record<StageKey, StageType>;
+const stagePipeline = Object.fromEntries(stageDefs.map(([key, pipelineId]) => [key, pipelineId])) as Record<StageKey, string>;
+
+const companyDefs = [
+  ["nindya", "PT Nindya Karya", "Konstruksi", "Jakarta Selatan", "DKI Jakarta", "0217654321", "proyek@nindyakarya.co.id"],
+  ["palindo", "PT. Palindo Inti Nusantara", "Kontraktor MEP", "Batam", "Kepulauan Riau", "0778456789", "procurement@palindo.co.id"],
+  ["poleanro", "PT. Poleanro Arta Konstruksi", "Konstruksi", "Makassar", "Sulawesi Selatan", "0411445566", "admin@poleanro.co.id"],
+  ["bintang", "CV Bintang Leo Jaya", "Kontraktor", "Mamuju", "Sulawesi Barat", "0426221133", "leo@bintangjaya.co.id"],
+  ["iain", "IAIN Parepare", "Pendidikan", "Parepare", "Sulawesi Selatan", "042121234", "umum@iainpare.ac.id"],
+  ["vale", "PT Vale Indonesia", "Pertambangan", "Sorowako", "Sulawesi Selatan", "0215249000", "procurement@vale.co.id"],
+  ["wahidin", "RSUP Dr. Wahidin Sudirohusodo", "Kesehatan", "Makassar", "Sulawesi Selatan", "0411584675", "teknik@rsupwahidin.go.id"],
+  ["unam", "UNAM", "Pendidikan", "Makassar", "Sulawesi Selatan", "0411866972", "sarpras@unam.ac.id"],
+  ["siloam", "RS Siloam Makassar", "Kesehatan", "Makassar", "Sulawesi Selatan", "04113000900", "facility@siloamhospitals.com"],
+  ["bandara", "Bandara Sultan Hasanuddin", "Transportasi", "Maros", "Sulawesi Selatan", "0411550108", "teknik@hasanuddin-airport.co.id"],
+  ["mall", "Nipah Park Makassar", "Retail", "Makassar", "Sulawesi Selatan", "04114662000", "engineering@nipahpark.co.id"],
+  ["hotel", "Hotel Claro Kendari", "Perhotelan", "Kendari", "Sulawesi Tenggara", "0401312888", "chief.engineer@claro.co.id"],
+] as const;
+type CompanyKey = (typeof companyDefs)[number][0];
+const company = Object.fromEntries(companyDefs.map(([key], index) => [key, u(50, index + 1)])) as Record<CompanyKey, string>;
+
+const contactDefs: [string, string, string, CompanyKey, string, string][] = [
+  ["dwi", "Dwi", "Sulistyo", "nindya", "Site Manager", "Tender"],
+  ["andi", "Andi", "Wijaya", "nindya", "Procurement", "Referral"],
+  ["safar", "Safar", "", "palindo", "Project Engineer", "Referral"],
+  ["dewi", "Dewi", "Lestari", "palindo", "Purchasing", "Pameran"],
+  ["ashadi", "Ashadi", "", "poleanro", "Direktur Teknik", "Kunjungan"],
+  ["suri", "Suri", "Rahayu", "bintang", "Direktur", "Website"],
+  ["hasyim", "Hasyim", "", "iain", "Kepala Bagian Umum", "Tender"],
+  ["syahdi", "Syahdi", "", "vale", "Fire Safety Engineer", "Referral"],
+  ["rudi", "Rudi", "Hartono", "vale", "Procurement Lead", "Tender"],
+  ["nurul", "Nurul", "Huda", "wahidin", "Kepala Instalasi Sarpras", "Tender"],
+  ["ilham", "Ilham", "Saputra", "unam", "Kabag Sarpras", "Kunjungan"],
+  ["maya", "Maya", "Putri", "siloam", "Facility Manager", "Referral"],
+  ["farid", "Farid", "Anwar", "bandara", "Kepala Teknik", "Kunjungan"],
+  ["linda", "Linda", "Kurniawan", "mall", "Building Manager", "Website"],
+  ["agus", "Agus", "Salim", "hotel", "Chief Engineer", "Pameran"],
+  ["yanti", "Yanti", "Mustafa", "wahidin", "PPK", "Tender"],
+  ["bayu", "Bayu", "Pratama", "poleanro", "Estimator", "Kunjungan"],
+  ["rizal", "Rizal", "Fahmi", "hotel", "Purchasing", "Website"],
+  ["citra", "Citra", "Ayu", "mall", "Tenant Coordinator", "Referral"],
+  ["hendra", "Hendra", "Gunawan", "bandara", "Engineer HVAC", "Kunjungan"],
+];
+const contact = Object.fromEntries(contactDefs.map(([key], index) => [key, u(60, index + 1)]));
+const contactCompany = Object.fromEntries(contactDefs.map(([key, , , companyKey]) => [key, company[companyKey]]));
+
+type TagKey = keyof typeof tag;
+type DealDef = {
+  title: string;
+  stage: StageKey;
+  value: number;
+  owner: keyof typeof people;
+  contact: string;
+  tag: TagKey;
+  priority: number;
+  /** Days from today to expected close (negative = past). */
+  close: number;
+  /** Days since last activity (negative = past). */
+  last: number;
+  /** Won/lost deals: when they closed, how long ago they were created, and why lost. */
+  closedAgo?: number;
+  createdAgo?: number;
+  reason?: keyof typeof reason;
+};
+
+const dealDefs: DealDef[] = [
+  // From Odoo
+  { title: "Gd Barak CPI", stage: "s4", value: 850_000_000, owner: "fajrul", contact: "dwi", tag: "hvac", priority: 3, close: 6, last: -1 },
+  { title: "ADD Gd Sauraja CPI", stage: "s4", value: 7_300_000_000, owner: "fajrul", contact: "dwi", tag: "hvac", priority: 3, close: 20, last: -2 },
+  { title: "Gd. Wisma Negara CPI (Pump)", stage: "s4", value: 496_759_721, owner: "taufik", contact: "safar", tag: "pompa", priority: 2, close: 12, last: -3 },
+  { title: "Mobile Fire Pump PTVI", stage: "s4", value: 7_900_000_000, owner: "taufik", contact: "syahdi", tag: "pompa", priority: 3, close: 35, last: -6 },
+  { title: "AC Presisi UNAM", stage: "s5", value: 530_800_000, owner: "fajrul", contact: "ilham", tag: "ac", priority: 2, close: 4, last: -1 },
+  { title: "Gd. Bunker Wahidin", stage: "s5", value: 330_000_000, owner: "fajrul", contact: "ashadi", tag: "hvac", priority: 2, close: 9, last: -2 },
+  { title: "Lift IAIN Pare-pare", stage: "s5", value: 910_200_000, owner: "fajrul", contact: "hasyim", tag: "lift", priority: 3, close: 3, last: 0 },
+  { title: "Gd. PA Mamuju", stage: "s5", value: 1_400_000_000, owner: "rani", contact: "suri", tag: "hvac", priority: 2, close: 14, last: -4 },
+  // Sales — open
+  { title: "Chiller Gedung Rawat Inap Wahidin", stage: "s3", value: 2_150_000_000, owner: "rani", contact: "nurul", tag: "hvac", priority: 3, close: 30, last: -3 },
+  { title: "VRF Lobby Nipah Park", stage: "s3", value: 640_000_000, owner: "taufik", contact: "linda", tag: "ac", priority: 2, close: 25, last: -5 },
+  { title: "Passenger Lift Hotel Claro", stage: "s2", value: 1_180_000_000, owner: "rani", contact: "agus", tag: "lift", priority: 2, close: 45, last: -9 },
+  { title: "AHU Terminal Bandara Hasanuddin", stage: "s1", value: 980_000_000, owner: "taufik", contact: "farid", tag: "hvac", priority: 2, close: 60, last: -21 },
+  { title: "Booster Pump RS Siloam", stage: "s2", value: 215_000_000, owner: "fajrul", contact: "maya", tag: "pompa", priority: 1, close: 28, last: -2 },
+  { title: "AC Split Kantor Poleanro", stage: "s1", value: 96_000_000, owner: "taufik", contact: "bayu", tag: "ac", priority: 1, close: 40, last: -18 },
+  { title: "Service Lift Nipah Park", stage: "s3", value: 145_000_000, owner: "rani", contact: "citra", tag: "lift", priority: 1, close: 15, last: -1 },
+  { title: "Jockey Pump Gedung Vale", stage: "s2", value: 120_000_000, owner: "taufik", contact: "rudi", tag: "pompa", priority: 1, close: 33, last: -7 },
+  // Sales — won (last 6 months)
+  { title: "Instalasi AHU Nindya Fase 1", stage: "sWon", value: 430_000_000, owner: "fajrul", contact: "andi", tag: "hvac", priority: 2, close: -150, last: -150, closedAgo: -150, createdAgo: -205 },
+  { title: "Fire Pump Diesel Vale", stage: "sWon", value: 1_250_000_000, owner: "taufik", contact: "rudi", tag: "pompa", priority: 3, close: -118, last: -118, closedAgo: -118, createdAgo: -170 },
+  { title: "AC Cassette Hotel Claro", stage: "sWon", value: 285_000_000, owner: "rani", contact: "rizal", tag: "ac", priority: 1, close: -84, last: -84, closedAgo: -84, createdAgo: -130 },
+  { title: "Service Lift IAIN", stage: "sWon", value: 78_000_000, owner: "fajrul", contact: "hasyim", tag: "lift", priority: 1, close: -52, last: -52, closedAgo: -52, createdAgo: -90 },
+  { title: "Chiller Siloam Fase 2", stage: "sWon", value: 1_620_000_000, owner: "fajrul", contact: "maya", tag: "hvac", priority: 3, close: -27, last: -27, closedAgo: -27, createdAgo: -95 },
+  { title: "Hydrant Gudang Palindo", stage: "sWon", value: 365_000_000, owner: "taufik", contact: "dewi", tag: "pompa", priority: 2, close: -9, last: -9, closedAgo: -9, createdAgo: -60 },
+  // Sales — lost
+  { title: "Chiller Pengganti Palindo", stage: "sLost", value: 500_000_000, owner: "rani", contact: "dewi", tag: "hvac", priority: 1, close: -135, last: -135, closedAgo: -135, createdAgo: -175, reason: "price" },
+  { title: "Lift Barang Nipah Park", stage: "sLost", value: 720_000_000, owner: "rani", contact: "linda", tag: "lift", priority: 2, close: -66, last: -66, closedAgo: -66, createdAgo: -120, reason: "competitor" },
+  { title: "AC Ruang Server Wahidin", stage: "sLost", value: 190_000_000, owner: "taufik", contact: "yanti", tag: "ac", priority: 1, close: -15, last: -15, closedAgo: -15, createdAgo: -70, reason: "budget" },
+  // Presales
+  { title: "Survey HVAC RS Siloam Gedung B", stage: "p2", value: 1_800_000_000, owner: "yusuf", contact: "maya", tag: "hvac", priority: 2, close: 50, last: -1 },
+  { title: "BOQ Fire System Vale Smelter", stage: "p3", value: 4_500_000_000, owner: "yusuf", contact: "syahdi", tag: "pompa", priority: 3, close: 70, last: -4 },
+  { title: "Desain Lift Rusun Mamuju", stage: "p3", value: 2_300_000_000, owner: "yusuf", contact: "suri", tag: "lift", priority: 2, close: 80, last: -12 },
+  { title: "Estimasi Chiller Hotel Claro", stage: "p4", value: 1_350_000_000, owner: "yusuf", contact: "agus", tag: "hvac", priority: 2, close: 40, last: -2 },
+  { title: "Lead AC Gedung Rektorat UNAM", stage: "p1", value: 410_000_000, owner: "yusuf", contact: "ilham", tag: "ac", priority: 1, close: 90, last: 0 },
+  { title: "Pompa Transfer Bandara", stage: "p5", value: 260_000_000, owner: "yusuf", contact: "hendra", tag: "pompa", priority: 2, close: 20, last: -3 },
+  { title: "Survey AC Poleanro Site Office", stage: "p1", value: 75_000_000, owner: "yusuf", contact: "bayu", tag: "ac", priority: 0, close: 75, last: -16 },
+  // Maintenance
+  { title: "Maintenance Chiller Wahidin 2026", stage: "m2", value: 240_000_000, owner: "rani", contact: "nurul", tag: "hvac", priority: 2, close: 10, last: -2 },
+  { title: "Service Berkala Lift Hotel Claro", stage: "m3", value: 60_000_000, owner: "rani", contact: "agus", tag: "lift", priority: 1, close: 5, last: -1 },
+  { title: "Cuci Cooling Tower Nindya", stage: "mWon", value: 18_000_000, owner: "taufik", contact: "andi", tag: "hvac", priority: 0, close: -3, last: -3, closedAgo: -3, createdAgo: -20 },
+  { title: "Overhaul Pompa Hydrant Siloam", stage: "m1", value: 85_000_000, owner: "taufik", contact: "maya", tag: "pompa", priority: 1, close: 18, last: -9 },
+];
+
+const dealId = (index: number) => u(70, index + 1);
+const dealIndex = (title: string) => {
+  const index = dealDefs.findIndex((item) => item.title === title);
+  if (index < 0) throw new Error(`seed deal not found: ${title}`);
+  return dealId(index);
+};
+
+function profile(userId: string, fullName: string, email: string, phone: string): Profile {
+  const at = jakartaDate(-210, 9);
+  return {
+    id: userId,
+    full_name: fullName,
+    avatar_url: null,
+    phone,
+    locale: "id",
+    email,
+    password: DEMO_PASSWORD,
+    reset_token: null,
+    reset_expires: null,
+    email_confirmed: true,
+    confirm_token: null,
+    theme: "system",
+    created_at: at,
+    updated_at: at,
+  };
 }
 
 export function createSeed(): Store {
   const { year, month, day } = jakartaParts();
   const seededOn = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  const stamp = {
-    created_at: jakartaDate(-80, 9),
-    updated_at: jakartaDate(-1, 9),
-    created_by: id.adi,
-  };
+  const stamp = { created_at: jakartaDate(-210, 9), updated_at: jakartaDate(-1, 9), created_by: people.admin };
 
-  const hvacStages = [
-    ...openStages("41000000-0000-4000-8000-00000000000", id.hvac, id.org, [
-      ["Kualifikasi", 10, 14],
-      ["Analisa Kebutuhan", 25, 14],
-      ["Penawaran", 50, 21],
-      ["Negosiasi", 70, 14],
-      ["Closing", 90, 10],
-    ]),
-    stage("41000000-0000-4000-8000-000000000006", id.hvac, id.org, "Won", 5, 100, null, "won"),
-    stage("41000000-0000-4000-8000-000000000007", id.hvac, id.org, "Lost", 6, 0, null, "lost"),
-  ];
-  const pumpStages = [
-    ...openStages("41000000-0000-4000-8000-00000000001", id.pump, id.org, [
-      ["Lead", 15, 10],
-      ["Survey", 40, 14],
-      ["Quotation", 60, 21],
-      ["Negosiasi", 80, 10],
-    ]),
-    stage("41000000-0000-4000-8000-000000000015", id.pump, id.org, "Won", 4, 100, null, "won"),
-    stage("41000000-0000-4000-8000-000000000016", id.pump, id.org, "Lost", 5, 0, null, "lost"),
-  ];
-  const maintStages = [
-    ...openStages("41000000-0000-4000-8000-00000000002", id.maint, id.org, [
-      ["Permintaan", 20, 7],
-      ["Survey", 45, 10],
-      ["Terjadwal", 80, 7],
-    ]),
-    stage("41000000-0000-4000-8000-000000000024", id.maint, id.org, "Selesai", 3, 100, null, "won"),
-    stage("41000000-0000-4000-8000-000000000025", id.maint, id.org, "Batal", 4, 0, null, "lost"),
-  ];
-  const umumStages = [
-    ...openStages("41000000-0000-4000-8000-00000000003", id.umum, id.org2, [
-      ["Kualifikasi", 10, 14],
-      ["Analisa", 30, 14],
-      ["Penawaran", 60, 21],
-      ["Negosiasi", 80, 14],
-    ]),
-    stage("41000000-0000-4000-8000-000000000035", id.umum, id.org2, "Won", 4, 100, null, "won"),
-    stage("41000000-0000-4000-8000-000000000036", id.umum, id.org2, "Lost", 5, 0, null, "lost"),
-  ];
+  const stages: Stage[] = stageDefs.map(([key, pipelineId, name, probability, rotting, type]) => {
+    const siblings = stageDefs.filter((item) => item[1] === pipelineId);
+    return {
+      ...stamp,
+      id: stageId[key],
+      organization_id: ORG,
+      pipeline_id: pipelineId,
+      name,
+      position: siblings.findIndex((item) => item[0] === key),
+      probability,
+      rotting_days: rotting,
+      type,
+    };
+  });
+  const umumStages: Stage[] = (
+    [
+      ["Kualifikasi", 10, 14, "open"],
+      ["Penawaran", 50, 21, "open"],
+      ["Negosiasi", 75, 14, "open"],
+      ["Won", 100, null, "won"],
+      ["Lost", 0, null, "lost"],
+    ] as const
+  ).map(([name, probability, rotting, type], position) => ({
+    ...stamp,
+    id: u(42, position + 1),
+    organization_id: ORG2,
+    pipeline_id: pipe.umum,
+    name,
+    position,
+    probability,
+    rotting_days: rotting,
+    type,
+  }));
 
-  const s = {
-    hvacQual: hvacStages[0]!.id,
-    hvacNeed: hvacStages[1]!.id,
-    hvacQuote: hvacStages[2]!.id,
-    hvacNego: hvacStages[3]!.id,
-    hvacClose: hvacStages[4]!.id,
-    hvacWon: hvacStages[5]!.id,
-    hvacLost: hvacStages[6]!.id,
-    pumpLead: pumpStages[0]!.id,
-    pumpSurvey: pumpStages[1]!.id,
-    pumpQuote: pumpStages[2]!.id,
-    pumpWon: pumpStages[4]!.id,
-    pumpLost: pumpStages[5]!.id,
-    maintReq: maintStages[0]!.id,
-    maintSurvey: maintStages[1]!.id,
-    maintSched: maintStages[2]!.id,
-    maintDone: maintStages[3]!.id,
-  };
+  const positions = new Map<string, number>();
+  const deals: Deal[] = dealDefs.map((def, index) => {
+    const type = stageType[def.stage];
+    const position = positions.get(def.stage) ?? 0;
+    positions.set(def.stage, position + 1);
+    const createdAgo = def.createdAgo ?? Math.min(def.last - 20, -25);
+    const closedAt = def.closedAgo === undefined ? null : jakartaDate(def.closedAgo, 15);
+    const contactId = contact[def.contact] ?? null;
+    return {
+      id: dealId(index),
+      organization_id: ORG,
+      title: def.title,
+      description: null,
+      pipeline_id: stagePipeline[def.stage],
+      stage_id: stageId[def.stage],
+      value: def.value,
+      currency: "IDR",
+      probability_override: null,
+      expected_close_date: jakartaDate(def.close, 17),
+      priority: def.priority,
+      company_id: contactId ? (contactCompany[def.contact] ?? null) : null,
+      primary_contact_id: contactId,
+      owner_id: people[def.owner],
+      status: type === "open" ? "open" : type,
+      lost_reason_id: def.reason ? reason[def.reason] : null,
+      won_at: type === "won" ? closedAt : null,
+      lost_at: type === "lost" ? closedAt : null,
+      position,
+      last_activity_at: jakartaDate(def.last, 11),
+      created_at: jakartaDate(createdAgo, 9),
+      updated_at: jakartaDate(def.last, 11),
+      created_by: people[def.owner],
+    };
+  });
+
+  // Every deal walked through the stages before its current one.
+  const history: StageHistory[] = [];
+  deals.forEach((deal, index) => {
+    const def = dealDefs[index];
+    if (!def) return;
+    const pipelineStages = stageDefs.filter((item) => item[1] === deal.pipeline_id && item[5] === "open").map((item) => item[0]);
+    const target = pipelineStages.indexOf(def.stage);
+    const steps = target >= 0 ? pipelineStages.slice(0, target + 1) : [...pipelineStages.slice(0, 3), def.stage];
+    const created = new Date(deal.created_at).getTime();
+    const end = new Date(closedOrNow(deal)).getTime();
+    for (let step = 1; step < steps.length; step++) {
+      const from = steps[step - 1];
+      const to = steps[step];
+      if (!from || !to) continue;
+      const at = new Date(created + ((end - created) * step) / steps.length).toISOString();
+      history.push({ id: u(86, history.length + 1), deal_id: deal.id, from_stage_id: stageId[from], to_stage_id: stageId[to], changed_by: deal.owner_id, changed_at: at });
+    }
+  });
+
+  const activities: Activity[] = (
+    [
+      ["Gd Barak CPI", "call", "Follow up revisi harga AHU", 0, null],
+      ["ADD Gd Sauraja CPI", "meeting", "Presentasi teknis ke owner CPI", 2, null],
+      ["Mobile Fire Pump PTVI", "visit", "Survey lokasi pump house Sorowako", 8, null],
+      ["Gd. Wisma Negara CPI (Pump)", "email", "Kirim datasheet pompa", -2, null],
+      ["Lift IAIN Pare-pare", "whatsapp", "Konfirmasi ukuran shaft lift", 1, null],
+      ["AC Presisi UNAM", "meeting", "Negosiasi akhir AC presisi", 0, null],
+      ["Gd. Bunker Wahidin", "task", "Siapkan kontrak & jaminan pelaksanaan", -1, null],
+      ["Gd. PA Mamuju", "call", "Follow up PO dari Bu Suri", -4, null],
+      ["Chiller Gedung Rawat Inap Wahidin", "email", "Kirim penawaran chiller 2 unit", 3, null],
+      ["VRF Lobby Nipah Park", "visit", "Survey lobby dan rute pipa", 5, null],
+      ["Passenger Lift Hotel Claro", "call", "Kualifikasi kebutuhan lift", -9, -9],
+      ["Estimasi Chiller Hotel Claro", "task", "Hitung beban pendinginan", 1, null],
+      ["BOQ Fire System Vale Smelter", "meeting", "Review BOQ dengan tim Vale", 6, null],
+      ["Maintenance Chiller Wahidin 2026", "visit", "Inspeksi chiller sebelum kontrak", 2, null],
+      ["Chiller Siloam Fase 2", "meeting", "Kick-off proyek fase 2", -26, -26],
+      ["Fire Pump Diesel Vale", "visit", "Commissioning fire pump", -100, -100],
+    ] as [string, ActivityType, string, number, number | null][]
+  ).map(([title, type, subject, due, done], index) => {
+    const id = dealIndex(title);
+    const deal = deals.find((item) => item.id === id);
+    return {
+      id: u(84, index + 1),
+      organization_id: ORG,
+      type,
+      subject,
+      note: null,
+      due_at: jakartaDate(due, due === 0 ? 15 : 10),
+      done_at: done === null ? null : jakartaDate(done, 16),
+      result_note: done === null ? null : "Selesai. Klien setuju lanjut ke tahap berikutnya.",
+      assigned_to: deal?.owner_id ?? people.admin,
+      deal_id: id,
+      contact_id: deal?.primary_contact_id ?? null,
+      company_id: deal?.company_id ?? null,
+      created_at: jakartaDate(Math.min(due, 0) - 3, 9),
+      updated_at: jakartaDate(done ?? Math.min(due, 0), 9),
+      created_by: deal?.owner_id ?? people.admin,
+    };
+  });
+
+  const productDefs: [string, string, string, number, TagKey][] = [
+    ["Passenger Lift 8 orang", "LF-P08", "unit", 450_000_000, "lift"],
+    ["Passenger Lift 13 orang", "LF-P13", "unit", 620_000_000, "lift"],
+    ["Service Lift", "LF-SVC", "unit", 280_000_000, "lift"],
+    ["Fire Pump Electric", "PM-FPE", "unit", 125_000_000, "pompa"],
+    ["Fire Pump Diesel", "PM-FPD", "unit", 210_000_000, "pompa"],
+    ["Booster Pump", "PM-BST", "unit", 45_000_000, "pompa"],
+    ["Jockey Pump", "PM-JCK", "unit", 18_000_000, "pompa"],
+    ["AC Split 2 PK", "AC-SPL2", "unit", 8_500_000, "ac"],
+    ["AC Cassette 3 PK", "AC-CAS3", "unit", 18_000_000, "ac"],
+    ["VRF Outdoor 20 HP", "AC-VRF20", "unit", 210_000_000, "ac"],
+    ["AC Presisi 10 kW", "AC-PRC10", "unit", 165_000_000, "ac"],
+    ["Chiller 200 TR", "HV-CH200", "unit", 890_000_000, "hvac"],
+    ["AHU 10.000 CFM", "HV-AHU10", "unit", 145_000_000, "hvac"],
+    ["Jasa Instalasi", "SVC-INST", "lot", 75_000_000, "hvac"],
+  ];
+  const productId = (name: string) => u(82, productDefs.findIndex((item) => item[0] === name) + 1);
+  const lines: DealProduct[] = (
+    [
+      ["Lift IAIN Pare-pare", "Passenger Lift 8 orang", 2, 450_000_000, 0],
+      ["Lift IAIN Pare-pare", "Jasa Instalasi", 1, 10_200_000, 0],
+      ["AC Presisi UNAM", "AC Presisi 10 kW", 3, 165_000_000, 0],
+      ["AC Presisi UNAM", "Jasa Instalasi", 1, 35_800_000, 0],
+      ["Gd Barak CPI", "AHU 10.000 CFM", 5, 145_000_000, 5],
+      ["Gd Barak CPI", "Jasa Instalasi", 1, 161_250_000, 0],
+      ["Mobile Fire Pump PTVI", "Fire Pump Diesel", 30, 210_000_000, 0],
+      ["Mobile Fire Pump PTVI", "Jasa Instalasi", 1, 1_600_000_000, 0],
+      ["Chiller Siloam Fase 2", "Chiller 200 TR", 2, 890_000_000, 9],
+    ] as [string, string, number, number, number][]
+  ).map(([title, product, qty, price, discount], index) => ({
+    id: u(83, index + 1),
+    deal_id: dealIndex(title),
+    product_id: productId(product),
+    qty,
+    unit_price: price,
+    discount_pct: discount,
+    subtotal: subtotal(qty, price, discount),
+  }));
+
+  const memberships: [string, Role][] = [
+    [people.admin, "owner"],
+    [people.fajrul, "manager"],
+    [people.taufik, "sales"],
+    [people.rani, "sales"],
+    [people.yusuf, "presales"],
+    [people.direksi, "viewer"],
+  ];
 
   return {
     version: STORE_VERSION,
     seeded_on: seededOn,
     organizations: [
-      { ...stamp, id: id.org, name: "PT. Airtek Solusi Nusantara (DEMO)", logo_url: null, currency: "IDR", timezone: "Asia/Jakarta", demo: true },
-      { ...stamp, id: id.org2, name: "PT. Angin Baru Internasional", logo_url: null, currency: "IDR", timezone: "Asia/Jakarta", demo: false, created_by: id.adi },
+      { ...stamp, id: ORG, name: "PT. Airtek Solusi Nusantara (DEMO)", logo_url: null, currency: "IDR", timezone: "Asia/Jakarta", demo: true },
+      { ...stamp, id: ORG2, name: "PT. Angin Baru Internasional", logo_url: null, currency: "IDR", timezone: "Asia/Jakarta", demo: false },
     ],
     profiles: [
-      { id: id.adi, full_name: "Adi Pratama", avatar_url: null, phone: "081234560001", locale: "id", email: "adi@airtek.co.id", password: DEMO_PASSWORD, reset_token: null, reset_expires: null, email_confirmed: true, confirm_token: null, theme: "system", created_at: stamp.created_at, updated_at: stamp.updated_at },
-      { id: id.sari, full_name: "Sari Wulandari", avatar_url: null, phone: "081234560002", locale: "id", email: "sari@airtek.co.id", password: DEMO_PASSWORD, reset_token: null, reset_expires: null, email_confirmed: true, confirm_token: null, theme: "system", created_at: stamp.created_at, updated_at: stamp.updated_at },
-      { id: id.budi, full_name: "Budi Hartono", avatar_url: null, phone: "081234560003", locale: "id", email: "budi@airtek.co.id", password: DEMO_PASSWORD, reset_token: null, reset_expires: null, email_confirmed: true, confirm_token: null, theme: "system", created_at: stamp.created_at, updated_at: stamp.updated_at },
-      { id: id.rina, full_name: "Rina Kusuma", avatar_url: null, phone: "081234560004", locale: "id", email: "rina@airtek.co.id", password: DEMO_PASSWORD, reset_token: null, reset_expires: null, email_confirmed: true, confirm_token: null, theme: "system", created_at: stamp.created_at, updated_at: stamp.updated_at },
+      profile(people.admin, "Admin Demo", "admin.demo@airtek.my.id", "081234560001"),
+      profile(people.fajrul, "Fajrul", "manager.demo@airtek.my.id", "081234560002"),
+      profile(people.taufik, "Taufik Hidayat", "sales1.demo@airtek.my.id", "081234560003"),
+      profile(people.rani, "Rani Amelia", "sales2.demo@airtek.my.id", "081234560004"),
+      profile(people.yusuf, "Yusuf Ramadhan", "presales.demo@airtek.my.id", "081234560005"),
+      profile(people.direksi, "Direksi Demo", "direksi.demo@airtek.my.id", "081234560006"),
     ],
-    teams: [{ ...stamp, id: id.team, organization_id: id.org, name: "Tim Jakarta", leader_id: id.adi }],
+    teams: [{ ...stamp, id: team, organization_id: ORG, name: "Tim Sulawesi", leader_id: people.fajrul }],
     memberships: [
-      { ...stamp, id: "31000000-0000-4000-8000-000000000001", organization_id: id.org, user_id: id.adi, role: "owner", team_id: id.team, disabled_at: null },
-      { ...stamp, id: "31000000-0000-4000-8000-000000000002", organization_id: id.org, user_id: id.sari, role: "sales", team_id: id.team, disabled_at: null },
-      { ...stamp, id: "31000000-0000-4000-8000-000000000003", organization_id: id.org, user_id: id.budi, role: "manager", team_id: id.team, disabled_at: null },
-      { ...stamp, id: "31000000-0000-4000-8000-000000000004", organization_id: id.org, user_id: id.rina, role: "viewer", team_id: null, disabled_at: null },
-      { ...stamp, id: "31000000-0000-4000-8000-000000000005", organization_id: id.org2, user_id: id.adi, role: "owner", team_id: null, disabled_at: null },
+      ...memberships.map(([userId, role], index) => ({
+        ...stamp,
+        id: u(31, index + 1),
+        organization_id: ORG,
+        user_id: userId,
+        role,
+        team_id: role === "viewer" ? null : team,
+        disabled_at: null,
+      })),
+      { ...stamp, id: u(31, 99), organization_id: ORG2, user_id: people.admin, role: "owner" as const, team_id: null, disabled_at: null },
     ],
     invitations: [
       {
-        id: "32000000-0000-4000-8000-000000000001",
-        organization_id: id.org,
-        email: "baru@airtek.co.id",
+        id: u(32, 1),
+        organization_id: ORG,
+        email: "calon.sales@airtek.my.id",
         full_name: "Calon Sales",
         role: "sales",
-        team_id: null,
+        team_id: team,
         token: "invite-demo-token",
         expires_at: jakartaDate(7, 18),
         accepted_at: null,
         cancelled_at: null,
         created_at: jakartaDate(-1, 10),
-        created_by: id.adi,
+        created_by: people.admin,
       },
     ],
     pipelines: [
-      { ...stamp, id: id.hvac, organization_id: id.org, name: "Proyek HVAC", description: "Chiller, AHU, dan VRF", color: "#0f766e", position: 0, is_default: true, archived: false },
-      { ...stamp, id: id.pump, organization_id: id.org, name: "Pump & Fire", description: "Pompa dan hidran", color: "#0369a1", position: 1, is_default: false, archived: false },
-      { ...stamp, id: id.maint, organization_id: id.org, name: "Maintenance", description: "Perawatan berkala", color: "#b45309", position: 2, is_default: false, archived: false },
-      { ...stamp, id: id.umum, organization_id: id.org2, name: "Umum", description: null, color: "#0f766e", position: 0, is_default: true, archived: false },
+      { ...stamp, id: pipe.sales, organization_id: ORG, name: "Sales", description: "Penawaran sampai closing", color: "#9a1b4b", position: 0, is_default: true, archived: false },
+      { ...stamp, id: pipe.presales, organization_id: ORG, name: "Presales", description: "Survey, desain, dan estimasi", color: "#4c2a85", position: 1, is_default: false, archived: false },
+      { ...stamp, id: pipe.maint, organization_id: ORG, name: "Maintenance", description: "Kontrak perawatan berkala", color: "#b45309", position: 2, is_default: false, archived: false },
+      { ...stamp, id: pipe.umum, organization_id: ORG2, name: "Sales", description: null, color: "#9a1b4b", position: 0, is_default: true, archived: false },
     ],
-    stages: [...hvacStages, ...pumpStages, ...maintStages, ...umumStages],
-    companies: [
-      { ...stamp, id: id.nindya, organization_id: id.org, name: "PT Nindya Karya", industry: "Konstruksi", npwp: "01.234.567.8-012.000", address: "Jl. Letjen TB Simatupang", city: "Jakarta Selatan", province: "DKI Jakarta", phone: "0217654321", email: "proyek@nindyakarya.co.id", website: "https://nindyakarya.co.id", owner_id: id.adi },
-      { ...stamp, id: id.palindo, organization_id: id.org, name: "PT. Palindo Inti Nusantara", industry: "Galangan kapal", npwp: null, address: "Kawasan Industri Sekupang", city: "Batam", province: "Kepulauan Riau", phone: "0778456789", email: "procurement@palindo.co.id", website: null, owner_id: id.budi },
-      { ...stamp, id: id.bintang, organization_id: id.org, name: "CV Bintang Leo Jaya", industry: "Kontraktor", npwp: null, address: "Jl. Perintis Kemerdekaan", city: "Makassar", province: "Sulawesi Selatan", phone: "0411555666", email: "leo@bintangjaya.co.id", website: null, owner_id: id.sari },
-      { ...stamp, id: id.iain, organization_id: id.org, name: "IAIN Parepare", industry: "Pendidikan", npwp: null, address: "Jl. Amal Bakti", city: "Parepare", province: "Sulawesi Selatan", phone: "042121234", email: "umum@iainpare.ac.id", website: "https://iainpare.ac.id", owner_id: id.adi },
-      { ...stamp, id: id.siloam, organization_id: id.org, name: "RS Siloam Lippo Village", industry: "Kesehatan", npwp: null, address: "Jl. Siloam No. 6", city: "Tangerang", province: "Banten", phone: "02180646900", email: "facility@siloamhospitals.com", website: null, owner_id: id.adi },
-      { ...stamp, id: id.bandara, organization_id: id.org, name: "Bandara Sultan Hasanuddin", industry: "Transportasi", npwp: null, address: "Jl. Bandara Baru", city: "Makassar", province: "Sulawesi Selatan", phone: "0411550108", email: "teknik@hasanuddin-airport.co.id", website: null, owner_id: id.budi },
-    ],
-    contacts: [
-      { ...stamp, id: id.andi, organization_id: id.org, first_name: "Andi", last_name: "Wijaya", company_id: id.nindya, job_title: "Project Manager", email: "andi.wijaya@nindyakarya.co.id", phone: "081298760001", whatsapp: "6281298760001", address: null, owner_id: id.sari, source: "Referral" },
-      { ...stamp, id: id.dewi, organization_id: id.org, first_name: "Dewi", last_name: "Lestari", company_id: id.palindo, job_title: "Procurement", email: "dewi.lestari@palindo.co.id", phone: "081298760002", whatsapp: "6281298760002", address: null, owner_id: id.budi, source: "Pameran" },
-      { ...stamp, id: id.leo, organization_id: id.org, first_name: "Leo", last_name: "Santoso", company_id: id.bintang, job_title: "Direktur", email: "leo@bintangjaya.co.id", phone: "081298760003", whatsapp: "6281298760003", address: null, owner_id: id.sari, source: "Website" },
-      { ...stamp, id: id.rahman, organization_id: id.org, first_name: "Rahman", last_name: "Hakim", company_id: id.iain, job_title: "Bagian Umum", email: "rahman@iainpare.ac.id", phone: "081298760004", whatsapp: "6281298760004", address: null, owner_id: id.adi, source: "Tender" },
-      { ...stamp, id: id.maya, organization_id: id.org, first_name: "Maya", last_name: "Putri", company_id: id.siloam, job_title: "Facility Manager", email: "maya.putri@siloamhospitals.com", phone: "081298760005", whatsapp: "6281298760005", address: null, owner_id: id.adi, source: "Referral" },
-      { ...stamp, id: id.farid, organization_id: id.org, first_name: "Farid", last_name: "Anwar", company_id: id.bandara, job_title: "Kepala Teknik", email: "farid.anwar@hasanuddin-airport.co.id", phone: "081298760006", whatsapp: "6281298760006", address: null, owner_id: id.budi, source: "Kunjungan" },
-    ],
+    stages: [...stages, ...umumStages],
+    companies: companyDefs.map(([key, name, industry, city, province, phone, email], index) => ({
+      ...stamp,
+      id: company[key],
+      organization_id: ORG,
+      name,
+      industry,
+      npwp: null,
+      address: null,
+      city,
+      province,
+      phone,
+      email,
+      website: null,
+      owner_id: [people.fajrul, people.taufik, people.rani][index % 3] ?? people.fajrul,
+    })),
+    contacts: contactDefs.map(([key, firstName, lastName, companyKey, jobTitle, source], index) => {
+      const phone = `08129876${String(index + 1).padStart(4, "0")}`;
+      const domain = companyDefs.find((item) => item[0] === companyKey)?.[6].split("@")[1] ?? "airtek.my.id";
+      return {
+        ...stamp,
+        id: contact[key] ?? u(60, index + 1),
+        organization_id: ORG,
+        first_name: firstName,
+        last_name: lastName,
+        company_id: company[companyKey],
+        job_title: jobTitle,
+        email: `${key}@${domain}`,
+        phone,
+        whatsapp: `62${phone.slice(1)}`,
+        address: null,
+        owner_id: [people.fajrul, people.taufik, people.rani][index % 3] ?? people.fajrul,
+        source,
+      };
+    }),
     tags: [
-      { ...stamp, id: id.tagHvac, organization_id: id.org, name: "HVAC", color: "#0f766e" },
-      { ...stamp, id: id.tagPump, organization_id: id.org, name: "Pompa", color: "#0369a1" },
-      { ...stamp, id: id.tagTdg, organization_id: id.org, name: "TDG", color: "#b45309" },
-      { ...stamp, id: id.tagLift, organization_id: id.org, name: "Lift", color: "#6d28d9" },
-      { ...stamp, id: id.tagAc, organization_id: id.org, name: "AC", color: "#0e7490" },
+      { ...stamp, id: tag.lift, organization_id: ORG, name: "Lift", color: "#6d28d9" },
+      { ...stamp, id: tag.pompa, organization_id: ORG, name: "Pompa", color: "#0369a1" },
+      { ...stamp, id: tag.ac, organization_id: ORG, name: "AC", color: "#0e7490" },
+      { ...stamp, id: tag.hvac, organization_id: ORG, name: "HVAC", color: "#be123c" },
     ],
     lost_reasons: [
-      { ...stamp, id: id.reasonPrice, organization_id: id.org, name: "Harga" },
-      { ...stamp, id: id.reasonCompetitor, organization_id: id.org, name: "Kompetitor" },
-      { ...stamp, id: id.reasonBudget, organization_id: id.org, name: "Anggaran ditunda" },
-      { ...stamp, id: id.reasonNeed, organization_id: id.org, name: "Tidak ada kebutuhan" },
-      { ...stamp, id: id.reasonOther, organization_id: id.org, name: "Lainnya" },
+      { ...stamp, id: reason.price, organization_id: ORG, name: "Harga" },
+      { ...stamp, id: reason.competitor, organization_id: ORG, name: "Kompetitor" },
+      { ...stamp, id: reason.budget, organization_id: ORG, name: "Anggaran ditunda" },
+      { ...stamp, id: reason.need, organization_id: ORG, name: "Tidak ada kebutuhan" },
+      { ...stamp, id: reason.other, organization_id: ORG, name: "Lainnya" },
     ],
-    deals: [
-      deal("70000000-0000-4000-8000-000000000001", "Gd Barak CPI", id.hvac, s.hvacQuote, 850_000_000, id.sari, id.nindya, id.andi, 3, 20, -1, "open", 0),
-      deal("70000000-0000-4000-8000-000000000002", "Lift IAIN Parepare", id.hvac, s.hvacNego, 910_200_000, id.adi, id.iain, id.rahman, 3, 18, -2, "open", 0),
-      deal("70000000-0000-4000-8000-000000000003", "Chiller RS Siloam", id.hvac, s.hvacClose, 1_250_000_000, id.adi, id.siloam, id.maya, 3, 10, 0, "open", 0),
-      deal("70000000-0000-4000-8000-000000000004", "AHU Bandara Hasanuddin", id.hvac, s.hvacQual, 680_000_000, id.budi, id.bandara, id.farid, 2, 40, -20, "open", 0),
-      deal("70000000-0000-4000-8000-000000000005", "VRF Gedung Bintang Leo", id.hvac, s.hvacNeed, 260_000_000, id.sari, id.bintang, id.leo, 1, 28, -4, "open", 0),
-      deal("70000000-0000-4000-8000-000000000006", "Exhaust TDG Workshop Palindo", id.hvac, s.hvacQuote, 310_000_000, id.budi, id.palindo, id.dewi, 2, 22, -3, "open", 1),
-      { ...deal("70000000-0000-4000-8000-000000000007", "Instalasi AHU Nindya fase 1", id.hvac, s.hvacWon, 430_000_000, id.adi, id.nindya, id.andi, 2, -12, -12, "won", 0), won_at: jakartaDate(-12, 16), created_at: jakartaDate(-55, 9) },
-      { ...deal("70000000-0000-4000-8000-000000000008", "Chiller pengganti Palindo", id.hvac, s.hvacLost, 500_000_000, id.sari, id.palindo, id.dewi, 1, -20, -20, "lost", 0), lost_at: jakartaDate(-20, 11), lost_reason_id: id.reasonPrice, created_at: jakartaDate(-48, 9) },
-      deal("70000000-0000-4000-8000-000000000009", "Pompa Hydrant Palindo", id.pump, s.pumpSurvey, 420_000_000, id.budi, id.palindo, id.dewi, 3, 15, -6, "open", 0),
-      deal("70000000-0000-4000-8000-000000000010", "Fire Pump IAIN", id.pump, s.pumpQuote, 180_000_000, id.sari, id.iain, id.rahman, 2, 30, -2, "open", 0),
-      { ...deal("70000000-0000-4000-8000-000000000011", "Pompa transfer Bintang Leo", id.pump, s.pumpWon, 95_000_000, id.sari, id.bintang, id.leo, 1, -5, -5, "won", 0), won_at: jakartaDate(-5, 15), created_at: jakartaDate(-40, 9) },
-      { ...deal("70000000-0000-4000-8000-000000000012", "Hydrant Bandara", id.pump, s.pumpLost, 210_000_000, id.budi, id.bandara, id.farid, 2, -4, -4, "lost", 0), lost_at: jakartaDate(-4, 17), lost_reason_id: id.reasonCompetitor, created_at: jakartaDate(-36, 9) },
-      deal("70000000-0000-4000-8000-000000000013", "Maintenance Cooling Tower Bintang Leo", id.maint, s.maintSurvey, 95_000_000, id.sari, id.bintang, id.leo, 2, 7, -1, "open", 0),
-      deal("70000000-0000-4000-8000-000000000014", "Service AHU Siloam", id.maint, s.maintSched, 45_000_000, id.adi, id.siloam, id.maya, 2, 3, -8, "open", 0),
-      { ...deal("70000000-0000-4000-8000-000000000015", "Cuci cooling tower Nindya", id.maint, s.maintDone, 18_000_000, id.budi, id.nindya, id.andi, 0, -3, -3, "won", 0), won_at: jakartaDate(-3, 14), created_at: jakartaDate(-20, 9) },
-    ],
-    deal_contacts: [
-      { id: "71000000-0000-4000-8000-000000000001", deal_id: "70000000-0000-4000-8000-000000000001", contact_id: id.andi, role: "Pengambil keputusan" },
-      { id: "71000000-0000-4000-8000-000000000002", deal_id: "70000000-0000-4000-8000-000000000002", contact_id: id.rahman, role: "Pengguna" },
-      { id: "71000000-0000-4000-8000-000000000003", deal_id: "70000000-0000-4000-8000-000000000003", contact_id: id.maya, role: "Pengambil keputusan" },
-    ],
-    deal_tags: [
-      { deal_id: "70000000-0000-4000-8000-000000000001", tag_id: id.tagHvac },
-      { deal_id: "70000000-0000-4000-8000-000000000002", tag_id: id.tagLift },
-      { deal_id: "70000000-0000-4000-8000-000000000003", tag_id: id.tagHvac },
-      { deal_id: "70000000-0000-4000-8000-000000000004", tag_id: id.tagHvac },
-      { deal_id: "70000000-0000-4000-8000-000000000005", tag_id: id.tagHvac },
-      { deal_id: "70000000-0000-4000-8000-000000000006", tag_id: id.tagTdg },
-      { deal_id: "70000000-0000-4000-8000-000000000007", tag_id: id.tagHvac },
-      { deal_id: "70000000-0000-4000-8000-000000000008", tag_id: id.tagHvac },
-      { deal_id: "70000000-0000-4000-8000-000000000009", tag_id: id.tagPump },
-      { deal_id: "70000000-0000-4000-8000-000000000010", tag_id: id.tagPump },
-      { deal_id: "70000000-0000-4000-8000-000000000011", tag_id: id.tagPump },
-      { deal_id: "70000000-0000-4000-8000-000000000012", tag_id: id.tagPump },
-      { deal_id: "70000000-0000-4000-8000-000000000013", tag_id: id.tagHvac },
-      { deal_id: "70000000-0000-4000-8000-000000000014", tag_id: id.tagHvac },
-      { deal_id: "70000000-0000-4000-8000-000000000015", tag_id: id.tagHvac },
-    ],
-    products: [
-      { ...stamp, id: "82000000-0000-4000-8000-000000000001", organization_id: id.org, name: "AC Split 2 PK", sku: "AC-2PK", unit: "unit", unit_price: 8_500_000, tag_id: id.tagAc },
-      { ...stamp, id: "82000000-0000-4000-8000-000000000002", organization_id: id.org, name: "Chiller 200 TR", sku: "CH-200", unit: "unit", unit_price: 890_000_000, tag_id: id.tagAc },
-      { ...stamp, id: "82000000-0000-4000-8000-000000000003", organization_id: id.org, name: "Fire Pump Electric", sku: "PH-500", unit: "unit", unit_price: 125_000_000, tag_id: id.tagPump },
-      { ...stamp, id: "82000000-0000-4000-8000-000000000004", organization_id: id.org, name: "AC Cassette", sku: "AC-CAS", unit: "unit", unit_price: 18_000_000, tag_id: id.tagAc },
-      { ...stamp, id: "82000000-0000-4000-8000-000000000005", organization_id: id.org, name: "Passenger Lift 8 orang", sku: "LF-8", unit: "unit", unit_price: 450_000_000, tag_id: id.tagLift },
-      { ...stamp, id: "82000000-0000-4000-8000-000000000006", organization_id: id.org, name: "VRF Outdoor", sku: "VRF-OD", unit: "unit", unit_price: 210_000_000, tag_id: id.tagAc },
-      { ...stamp, id: "82000000-0000-4000-8000-000000000007", organization_id: id.org, name: "Jasa Instalasi", sku: "SVC-INST", unit: "lot", unit_price: 75_000_000, tag_id: id.tagHvac },
-    ],
-    deal_products: [
-      line("83000000-0000-4000-8000-000000000001", "70000000-0000-4000-8000-000000000002", "82000000-0000-4000-8000-000000000005", 2, 450_000_000, 0),
-      line("83000000-0000-4000-8000-000000000002", "70000000-0000-4000-8000-000000000003", "82000000-0000-4000-8000-000000000002", 1, 890_000_000, 0),
-      line("83000000-0000-4000-8000-000000000003", "70000000-0000-4000-8000-000000000003", "82000000-0000-4000-8000-000000000007", 1, 75_000_000, 0),
-      line("83000000-0000-4000-8000-000000000004", "70000000-0000-4000-8000-000000000001", "82000000-0000-4000-8000-000000000001", 4, 185_000_000, 5),
-    ],
-    activities: [
-      activity("84000000-0000-4000-8000-000000000001", "call", "Follow up penawaran barak", id.sari, "70000000-0000-4000-8000-000000000001", id.andi, id.nindya, 1, null),
-      activity("84000000-0000-4000-8000-000000000002", "meeting", "Review spec chiller Siloam", id.adi, "70000000-0000-4000-8000-000000000003", id.maya, id.siloam, 0, null),
-      activity("84000000-0000-4000-8000-000000000003", "visit", "Survey ruang pompa Palindo", id.budi, "70000000-0000-4000-8000-000000000009", id.dewi, id.palindo, -2, null),
-      activity("84000000-0000-4000-8000-000000000004", "task", "Kirim jadwal service AHU", id.adi, "70000000-0000-4000-8000-000000000014", id.maya, id.siloam, -1, null),
-      activity("84000000-0000-4000-8000-000000000005", "whatsapp", "Konfirmasi shaft lift IAIN", id.sari, "70000000-0000-4000-8000-000000000002", id.rahman, id.iain, 3, null),
-      activity("84000000-0000-4000-8000-000000000006", "email", "Kirim MOM negosiasi", id.adi, "70000000-0000-4000-8000-000000000003", id.maya, id.siloam, -6, -6),
-    ],
+    deals,
+    deal_contacts: deals
+      .filter((deal) => deal.primary_contact_id)
+      .map((deal, index) => ({ id: u(71, index + 1), deal_id: deal.id, contact_id: deal.primary_contact_id ?? "", role: "Pengambil keputusan" })),
+    deal_tags: deals.map((deal, index) => ({ deal_id: deal.id, tag_id: tag[dealDefs[index]?.tag ?? "hvac"] })),
+    products: productDefs.map(([name, sku, unit, price, tagKey], index) => ({
+      ...stamp,
+      id: u(82, index + 1),
+      organization_id: ORG,
+      name,
+      sku,
+      unit,
+      unit_price: price,
+      tag_id: tag[tagKey],
+    })),
+    deal_products: lines,
+    activities,
     notes: [
-      { ...stamp, id: "85000000-0000-4000-8000-000000000001", organization_id: id.org, body: "Klien minta AHU low noise untuk asrama. Kompetitor sudah kirim angka kasar.", deal_id: "70000000-0000-4000-8000-000000000001", contact_id: null, company_id: null, pinned: true, created_by: id.sari, created_at: jakartaDate(-2, 11) },
-      { ...stamp, id: "85000000-0000-4000-8000-000000000002", organization_id: id.org, body: "Shaft sudah tersedia, kapasitas 8 orang, 4 lantai. Target PO sebelum akhir bulan.", deal_id: "70000000-0000-4000-8000-000000000002", contact_id: null, company_id: null, pinned: false, created_by: id.adi, created_at: jakartaDate(-3, 15) },
+      { ...stamp, id: u(85, 1), organization_id: ORG, body: "Owner minta AHU low noise untuk barak. Kompetitor sudah kirim angka kasar, kita perlu revisi harga ±5%.", deal_id: dealIndex("Gd Barak CPI"), contact_id: null, company_id: null, pinned: true, created_by: people.fajrul, created_at: jakartaDate(-2, 11) },
+      { ...stamp, id: u(85, 2), organization_id: ORG, body: "Shaft sudah tersedia, kapasitas 8 orang, 4 lantai. Target PO sebelum akhir bulan.", deal_id: dealIndex("Lift IAIN Pare-pare"), contact_id: null, company_id: null, pinned: false, created_by: people.fajrul, created_at: jakartaDate(-3, 15) },
+      { ...stamp, id: u(85, 3), organization_id: ORG, body: "30 unit fire pump diesel mobile untuk area tambang. Butuh sertifikasi UL/FM, cek lead time pabrikan.", deal_id: dealIndex("Mobile Fire Pump PTVI"), contact_id: null, company_id: null, pinned: true, created_by: people.taufik, created_at: jakartaDate(-6, 10) },
+      { ...stamp, id: u(85, 4), organization_id: ORG, body: "Hasil survey: ruang chiller cukup untuk 2 unit 200 TR, perlu perkuatan lantai.", deal_id: dealIndex("Survey HVAC RS Siloam Gedung B"), contact_id: null, company_id: null, pinned: false, created_by: people.yusuf, created_at: jakartaDate(-1, 14) },
     ],
-    stage_history: [
-      { id: "86000000-0000-4000-8000-000000000001", deal_id: "70000000-0000-4000-8000-000000000007", from_stage_id: s.hvacClose, to_stage_id: s.hvacWon, changed_by: id.adi, changed_at: jakartaDate(-12, 16) },
-      { id: "86000000-0000-4000-8000-000000000002", deal_id: "70000000-0000-4000-8000-000000000007", from_stage_id: s.hvacNego, to_stage_id: s.hvacClose, changed_by: id.adi, changed_at: jakartaDate(-20, 10) },
-      { id: "86000000-0000-4000-8000-000000000003", deal_id: "70000000-0000-4000-8000-000000000011", from_stage_id: s.pumpQuote, to_stage_id: s.pumpWon, changed_by: id.sari, changed_at: jakartaDate(-5, 15) },
-      { id: "86000000-0000-4000-8000-000000000004", deal_id: "70000000-0000-4000-8000-000000000015", from_stage_id: s.maintSched, to_stage_id: s.maintDone, changed_by: id.budi, changed_at: jakartaDate(-3, 14) },
-      { id: "86000000-0000-4000-8000-000000000005", deal_id: "70000000-0000-4000-8000-000000000008", from_stage_id: s.hvacNego, to_stage_id: s.hvacLost, changed_by: id.sari, changed_at: jakartaDate(-20, 11) },
-      { id: "86000000-0000-4000-8000-000000000006", deal_id: "70000000-0000-4000-8000-000000000012", from_stage_id: s.pumpQuote, to_stage_id: s.pumpLost, changed_by: id.budi, changed_at: jakartaDate(-4, 17) },
-    ],
-    audit_logs: [
-      { id: "87000000-0000-4000-8000-000000000001", organization_id: id.org, entity: "deal", entity_id: "70000000-0000-4000-8000-000000000007", action: "won", diff: { title: "Instalasi AHU Nindya fase 1" }, user_id: id.adi, created_at: jakartaDate(-12, 16) },
-    ],
+    stage_history: history,
+    audit_logs: [],
     notifications: [
-      { id: "88000000-0000-4000-8000-000000000001", organization_id: id.org, user_id: id.adi, type: "activity_due", payload: { title: "Kirim jadwal service AHU", href: "/activities" }, read_at: null, created_at: jakartaDate(-1, 8) },
-      { id: "88000000-0000-4000-8000-000000000002", organization_id: id.org, user_id: id.sari, type: "deal_assigned", payload: { title: "Gd Barak CPI", href: "/deals/70000000-0000-4000-8000-000000000001" }, read_at: null, created_at: jakartaDate(-2, 9) },
-      { id: "88000000-0000-4000-8000-000000000003", organization_id: id.org, user_id: id.adi, type: "mention", payload: { title: "Lift IAIN Parepare", href: "/deals/70000000-0000-4000-8000-000000000002" }, read_at: jakartaDate(-1, 12), created_at: jakartaDate(-4, 9) },
+      { id: u(88, 1), organization_id: ORG, user_id: people.fajrul, type: "activity_due", payload: { title: "Follow up revisi harga AHU", href: "/activities" }, read_at: null, created_at: jakartaDate(0, 8) },
+      { id: u(88, 2), organization_id: ORG, user_id: people.taufik, type: "deal_assigned", payload: { title: "Mobile Fire Pump PTVI", href: `/deals/${dealIndex("Mobile Fire Pump PTVI")}` }, read_at: null, created_at: jakartaDate(-6, 9) },
+      { id: u(88, 3), organization_id: ORG, user_id: people.admin, type: "deal_assigned", payload: { title: "Gd. PA Mamuju", href: `/deals/${dealIndex("Gd. PA Mamuju")}` }, read_at: null, created_at: jakartaDate(-4, 9) },
     ],
     saved_views: [
-      { id: "89000000-0000-4000-8000-000000000001", organization_id: id.org, user_id: id.sari, pipeline_id: id.hvac, name: "Deal saya", filters: { mine: true, view: "kanban" }, is_shared: false, created_at: jakartaDate(-10, 9) },
+      { id: u(89, 1), organization_id: ORG, user_id: people.fajrul, pipeline_id: pipe.sales, name: "Deal saya", filters: { mine: true, view: "kanban" }, is_shared: false, created_at: jakartaDate(-10, 9) },
     ],
   };
 }
 
-function deal(
-  dealId: string,
-  title: string,
-  pipelineId: string,
-  stageId: string,
-  value: number,
-  ownerId: string,
-  companyId: string,
-  contactId: string,
-  priority: number,
-  closeInDays: number,
-  lastActivityDays: number,
-  status: "open" | "won" | "lost",
-  position: number,
-) {
-  return {
-    id: dealId,
-    organization_id: id.org,
-    title,
-    pipeline_id: pipelineId,
-    stage_id: stageId,
-    value,
-    currency: "IDR",
-    probability_override: null,
-    expected_close_date: jakartaDate(closeInDays, 17),
-    priority,
-    company_id: companyId,
-    primary_contact_id: contactId,
-    owner_id: ownerId,
-    status,
-    lost_reason_id: null,
-    won_at: null,
-    lost_at: null,
-    position,
-    last_activity_at: jakartaDate(lastActivityDays, 11),
-    description: null,
-    created_at: jakartaDate(-30, 9),
-    updated_at: jakartaDate(lastActivityDays, 11),
-    created_by: ownerId,
-  };
-}
-
-function line(lineId: string, dealId: string, productId: string, qty: number, unitPrice: number, discount: number) {
-  return {
-    id: lineId,
-    deal_id: dealId,
-    product_id: productId,
-    qty,
-    unit_price: unitPrice,
-    discount_pct: discount,
-    subtotal: subtotal(qty, unitPrice, discount),
-  };
-}
-
-function activity(
-  activityId: string,
-  type: "call" | "meeting" | "email" | "task" | "visit" | "whatsapp",
-  subject: string,
-  assignee: string,
-  dealId: string,
-  contactId: string,
-  companyId: string,
-  dueDays: number,
-  doneDays: number | null,
-) {
-  return {
-    id: activityId,
-    organization_id: id.org,
-    type,
-    subject,
-    note: null,
-    due_at: jakartaDate(dueDays, dueDays === 0 ? 15 : 10),
-    done_at: doneDays === null ? null : jakartaDate(doneDays, 16),
-    result_note: doneDays === null ? null : "Selesai, klien minta revisi minor.",
-    assigned_to: assignee,
-    deal_id: dealId,
-    contact_id: contactId,
-    company_id: companyId,
-    created_at: jakartaDate(dueDays - 2, 9),
-    updated_at: jakartaDate(doneDays ?? dueDays, 9),
-    created_by: assignee,
-  };
+function closedOrNow(deal: Deal) {
+  return deal.won_at ?? deal.lost_at ?? new Date().toISOString();
 }

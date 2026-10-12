@@ -229,8 +229,36 @@ export function buildDashboard(
       }, 0),
     };
   });
-  const salesMap = new Map<string, number>();
-  wonDeals.forEach((deal) => salesMap.set(deal.owner_id, (salesMap.get(deal.owner_id) ?? 0) + deal.value));
+  const todayStart = jakartaStart(0);
+  const salesPipelineId = selected?.id ?? defaultPipelineId(store, orgId);
+  const sales = orgPeople(store, orgId)
+    .map((person) => {
+      const openMine = open.filter((deal) => deal.owner_id === person.id);
+      const wonMine = wonDeals.filter((deal) => deal.owner_id === person.id);
+      const lostMine = lostDeals.filter((deal) => deal.owner_id === person.id);
+      return {
+        id: person.id,
+        name: person.full_name,
+        open: openMine.length,
+        pipeline: openMine.reduce((sum, deal) => sum + deal.value, 0),
+        weighted: openMine.reduce((sum, deal) => {
+          const stage = store.stages.find((item) => item.id === deal.stage_id);
+          return sum + (stage ? weightedValue(deal, stage) : 0);
+        }, 0),
+        won: wonMine.reduce((sum, deal) => sum + deal.value, 0),
+        winRate: wonMine.length + lostMine.length === 0 ? null : Math.round((wonMine.length / (wonMine.length + lostMine.length)) * 100),
+        overdue: store.activities.filter(
+          (activity) =>
+            activity.organization_id === orgId &&
+            activity.assigned_to === person.id &&
+            !activity.done_at &&
+            new Date(activity.due_at).getTime() < todayStart,
+        ).length,
+        href: salesPipelineId ? `/pipelines/${salesPipelineId}?owner=${person.id}` : "/deals",
+      };
+    })
+    .filter((row) => row.open > 0 || row.won > 0 || row.overdue > 0)
+    .sort((a, b) => b.weighted - a.weighted || b.won - a.won);
   const overdueCutoff = canManage(session.role) || session.role === "viewer" ? null : session.userId;
   const overdue = store.activities
     .filter((activity) => activity.organization_id === orgId && !activity.done_at && new Date(activity.due_at).getTime() < jakartaStart(0))
@@ -257,10 +285,7 @@ export function buildDashboard(
     avgCycle: cycleSamples.length ? Math.round(cycleSamples.reduce((sum, days) => sum + days, 0) / cycleSamples.length) : 0,
     funnel,
     forecast,
-    sales: [...salesMap.entries()]
-      .map(([userId, won]) => ({ name: personName(store, userId), won }))
-      .sort((a, b) => b.won - a.won)
-      .slice(0, 5),
+    sales,
     overdue,
   };
 }
@@ -275,6 +300,22 @@ function uniqueStageNames(store: Store, pipelineIds: string[]) {
       seen.add(item.name);
       return true;
     });
+}
+
+/** Options for the deal list filters. */
+export function buildDealFilters(store: Store, session: Session) {
+  const orgId = session.organizationId;
+  const pipelineNames = new Map(store.pipelines.map((item) => [item.id, item.name]));
+  return {
+    owners: orgPeople(store, orgId).map((item) => ({ id: item.id, name: item.full_name })),
+    tags: store.tags.filter((item) => item.organization_id === orgId).map((item) => ({ id: item.id, name: item.name, color: item.color })),
+    stageNames: Object.fromEntries(
+      store.stages
+        .filter((item) => item.organization_id === orgId)
+        .map((item) => [item.id, `${pipelineNames.get(item.pipeline_id) ?? ""} · ${item.name}`]),
+    ),
+    meId: session.userId,
+  };
 }
 
 export function buildDeals(store: Store, session: Session): BoardDeal[] {

@@ -1,31 +1,159 @@
 "use client";
 
 import type { LegacyColumnDef } from "@tanstack/react-table/legacy";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { Link } from "@/i18n/navigation";
-import { formatCompact } from "@/lib/format";
-import type { BoardDeal } from "@/types/view";
+import type { AppLocale } from "@/i18n/routing";
+import { formatCompact, formatDate } from "@/lib/format";
+import { cn, initials } from "@/lib/utils";
+import type { BoardDeal, TagChip } from "@/types/view";
 import { DataTable } from "@/components/data-table";
+import { FilterBar, useFilterQuery, type FilterValues } from "@/components/filters/filter-bar";
 
-export function DealsTable({ rows }: { rows: BoardDeal[] }) {
+type DealFilters = {
+  owners: { id: string; name: string }[];
+  tags: TagChip[];
+  stageNames: Record<string, string>;
+  meId: string;
+};
+
+function Summary({ rows }: { rows: BoardDeal[] }) {
+  const t = useTranslations("deals");
+  return (
+    <span>
+      {t("summary", {
+        count: rows.length,
+        value: formatCompact(rows.reduce((sum, deal) => sum + deal.value, 0)),
+        weighted: formatCompact(rows.reduce((sum, deal) => sum + (deal.status === "open" ? deal.weighted : 0), 0)),
+      })}
+    </span>
+  );
+}
+
+export function DealsTable({ rows, filters, locale }: { rows: BoardDeal[]; filters: DealFilters; locale: AppLocale }) {
   const t = useTranslations("deals");
   const tc = useTranslations("common");
-  const columns = useMemo<LegacyColumnDef<BoardDeal>[]>(() => [
-    { accessorKey: "title", header: tc("name"), cell: ({ row }) => <Link className="font-medium hover:underline" href={`/deals/${row.original.id}`}>{row.original.title}</Link> },
-    { accessorKey: "companyName", header: tc("company"), cell: ({ row }) => row.original.companyName ?? "—" },
-    { accessorKey: "status", header: tc("status"), cell: ({ row }) => tc(row.original.status) },
-    { accessorKey: "value", header: tc("value"), cell: ({ row }) => <span className="money">{formatCompact(row.original.value)}</span> },
-    { accessorKey: "weighted", header: tc("weighted"), cell: ({ row }) => <span className="money">{formatCompact(row.original.weighted)}</span> },
-    { accessorKey: "ownerName", header: tc("owner") },
-  ], [tc]);
+  const params = useSearchParams();
+  const applyQuery = useFilterQuery();
+  const values: FilterValues = {
+    q: params.get("q") ?? "",
+    owner: params.get("owner") ?? "",
+    tag: params.get("tag") ?? "",
+    status: params.get("status") ?? "",
+    mine: params.get("mine") === "1",
+  };
+  const grouped = params.get("group") === "owner";
+
+  const filtered = rows.filter((deal) => {
+    const q = values.q?.trim().toLowerCase();
+    if (q && !`${deal.title} ${deal.companyName ?? ""} ${deal.contactName ?? ""}`.toLowerCase().includes(q)) return false;
+    if (values.owner && deal.ownerId !== values.owner) return false;
+    if (values.mine && deal.ownerId !== filters.meId) return false;
+    if (values.tag && !deal.tags.some((item) => item.id === values.tag)) return false;
+    if (values.status && deal.status !== values.status) return false;
+    return true;
+  });
+
+  const columns = useMemo<LegacyColumnDef<BoardDeal>[]>(
+    () => [
+      { accessorKey: "title", header: tc("name"), cell: ({ row }) => <Link className="font-medium hover:underline" href={`/deals/${row.original.id}`}>{row.original.title}</Link> },
+      { accessorKey: "companyName", header: tc("company"), cell: ({ row }) => row.original.companyName ?? "—" },
+      { accessorKey: "stageId", header: tc("stage"), cell: ({ row }) => <span className="text-muted-foreground">{filters.stageNames[row.original.stageId] ?? "—"}</span> },
+      {
+        accessorKey: "status",
+        header: tc("status"),
+        cell: ({ row }) => (
+          <span
+            className={cn(
+              "rounded-full px-2 py-0.5 text-xs font-medium",
+              row.original.status === "won" && "bg-success/15 text-success",
+              row.original.status === "lost" && "bg-destructive/15 text-destructive",
+              row.original.status === "open" && "bg-primary/10 text-primary",
+            )}
+          >
+            {tc(row.original.status)}
+          </span>
+        ),
+      },
+      { accessorKey: "value", header: tc("value"), cell: ({ row }) => <span className="money whitespace-nowrap">{formatCompact(row.original.value)}</span> },
+      { accessorKey: "weighted", header: tc("weighted"), cell: ({ row }) => <span className="money whitespace-nowrap">{formatCompact(row.original.weighted)}</span> },
+      { accessorKey: "expectedCloseDate", header: t("expectedClose"), cell: ({ row }) => <span className="whitespace-nowrap">{formatDate(row.original.expectedCloseDate, locale)}</span> },
+      {
+        id: "tags",
+        header: tc("tags"),
+        cell: ({ row }) => (
+          <span className="flex flex-wrap gap-1">
+            {row.original.tags.map((tag) => (
+              <span key={tag.id} className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ backgroundColor: `${tag.color}26`, color: tag.color }}>
+                {tag.name}
+              </span>
+            ))}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "ownerName",
+        header: t("salesperson"),
+        cell: ({ row }) => (
+          <span className="inline-flex items-center gap-2 whitespace-nowrap">
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">{initials(row.original.ownerName)}</span>
+            {row.original.ownerName}
+          </span>
+        ),
+      },
+    ],
+    [filters.stageNames, locale, t, tc],
+  );
+
+  const groups = grouped
+    ? filters.owners
+        .map((owner) => ({ owner, rows: filtered.filter((deal) => deal.ownerId === owner.id) }))
+        .filter((group) => group.rows.length > 0)
+        .sort((a, b) => b.rows.reduce((sum, deal) => sum + deal.value, 0) - a.rows.reduce((sum, deal) => sum + deal.value, 0))
+    : [];
+
   return (
     <div className="grid gap-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          <Summary rows={filtered} />
+        </p>
       </div>
-      {rows.length === 0 ? <p className="text-sm text-muted-foreground">{tc("empty")}</p> : <DataTable columns={columns} data={rows} />}
+      <div className="grid gap-3 rounded-lg border bg-card p-3">
+        <FilterBar
+          values={values}
+          owners={filters.owners}
+          tags={filters.tags}
+          statuses={(["open", "won", "lost"] as const).map((status) => ({ id: status, name: tc(status) }))}
+          onChange={(next) => applyQuery(next, { group: grouped ? "owner" : "" })}
+        />
+        <label className="flex w-fit items-center gap-2 text-sm">
+          <input type="checkbox" checked={grouped} onChange={(event) => applyQuery(values, { group: event.target.checked ? "owner" : "" })} />
+          {t("groupByOwner")}
+        </label>
+      </div>
+      {filtered.length === 0 ? <p className="text-sm text-muted-foreground">{tc("empty")}</p> : null}
+      {filtered.length > 0 && !grouped ? <DataTable columns={columns} data={filtered} /> : null}
+      {groups.map((group) => (
+        <section key={group.owner.id} className="grid gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="inline-flex items-center gap-2 text-sm font-semibold">
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">{initials(group.owner.name)}</span>
+              {group.owner.name}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              <Summary rows={group.rows} />
+            </p>
+          </div>
+          <DataTable columns={columns} data={group.rows} />
+        </section>
+      ))}
     </div>
   );
 }

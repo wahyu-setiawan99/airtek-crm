@@ -135,7 +135,14 @@
     "thisMonth": "This month",
     "thisQuarter": "This quarter",
     "thisYear": "This year",
-    "noChart": "No figures to chart yet."
+    "noChart": "No figures to chart yet.",
+    "salesPerformance": "Sales performance",
+    "colSales": "Salesperson",
+    "colOpen": "Open deals",
+    "colPipeline": "Pipeline",
+    "colWeighted": "Weighted",
+    "colWon": "Won",
+    "colOverdue": "Overdue"
   },
   "pipeline": {
     "kanban": "Kanban",
@@ -281,7 +288,9 @@
       "tags": "tags",
       "description": "description"
     },
-    "stale": "Stale"
+    "stale": "Stale",
+    "groupByOwner": "Group by salesperson",
+    "summary": "{count} deals · Value {value} · Weighted {weighted}"
   },
   "contacts": {
     "title": "Contacts",

@@ -6,6 +6,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { Link, useRouter } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/routing";
 import { formatCompact, formatDate, formatMonth, formatRupiah } from "@/lib/format";
+import { cn, initials } from "@/lib/utils";
 import type { DashboardData } from "@/types/view";
 import { Select } from "@/components/ui/form";
 
@@ -76,18 +77,44 @@ export function DashboardView({ data, locale }: { data: DashboardData; locale: A
           </ResponsiveContainer>
         </ChartCard>
       </section>
-      <section className="grid gap-3 lg:grid-cols-2">
-        <div className="rounded-lg border bg-card p-4">
-          <h2 className="text-sm font-semibold">{t("topSales")}</h2>
-          <ul className="mt-3 space-y-2">
-            {data.sales.length === 0 ? <li className="text-sm text-muted-foreground">{t("noChart")}</li> : null}
-            {data.sales.map((person) => (
-              <li key={person.name} className="flex items-center justify-between text-sm">
-                <span>{person.name}</span>
-                <span className="money font-medium">{formatCompact(person.won)}</span>
-              </li>
-            ))}
-          </ul>
+      <section className="grid gap-3 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="overflow-hidden rounded-lg border bg-card">
+          <h2 className="px-4 pt-4 text-sm font-semibold">{t("salesPerformance")}</h2>
+          {data.sales.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-muted-foreground">{t("noChart")}</p>
+          ) : (
+            <table className="mt-3 w-full text-sm">
+              <thead className="border-y bg-muted/40 text-xs text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2 text-left font-medium">{t("colSales")}</th>
+                  <th className="px-2 py-2 text-right font-medium">{t("colOpen")}</th>
+                  <th className="px-2 py-2 text-right font-medium">{t("colPipeline")}</th>
+                  <th className="px-2 py-2 text-right font-medium">{t("colWeighted")}</th>
+                  <th className="px-2 py-2 text-right font-medium">{t("colWon")}</th>
+                  <th className="px-2 py-2 text-right font-medium">{t("winRate")}</th>
+                  <th className="px-4 py-2 text-right font-medium">{t("colOverdue")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.sales.map((person) => (
+                  <tr key={person.id} className="border-b last:border-b-0 hover:bg-accent/40">
+                    <td className="px-4 py-2.5">
+                      <Link href={person.href} className="inline-flex items-center gap-2 font-medium hover:underline">
+                        <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">{initials(person.name)}</span>
+                        {person.name}
+                      </Link>
+                    </td>
+                    <td className="px-2 py-2.5 text-right tabular-nums">{person.open}</td>
+                    <td className="money px-2 py-2.5 text-right">{formatCompact(person.pipeline)}</td>
+                    <td className="money px-2 py-2.5 text-right">{formatCompact(person.weighted)}</td>
+                    <td className="money px-2 py-2.5 text-right font-medium">{formatCompact(person.won)}</td>
+                    <td className="px-2 py-2.5 text-right tabular-nums">{person.winRate === null ? "—" : `${person.winRate}%`}</td>
+                    <td className={cn("px-4 py-2.5 text-right tabular-nums", person.overdue > 0 && "font-medium text-destructive")}>{person.overdue}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
         <div className="rounded-lg border bg-card p-4">
           <h2 className="text-sm font-semibold">{t("overdue")}</h2>

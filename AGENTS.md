@@ -160,11 +160,13 @@ Aturan DB:
 - [x] Wajib konfirmasi email, pendaftaran publik ditutup (§11.1)
 - [x] Undangan oleh administrator + pilih role, termasuk role baru `presales` (§11.2)
 - [x] Script `pnpm seed:demo` + akun dummy (§11.3) — `scripts/seed-demo.ts`, isi dari `lib/demo/seed.ts`
-- [ ] Isi data demo disesuaikan §11.3: pipeline Sales/Presales, tag Lift/Pompa/AC, ±35 deal (sekarang masih pipeline lama "Proyek HVAC", 15 deal), akun `presales.demo`
+- [x] Isi data demo §11.3: pipeline Sales/Presales/Maintenance, tag Lift/Pompa/AC/HVAC, 36 deal, akun `presales.demo`
 - [x] Kategori produk berbasis tag: Lift, Pompa, AC + custom (§11.4)
 - [x] Pipeline default Sales & Presales + custom (§11.5)
-- [ ] Filter bar seragam di semua daftar (§11.6)
-- [ ] "Salesnya siapa" terlihat & bisa difilter di mana-mana (§11.7)
+- [x] Filter bar di Pipeline dan Deal (salesperson, tag, status, cari, URL query)
+- [ ] Filter bar di Kontak, Perusahaan, Aktivitas, Produk, Laporan; filter nilai/tanggal/prioritas/kota/kondisi (§11.6)
+- [x] Salesperson: nama di kartu kanban, kolom + group by di daftar Deal, tabel Performa Sales di dashboard (§11.7)
+- [ ] Bulk action ganti salesperson; ganti pemilik di detail kontak/perusahaan (§11.7)
 - [x] Mode Terang / Gelap / Sistem, tersimpan per user (§11.8)
 
 ### Fase 7 — Mobile PWA (menyusul, JANGAN dikerjakan sebelum Fase 0–6 dan Fase 8 selesai)
@@ -323,12 +325,14 @@ Lihat §11.3 — dataset demo yang sama dipakai untuk mode demo lokal (`lib/demo
 
   | Email | Nama | Role |
   |---|---|---|
-  | `admin.demo@airtek.my.id` | Admin Demo | `admin` |
+  | `admin.demo@airtek.my.id` | Admin Demo | `owner` (org demo) |
   | `direksi.demo@airtek.my.id` | Direksi Demo | `viewer` |
   | `manager.demo@airtek.my.id` | Fajrul | `manager` |
-  | `sales1.demo@airtek.my.id` | Dwi Sulistyo | `sales` |
-  | `sales2.demo@airtek.my.id` | Safar | `sales` |
-  | `presales.demo@airtek.my.id` | Syahdi | `presales` |
+  | `sales1.demo@airtek.my.id` | Taufik Hidayat (fiktif) | `sales` |
+  | `sales2.demo@airtek.my.id` | Rani Amelia (fiktif) | `sales` |
+  | `presales.demo@airtek.my.id` | Yusuf Ramadhan (fiktif) | `presales` |
+
+  Dwi Sulistyo, Safar, Ashadi, Hasyim, Bu Suri, Syahdi adalah **kontak pelanggan** (dari Odoo), bukan tim sales. Opsional: `DEMO_EXTRA_ADMIN_EMAIL` membuat satu login Administrator tambahan untuk testing.
 
 - Isi data (tanggal relatif terhadap hari ini agar selalu terlihat baru):
   - Pipeline Sales & Presales (§11.5) + 1 custom contoh "Maintenance"; tag Lift, Pompa, AC + "HVAC" sebagai contoh custom.

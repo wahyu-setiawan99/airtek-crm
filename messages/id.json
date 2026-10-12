@@ -134,7 +134,14 @@
     "thisMonth": "Bulan ini",
     "thisQuarter": "Kuartal ini",
     "thisYear": "Tahun ini",
-    "noChart": "Belum ada angka untuk ditampilkan."
+    "noChart": "Belum ada angka untuk ditampilkan.",
+    "salesPerformance": "Performa Sales",
+    "colSales": "Salesperson",
+    "colOpen": "Deal aktif",
+    "colPipeline": "Pipeline",
+    "colWeighted": "Tertimbang",
+    "colWon": "Menang",
+    "colOverdue": "Terlambat"
   },
   "pipeline": {
     "kanban": "Kanban",
@@ -280,7 +287,9 @@
       "tags": "tag",
       "description": "deskripsi"
     },
-    "stale": "Basi"
+    "stale": "Basi",
+    "groupByOwner": "Kelompokkan per salesperson",
+    "summary": "{count} deal · Nilai {value} · Tertimbang {weighted}"
   },
   "contacts": {
     "title": "Kontak",

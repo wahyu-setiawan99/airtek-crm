@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/form";
 
 const demos = [
-  { email: "adi@airtek.co.id", label: "asOwner" },
-  { email: "sari@airtek.co.id", label: "asSales" },
-  { email: "rina@airtek.co.id", label: "asViewer" },
+  { email: "admin.demo@airtek.my.id", label: "asOwner" },
+  { email: "sales1.demo@airtek.my.id", label: "asSales" },
+  { email: "direksi.demo@airtek.my.id", label: "asViewer" },
 ] as const;
 
 export function AuthScreen({
