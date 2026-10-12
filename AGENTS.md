@@ -181,6 +181,9 @@ Aturan DB:
 - [ ] QA: Lighthouse ≥ 90, aksesibilitas, hydration warning (§13.8)
 - [ ] Sidebar bisa diciutkan (mode ikon) / dimunculkan (§13.9)
 - [ ] Impor data dari Odoo CRM (§14)
+- [ ] Jenis klien Konsultan/Kontraktor/Owner + pihak proyek (§16.1–16.2)
+- [ ] Visibilitas & filter proyek lintas sales (§16.3)
+- [ ] Fitur sederhana dari riset CRM lain: target sales, cek duplikat, lokasi proyek (§16.4)
 
 ### Fase 7 — Mobile PWA (menyusul, JANGAN dikerjakan sebelum Fase 0–6, 8, dan 9 selesai)
 - [ ] Web App Manifest (nama, ikon 192/512, theme color), installable di Android/iOS
@@ -573,4 +576,68 @@ Target: TTFB halaman setelah login **< 600 ms**, LCP **< 2,5 s**, INP **< 200 ms
 ### 15.8 Definition of done
 - Tabel baseline di §15.1 diisi ulang dengan angka sesudah optimasi (dan halaman setelah login: Dashboard, Pipeline, Detail deal, Deal list).
 - Semua target §15.1 tercapai di produksi `airtek.my.id`; tidak ada regresi fungsi (login, undangan, kanban, inline edit, impor).
+
+## 16. Klien, Pihak Proyek, Visibilitas & Fitur dari Riset CRM
+
+Prinsip: **sederhana, jangan over-engineering.** Hanya fitur yang langsung dipakai tim sales proyek MEP (HVAC, pompa, fire, lift).
+
+### 16.1 Jenis klien — HANYA 3 label
+- Setiap perusahaan punya **Jenis klien** wajib, nilai tetap (tidak bisa ditambah user): **Konsultan**, **Kontraktor**, **Owner**. Tidak boleh ada label lain.
+- Migration: `companies.client_type text not null check (client_type in ('konsultan','kontraktor','owner'))`; isi data lama dari kolom `industry` (mengandung "konsultan" → konsultan, "kontraktor"/"konstruksi"/"MEP" → kontraktor, selain itu → owner), lalu **hapus kolom/field "Industri"** dari form, tabel, impor, dan seed.
+- Tampil sebagai chip berwarna di daftar & detail perusahaan; filter di halaman Perusahaan, Kontak (lewat perusahaannya), dan Deal.
+- i18n: ID "Konsultan / Kontraktor / Owner", EN "Consultant / Contractor / Owner".
+
+### 16.2 Pihak proyek di setiap deal
+Di proyek MEP biasanya ada tiga pihak: **Owner** (pemilik gedung), **Konsultan** (perencana/spesifikasi), **Kontraktor** (pelaksana/pembeli).
+- Migration: kolom nullable di `deals`: `owner_company_id`, `consultant_company_id`, `contractor_company_id` (FK `companies`, `on delete set null`). Masing-masing hanya bisa memilih perusahaan dengan `client_type` yang sesuai.
+- `deals.company_id` tetap ada sebagai klien utama untuk kompatibilitas: otomatis = kontraktor bila diisi, jika tidak owner, jika tidak konsultan (diatur di server action).
+- Detail deal (§7.1 info grid): ganti field "Perusahaan" dengan tiga baris **Owner / Konsultan / Kontraktor** (inline select + link ke perusahaan); kontak utama tetap satu.
+- Peran kontak di tab **Kontak terkait** (`deal_contacts.role`) dibatasi ke tiga nilai yang sama (bukan teks bebas).
+- Kartu kanban: tampilkan nama kontraktor (atau owner) di bawah judul.
+- Impor Odoo (§14): `partner_id` diisi ke slot sesuai jenis klien perusahaannya.
+
+### 16.3 Setiap proyek punya salesperson, semua sales bisa saling melihat
+- Setiap deal **wajib** punya salesperson (`owner_id`, sudah ada) — tampil di kartu kanban (nama depan), daftar Deal (kolom + group by), detail deal. Sudah dibuat.
+- **Semua sales bisa melihat semua proyek** di organisasi (sudah: baca terbuka); **hanya bisa mengubah proyek miliknya** (sudah: `canEditOwned`). Saat melihat proyek sales lain, tampilkan badge kecil "Milik {nama}" dan sembunyikan tombol edit (sudah sebagian lewat `canEdit`; pastikan konsisten di kanban, daftar, detail). Sales tetap boleh **menambah catatan** di proyek orang lain.
+- Boss tetap tersembunyi (§11.2) — proyek milik Boss tampil dengan salesperson "—"/tidak muncul di filter bagi non-owner.
+- **Filter yang harus tersedia** (pakai `components/filters/filter-bar.tsx`, simpan di URL):
+
+  | Filter | Kanban Pipeline | Daftar Deal | Status |
+  |---|---|---|---|
+  | Salesperson (multi, termasuk "Saya") | ✅ ada | ✅ ada | ubah ke multi-select |
+  | Pipeline (Sales/Presales/…) | via dropdown judul | ❌ **belum** | tambah |
+  | Tahap / stage proyek | kolom kanban | ❌ **belum** | tambah (multi) |
+  | Status Open/Won/Lost | — | ✅ ada | — |
+  | Tag / kategori (Lift, Pompa, AC, …) | ✅ ada | ✅ ada | — |
+  | Jenis klien & nama Owner/Konsultan/Kontraktor | ❌ | ❌ | tambah |
+  | Lokasi proyek (kota/provinsi) | ❌ | ❌ | tambah (§16.4) |
+  | Target closing (bulan/kuartal/rentang) | ❌ | ❌ | tambah |
+  | Nilai min–maks | ❌ | ❌ | tambah |
+
+- Tombol cepat di daftar Deal: **"Proyek saya"**, **"Closing bulan ini"**, **"Tanpa aktivitas"** (preset filter).
+
+### 16.4 Hasil riset CRM lain → yang diambil (sederhana)
+Dibandingkan dengan Pipedrive, HubSpot CRM, Zoho CRM, dan Odoo CRM:
+
+| Fitur di CRM lain | Keputusan | Catatan |
+|---|---|---|
+| Pipeline kanban, stage probability, weighted forecast | ✅ sudah ada | — |
+| "Selalu ada aktivitas berikutnya" (Pipedrive) & deal basi/rotting | ✅ sudah ada | — |
+| Alasan kalah wajib, laporan won/lost | ✅ sudah ada | — |
+| Produk/line item di deal | ✅ sudah ada | — |
+| Saved filters / views | ✅ ada (Pipeline) | perluas ke daftar Deal |
+| **Target/goal per salesperson** (Pipedrive Goals, Zoho Targets) | ➕ **ambil** | Settings → Target: nilai target **won per bulan** per salesperson (tabel `sales_targets`: user_id, month, amount). Dashboard Performa Sales: kolom Target + progress bar. Hanya Boss/Administrator yang mengatur. |
+| **Cek duplikat** perusahaan/kontak (HubSpot) | ➕ **ambil** | Saat membuat/impor: peringatkan bila nama perusahaan mirip (abaikan PT/CV/Tbk, huruf besar, spasi) atau email/telepon sama. Tidak ada merge otomatis. |
+| **Lokasi proyek** (field custom umum di CRM konstruksi) | ➕ **ambil** | `deals.project_city`, `deals.project_province` (teks/pilihan provinsi Indonesia); tampil di detail & filter. |
+| Riwayat perubahan per deal (audit) | ✅ sudah ada (timeline) | — |
+| Kalender aktivitas mingguan | ➕ opsional | Tampilan minggu di halaman Aktivitas (tanpa sinkron Google Calendar). |
+| Ekspor CSV/Excel | ✅ sebagian | pastikan daftar Deal & Perusahaan bisa ekspor sesuai filter. |
+| Integrasi email/inbox, sekuens email, web form/lead capture, territory, AI scoring, chatbot | ❌ tidak | terlalu kompleks untuk kebutuhan sekarang. |
+| Lead terpisah dari deal (Odoo/Salesforce) | ❌ tidak | pipeline **Presales** sudah menggantikan tahap lead. |
+| Quote/penawaran PDF | ⏸ nanti | cukup lampiran PDF penawaran (§13.4) untuk saat ini. |
+
+### 16.5 Definition of done
+- Tidak ada label klien selain Konsultan/Kontraktor/Owner di seluruh aplikasi (form, filter, impor, seed, i18n).
+- Sales A login → melihat proyek Sales B di kanban & daftar, bisa filter by salesperson/pipeline/tahap/jenis klien, tidak bisa mengedit proyek B, bisa menambah catatan.
+- Dashboard menampilkan target vs realisasi per salesperson.
 
