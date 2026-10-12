@@ -151,7 +151,7 @@ export function SettingsScreen({
                     <p className="text-xs text-muted-foreground">{member.email}</p>
                   </div>
                   <Select defaultValue={member.role} disabled={!data.canAdmin} aria-label={tc("role")} onChange={(event) => void setMemberRoleAction(member.userId, event.target.value as Role).then((result) => done(result))}>
-                    {(["owner", "admin", "manager", "sales", "presales", "viewer"] as const).map((role) => <option key={role} value={role}>{tc(`roles.${role}`)}</option>)}
+                    {(member.role === "owner" ? (["owner", "admin", "sales"] as const) : (["admin", "sales"] as const)).map((role) => <option key={role} value={role}>{tc(`roles.${role}`)}</option>)}
                   </Select>
                   {data.canAdmin ? <Button size="sm" variant="outline" onClick={() => void removeMemberAction(member.userId).then((result) => done(result))}>{t("remove")}</Button> : null}
                 </li>
@@ -173,7 +173,7 @@ export function SettingsScreen({
                 <Field label={tc("name")}><Input name="fullName" required /></Field>
                 <Field label={tc("email")}><Input name="email" type="email" required /></Field>
                 <Field label={tc("role")}>
-                  <Select name="role" defaultValue="sales">{(["admin", "manager", "sales", "presales", "viewer"] as const).map((role) => <option key={role} value={role}>{tc(`roles.${role}`)}</option>)}</Select>
+                  <Select name="role" defaultValue="sales">{(["sales", "admin"] as const).map((role) => <option key={role} value={role}>{tc(`roles.${role}`)}</option>)}</Select>
                 </Field>
                 <Button type="submit">{t("copyInvite")}</Button>
               </form>

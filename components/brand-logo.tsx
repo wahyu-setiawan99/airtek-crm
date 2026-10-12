@@ -17,7 +17,7 @@ export function BrandLogo({
   className?: string;
   priority?: boolean;
 }) {
-  const base = "h-8 w-auto shrink-0 self-start object-contain object-left";
+  const base = "h-8 w-auto shrink-0 object-contain object-left";
   if (variant === "onDark") {
     return <Image src={logoOnDark} alt="Airtek Solusi Nusantara" priority={priority} className={cn(base, className)} />;
   }

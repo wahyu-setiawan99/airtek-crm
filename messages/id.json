@@ -52,8 +52,8 @@
     "next": "Berikutnya",
     "pageOf": "Halaman {page} dari {total}",
     "roles": {
-      "owner": "Owner",
-      "admin": "Admin",
+      "owner": "Boss",
+      "admin": "Administrator",
       "manager": "Manajer",
       "sales": "Sales",
       "presales": "Presales",

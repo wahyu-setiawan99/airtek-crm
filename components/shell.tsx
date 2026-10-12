@@ -109,9 +109,10 @@ export function AppShell({
   return (
     <div className="min-h-dvh bg-background">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
-        <div className="flex h-14 items-center gap-2 px-4">
-          <BrandLogo variant="onDark" priority className="h-6" />
-          <span className="rounded border border-sidebar-border px-1.5 py-0.5 text-[10px] font-semibold tracking-wider text-sidebar-muted">CRM</span>
+        <div className="flex h-14 items-center justify-center gap-3 border-b border-sidebar-border px-4">
+          <BrandLogo variant="onDark" priority className="h-8" />
+          <span aria-hidden className="h-6 w-px bg-sidebar-border" />
+          <span className="text-xs font-semibold tracking-[0.25em] text-sidebar-muted">CRM</span>
         </div>
         <nav className="flex-1 space-y-1 px-3 py-2">
           {links.map((item) => {
@@ -275,7 +276,11 @@ export function AppShell({
         <div className="fixed inset-0 z-50 bg-black/50 md:hidden" onClick={() => { setMobile(false); setMore(false); }}>
           <div className="absolute inset-y-0 left-0 w-72 bg-sidebar p-4 text-sidebar-foreground" onClick={(event) => event.stopPropagation()}>
             <div className="mb-4 flex items-center gap-2 font-semibold">
-              <BrandLogo variant="onDark" className="h-6" />
+              <span className="flex items-center gap-3">
+                <BrandLogo variant="onDark" className="h-8" />
+                <span aria-hidden className="h-6 w-px bg-sidebar-border" />
+                <span className="text-xs font-semibold tracking-[0.25em] text-sidebar-muted">CRM</span>
+              </span>
             </div>
             <div className="space-y-1">
               {links.map((item) => {

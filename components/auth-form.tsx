@@ -96,7 +96,7 @@ export function AuthScreen({
   return (
     <div className="grid min-h-dvh lg:grid-cols-2">
       <section className="relative hidden overflow-hidden border-r bg-accent/60 px-12 py-14 text-foreground lg:flex lg:flex-col lg:justify-between dark:border-sidebar-border dark:bg-sidebar dark:text-sidebar-foreground">
-        <BrandLogo priority className="h-14" />
+        <BrandLogo priority className="h-14 self-start" />
         <div>
           <h1 className="max-w-md text-4xl font-semibold tracking-tight">{t("heroTitle")}</h1>
           <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground dark:text-sidebar-muted">{t("heroBody")}</p>

@@ -52,8 +52,8 @@
     "next": "Next",
     "pageOf": "Page {page} of {total}",
     "roles": {
-      "owner": "Owner",
-      "admin": "Admin",
+      "owner": "Boss",
+      "admin": "Administrator",
       "manager": "Manager",
       "sales": "Sales",
       "presales": "Presales",

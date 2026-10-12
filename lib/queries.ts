@@ -16,9 +16,13 @@ import type {
   ShellData,
 } from "@/types/view";
 
-function orgPeople(store: Store, organizationId: string) {
+/** Members of the organization. The owner ("boss") is hidden from everyone except owners. */
+function orgPeople(store: Store, organizationId: string, viewerRole: Session["role"]) {
   const ids = new Set(
-    store.memberships.filter((item) => item.organization_id === organizationId).map((item) => item.user_id),
+    store.memberships
+      .filter((item) => item.organization_id === organizationId && !item.disabled_at)
+      .filter((item) => viewerRole === "owner" || item.role !== "owner")
+      .map((item) => item.user_id),
   );
   return store.profiles.filter((item) => ids.has(item.id));
 }
@@ -139,7 +143,7 @@ export function buildPipeline(store: Store, session: Session, pipelineId: string
         .map((deal) => toBoardDeal(store, session, deal.id))
         .filter((deal): deal is BoardDeal => Boolean(deal)),
     }));
-  const people = orgPeople(store, session.organizationId);
+  const people = orgPeople(store, session.organizationId, session.role);
   return {
     pipeline: { id: pipeline.id, name: pipeline.name, color: pipeline.color },
     pipelines: store.pipelines
@@ -231,7 +235,7 @@ export function buildDashboard(
   });
   const todayStart = jakartaStart(0);
   const salesPipelineId = selected?.id ?? defaultPipelineId(store, orgId);
-  const sales = orgPeople(store, orgId)
+  const sales = orgPeople(store, orgId, session.role)
     .map((person) => {
       const openMine = open.filter((deal) => deal.owner_id === person.id);
       const wonMine = wonDeals.filter((deal) => deal.owner_id === person.id);
@@ -307,7 +311,7 @@ export function buildDealFilters(store: Store, session: Session) {
   const orgId = session.organizationId;
   const pipelineNames = new Map(store.pipelines.map((item) => [item.id, item.name]));
   return {
-    owners: orgPeople(store, orgId).map((item) => ({ id: item.id, name: item.full_name })),
+    owners: orgPeople(store, orgId, session.role).map((item) => ({ id: item.id, name: item.full_name })),
     tags: store.tags.filter((item) => item.organization_id === orgId).map((item) => ({ id: item.id, name: item.name, color: item.color })),
     stageNames: Object.fromEntries(
       store.stages
@@ -423,7 +427,7 @@ export function buildDeal(
     pipelineId: deal.pipeline_id,
     stages: stages.map((item) => ({ id: item.id, name: item.name, type: item.type, probability: item.probability })),
     allTags: store.tags.filter((item) => item.organization_id === session.organizationId).map((item) => ({ id: item.id, name: item.name, color: item.color })),
-    owners: orgPeople(store, session.organizationId).map((item) => ({ id: item.id, name: item.full_name })),
+    owners: orgPeople(store, session.organizationId, session.role).map((item) => ({ id: item.id, name: item.full_name })),
     companies: store.companies.filter((item) => item.organization_id === session.organizationId).map((item) => ({ id: item.id, name: item.name })),
     contacts: store.contacts.filter((item) => item.organization_id === session.organizationId).map((item) => ({ id: item.id, name: contactName(item), companyId: item.company_id })),
     related: store.deal_contacts
@@ -579,7 +583,7 @@ export function buildReports(
   });
   return {
     pipelines: pipelines.map((item) => ({ id: item.id, name: item.name })),
-    owners: orgPeople(store, session.organizationId).map((item) => ({ id: item.id, name: item.full_name })),
+    owners: orgPeople(store, session.organizationId, session.role).map((item) => ({ id: item.id, name: item.full_name })),
     won: won.length,
     lost: lost.length,
     wonValue: won.reduce((sum, deal) => sum + deal.value, 0),
@@ -615,7 +619,8 @@ export function buildSettings(store: Store, session: Session) {
     canAdmin: session.role === "owner" || session.role === "admin",
     canManage: canManage(session.role),
     members: store.memberships
-      .filter((item) => item.organization_id === orgId)
+      .filter((item) => item.organization_id === orgId && !item.disabled_at)
+      .filter((item) => session.role === "owner" || item.role !== "owner")
       .map((item) => ({
         userId: item.user_id,
         name: personName(store, item.user_id),

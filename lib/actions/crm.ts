@@ -960,6 +960,7 @@ export async function setMemberRoleAction(userId: string, role: "owner" | "admin
     if (!canAdmin(session.role)) throw new ActionError(t("forbidden"));
     const membership = store.memberships.find((item) => item.user_id === userId && item.organization_id === session.organizationId);
     if (!membership) throw new ActionError(t("error"));
+    if ((membership.role === "owner" || role === "owner") && session.role !== "owner") throw new ActionError(t("forbidden"));
     const owners = store.memberships.filter((item) => item.organization_id === session.organizationId && item.role === "owner");
     if (membership.role === "owner" && owners.length === 1 && role !== "owner") throw new ActionError(t("forbidden"));
     membership.role = role;
@@ -975,6 +976,7 @@ export async function removeMemberAction(userId: string) {
     if (userId === session.userId) throw new ActionError(t("forbidden"));
     const membership = store.memberships.find((item) => item.user_id === userId && item.organization_id === session.organizationId);
     if (!membership) throw new ActionError(t("error"));
+    if (membership.role === "owner" && session.role !== "owner") throw new ActionError(t("forbidden"));
     if (membership.role === "owner") {
       const owners = store.memberships.filter((item) => item.organization_id === session.organizationId && item.role === "owner" && !item.disabled_at);
       if (owners.length === 1) throw new ActionError(t("forbidden"));

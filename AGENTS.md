@@ -159,7 +159,7 @@ Aturan DB:
 - [x] Main administrator dari env `BOOTSTRAP_ADMIN_EMAIL` (§11.1)
 - [x] Wajib konfirmasi email, pendaftaran publik ditutup (§11.1)
 - [x] Undangan oleh administrator + pilih role, termasuk role baru `presales` (§11.2)
-- [x] Script `pnpm seed:demo` + akun dummy (§11.3) — `scripts/seed-demo.ts`, isi dari `lib/demo/seed.ts`
+- [x] ~~Organisasi & akun demo di produksi~~ — DIBATALKAN atas keputusan user (12 Okt 2026), script `seed:demo` dihapus (§11.3)
 - [x] Isi data demo §11.3: pipeline Sales/Presales/Maintenance, tag Lift/Pompa/AC/HVAC, 36 deal, akun `presales.demo`
 - [x] Kategori produk berbasis tag: Lift, Pompa, AC + custom (§11.4)
 - [x] Pipeline default Sales & Presales + custom (§11.5)
@@ -268,13 +268,13 @@ Langkah deploy:
 1. Push ke `main` di repo GitHub di atas.
 2. Supabase (akun baru) → New project (region Singapore) → SQL Editor: jalankan `supabase/migrations/0001_init.sql` lalu `0002_server_writes.sql` (atau `supabase link` + `pnpm db:push`).
 3. Supabase → Authentication → URL Configuration: Site URL `https://airtek.my.id`; Redirect URLs: `https://airtek.my.id/auth/callback`, `https://*.vercel.app/auth/callback`, `http://localhost:3000/auth/callback`.
-4. Vercel → New Project → import repo → Environment Variables (Production & Preview): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL=https://airtek.my.id`, `BOOTSTRAP_ADMIN_EMAIL=wahyusetiawanblog9999@gmail.com` (setelah Fase 8) → Deploy. `DEMO_PASSWORD` hanya di mesin lokal saat menjalankan `pnpm seed:demo`.
+4. Vercel → New Project → import repo → Environment Variables (Production & Preview): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL=https://airtek.my.id`, `BOOTSTRAP_ADMIN_EMAIL=wahyusetiawanblog9999@gmail.com` (setelah Fase 8) → Deploy.
 5. Vercel → Project → Settings → Domains → tambah `airtek.my.id` (+ `www.airtek.my.id` redirect). Di DNS registrar `.my.id`: record `A @ 76.76.21.21` dan `CNAME www cname.vercel-dns.com` (ikuti nilai yang ditampilkan Vercel).
 6. Email reset password: Supabase default SMTP sangat terbatas → pasang custom SMTP (mis. Resend) di Authentication → SMTP Settings.
 7. Setiap push ke `main` → auto deploy production; branch/PR → preview deploy.
 
 ## 9. Seed Data (dev)
-Lihat §11.3 — dataset demo yang sama dipakai untuk mode demo lokal (`lib/demo/seed.ts`) dan organisasi DEMO di Supabase (`pnpm seed:demo`).
+`lib/demo/seed.ts` hanya dipakai mode demo lokal (tanpa env Supabase): pipeline Sales/Presales/Maintenance, 36 deal contoh termasuk data Odoo. Tidak ada data/akun demo di produksi.
 
 ## 10. Definition of Done (setiap fitur)
 - `pnpm lint`, `pnpm typecheck`, `pnpm build` lulus tanpa error.
@@ -289,6 +289,7 @@ Lihat §11.3 — dataset demo yang sama dipakai untuk mode demo lokal (`lib/demo
 
 ### 11.1 Main administrator & konfirmasi email
 - **Main administrator:** `wahyusetiawanblog9999@gmail.com`. Simpan di env **`BOOTSTRAP_ADMIN_EMAIL`** (Vercel + `.env.local`), jangan hardcode di kode.
+- Hanya SATU email bootstrap (owner, akses penuh). Semua akun lain — termasuk direksi/boss — masuk lewat **undangan** dari owner/administrator dengan role yang dipilih (§11.2); role bisa diubah kemudian di Pengaturan → Anggota.
 - **Pendaftaran publik ditutup.** `/register` hanya menerima email yang sama dengan `BOOTSTRAP_ADMIN_EMAIL`; email lain mendapat pesan "Pendaftaran hanya lewat undangan administrator". Semua user lain masuk lewat undangan (§11.2).
 - **Wajib konfirmasi email** untuk semua akun:
   - Supabase → Authentication → Providers → Email: **Confirm email = ON**.
@@ -318,29 +319,10 @@ Lihat §11.3 — dataset demo yang sama dipakai untuk mode demo lokal (`lib/demo
 - Halaman `/accept-invite`: user (sudah login dari link) mengisi nama + kata sandi (`supabase.auth.updateUser({ password })`) → membership dibuat sesuai role undangan → `accepted_at` diisi → redirect ke pipeline default role-nya.
 - Pengaturan → Anggota: daftar undangan berstatus **Menunggu / Diterima / Kedaluwarsa**, tombol **Kirim ulang** & **Batalkan**. Role bisa diubah; anggota bisa **dinonaktifkan** (`memberships.disabled_at`, tidak bisa login ke org tsb) tanpa menghapus datanya.
 
-### 11.3 Data dummy untuk demo ke direksi
-- Script **`pnpm seed:demo`** (`scripts/seed-demo.ts`, jalan lokal dengan env service role yang menunjuk ke Supabase produksi). Idempotent: jika organisasi demo sudah ada, hapus lalu buat ulang.
-- Buat organisasi terpisah **"PT. Airtek Solusi Nusantara (DEMO)"** supaya data asli tetap bersih. Main administrator otomatis jadi `owner` di org demo → bisa pindah data asli ↔ demo lewat org switcher. Saat org demo aktif tampilkan badge **DEMO** kuning di topbar.
-- Akun dummy dibuat via `admin.auth.admin.createUser({ email_confirm: true })` (pengecualian khusus demo). Kata sandi dari env **`DEMO_PASSWORD`** — JANGAN di-commit:
-
-  | Email | Nama | Role |
-  |---|---|---|
-  | `admin.demo@airtek.my.id` | Admin Demo | `owner` (org demo) |
-  | `direksi.demo@airtek.my.id` | Direksi Demo | `viewer` |
-  | `manager.demo@airtek.my.id` | Fajrul | `manager` |
-  | `sales1.demo@airtek.my.id` | Taufik Hidayat (fiktif) | `sales` |
-  | `sales2.demo@airtek.my.id` | Rani Amelia (fiktif) | `sales` |
-  | `presales.demo@airtek.my.id` | Yusuf Ramadhan (fiktif) | `presales` |
-
-  Dwi Sulistyo, Safar, Ashadi, Hasyim, Bu Suri, Syahdi adalah **kontak pelanggan** (dari Odoo), bukan tim sales. Opsional: `DEMO_EXTRA_ADMIN_EMAIL` membuat satu login Administrator tambahan untuk testing.
-
-- Isi data (tanggal relatif terhadap hari ini agar selalu terlihat baru):
-  - Pipeline Sales & Presales (§11.5) + 1 custom contoh "Maintenance"; tag Lift, Pompa, AC + "HVAC" sebagai contoh custom.
-  - ±12 perusahaan (PT NINDYA KARYA, PT. Palindo Inti Nusantara, PT. Poleanro Arta Konstruksi, CV BINTANG LEO JAYA, IAIN Pare-pare, PT Vale Indonesia, RS Wahidin, UNAM, dll) dan ±20 kontak lengkap (jabatan, email, telepon/WA).
-  - ±35 deal tersebar di semua stage & salesperson, termasuk data dari Odoo: Gd Barak CPI Rp 850 jt, ADD Gd Sauraja CPI Rp 7,3 M, Gd. Wisma Negara CPI (Pump) Rp 496.759.721, Mobile Fire Pump PTVI Rp 7,9 M, AC Presisi UNAM Rp 530,8 jt, Gd. Bunker Wahidin Rp 330 jt, Lift IAIN Pare-pare Rp 910,2 jt, Gd. PA Mamuju Rp 1,4 M. Sebagian Won/Lost (dengan alasan) dalam 6 bulan terakhir agar grafik dashboard & laporan terisi.
-  - Line item produk, aktivitas (terlambat / hari ini / mendatang), catatan, riwayat stage, beberapa deal basi.
-- Tombol **Hapus data demo** di Pengaturan → Organisasi (hanya owner, hanya di org demo).
-- Mode demo lokal tanpa Supabase (`lib/demo/seed.ts`) memakai dataset yang sama.
+### 11.3 Data & akun demo — DIBATALKAN
+- Keputusan user (12 Okt 2026): **tidak ada organisasi DEMO maupun akun dummy di produksi.** Boss/pengguna mendaftar sendiri dan menerima email konfirmasi.
+- Script `pnpm seed:demo` sudah dihapus. Jangan membuat akun via `admin.createUser({ email_confirm: true })` di produksi.
+- Dataset contoh (`lib/demo/seed.ts`) tetap ada khusus untuk mode demo lokal tanpa Supabase.
 
 ### 11.4 Produk berbasis kategori (tag)
 - Kategori produk = **tag** (satu master dengan tag deal). Default per organisasi: **Lift**, **Pompa**, **AC** (warna berbeda). Admin bisa tambah/rename/ubah warna/hapus kategori custom di Pengaturan → Tag & Kategori (hapus ditolak bila masih dipakai).
