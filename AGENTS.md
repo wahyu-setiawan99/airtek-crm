@@ -235,7 +235,7 @@ Aturan DB:
 ### Fase 10 — Optimasi kecepatan — detail di §15 (**§15.0 langkah 1–3 DIKERJAKAN SEKARANG**, sisanya setelah Fase 9)
 - [x] §15.0 Langkah 1 — redirect 1 lompatan (middleware & onboarding)
 - [x] §15.0 Langkah 2 — auth middleware tanpa round-trip (`getClaims`)
-- [ ] §15.0 Langkah 3 — ukur (Speed Insights + catat angka)
+- [x] §15.0 Langkah 3 — ukur (Speed Insights + catat angka)
 - [ ] Ukur baseline (Vercel Speed Insights, Lighthouse, waktu server per halaman) (§15.1)
 - [ ] Kurangi redirect berantai menjadi maksimal 1 lompatan (§15.2)
 - [ ] Ganti snapshot "muat semua tabel" dengan query per halaman (§15.3)
@@ -624,6 +624,16 @@ Baseline terukur 12 Okt 2026 (curl dari Indonesia, belum login):
 | `https://www.airtek.my.id/` | 3 | ±1,9 s |
 | `https://airtek.my.id/` | 2 | ±0,7 s |
 | `https://airtek.my.id/id/login` | 0 | TTFB ±0,35–0,55 s |
+
+Sesudah Langkah 1–2, terukur 13 Okt 2026 (curl, belum login). Rantai aplikasi tinggal satu lompatan; `http` dan `www` masih satu lompatan Vercel di depannya.
+
+| URL | Redirect | Waktu |
+|---|---|---|
+| `http://airtek.my.id/` | 2 (http→https → `/`→`/id/login`) | 2,25 s |
+| `https://www.airtek.my.id/` | 2 (www→apex → `/`→`/id/login`) | 1,68 s |
+| `https://airtek.my.id/` | 1 (`/`→`/id/login`) | 0,37 s |
+| `https://airtek.my.id/id` | 1 (`/id`→`/id/login`) | 0,40 s |
+| `https://airtek.my.id/id/login` | 0 | TTFB 0,34 s |
 
 Ukuran JS: shared 103 kB; `/pipelines/[id]` 186 kB; `/deals/[id]` 192 kB; `/reports` 244 kB (first load).
 
