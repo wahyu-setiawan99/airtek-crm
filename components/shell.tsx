@@ -119,7 +119,7 @@ export function AppShell({
     <div className="min-h-dvh bg-background">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
         <div className="flex h-14 items-center justify-center gap-3 border-b border-sidebar-border px-4">
-          <BrandLogo variant="onDark" priority className="h-8" />
+          <BrandLogo priority className="h-8" />
           <span aria-hidden className="h-6 w-px bg-sidebar-border" />
           <span className="text-xs font-semibold tracking-[0.25em] text-sidebar-muted">CRM</span>
         </div>
@@ -133,7 +133,7 @@ export function AppShell({
                 href={href}
                 className={cn(
                   "flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                  active(item.href) && "bg-sidebar-accent text-sidebar-foreground",
+                  active(item.href) && "bg-sidebar-accent font-medium text-primary dark:text-sidebar-foreground",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -275,7 +275,7 @@ export function AppShell({
           <div className="absolute inset-y-0 left-0 w-72 bg-sidebar p-4 text-sidebar-foreground" onClick={(event) => event.stopPropagation()}>
             <div className="mb-4 flex items-center gap-2 font-semibold">
               <span className="flex items-center gap-3">
-                <BrandLogo variant="onDark" className="h-8" />
+                <BrandLogo className="h-8" />
                 <span aria-hidden className="h-6 w-px bg-sidebar-border" />
                 <span className="text-xs font-semibold tracking-[0.25em] text-sidebar-muted">CRM</span>
               </span>

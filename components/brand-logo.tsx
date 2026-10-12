@@ -5,7 +5,7 @@ import logoOnDark from "@/public/brand/airtek-logo-ondark.png";
 
 /**
  * Airtek wordmark, transparent. `auto` follows the light/dark theme; `onDark` is for surfaces
- * that are always dark (the app sidebar). The on-dark file has white "SOLUSI NUSANTARA" and a
+ * that stay dark in both themes. The on-dark file has white "SOLUSI NUSANTARA" and a
  * lifted gradient so the deep indigo stays visible.
  */
 export function BrandLogo({

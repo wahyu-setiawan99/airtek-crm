@@ -179,6 +179,7 @@ Aturan DB:
 - [ ] Custom fields (§13.6)
 - [ ] Pengingat aktivitas via email harian (§13.7)
 - [ ] QA: Lighthouse ≥ 90, aksesibilitas, hydration warning (§13.8)
+- [ ] Sidebar bisa diciutkan (mode ikon) / dimunculkan (§13.9)
 
 ### Fase 7 — Mobile PWA (menyusul, JANGAN dikerjakan sebelum Fase 0–6, 8, dan 9 selesai)
 - [ ] Web App Manifest (nama, ikon 192/512, theme color), installable di Android/iOS
@@ -437,6 +438,16 @@ Sudah selesai & live: Supabase (data + auth, RLS read-only, server writes), mult
 - Lighthouse desktop ≥ 90; label aksesibilitas; tidak ada hydration warning di console (jangan render atribut yang bergantung pada tema/waktu di server).
 - Uji alur lengkap di produksi: Boss daftar → undang Administrator → Administrator undang Sales → Sales buat deal → Administrator lihat Performa Sales.
 - Halaman `/register` hanya untuk Boss (email `BOOTSTRAP_ADMIN_EMAIL`); link "Daftar" di halaman login sudah dihapus.
+
+### 13.9 Sidebar ciut / lebar
+- Tombol toggle di header sidebar (ikon `PanelLeftClose` / `PanelLeftOpen` dari lucide) + shortcut `[`.
+- **Mode lebar** (default, `w-60`): logo + label CRM + nama menu.
+- **Mode ciut** (`w-16`): hanya ikon menu (rata tengah) dan ikon logo `public/brand/airtek-mark.png`; nama menu muncul sebagai **tooltip** saat hover (Radix Tooltip sudah terpasang); item aktif tetap tersorot.
+- Konten utama ikut bergeser: ganti `md:pl-60` di `components/shell.tsx` menjadi `md:pl-16` saat ciut, dengan transisi `transition-[width,padding] duration-200`.
+- Simpan pilihan per user: cookie `airtek_sidebar=collapsed|expanded` (dibaca di server layout agar tidak ada lompatan tampilan saat load) — boleh juga disimpan di `profiles` lewat migration baru bila ingin sinkron antar perangkat.
+- Halaman detail deal (`components/deal-workspace.tsx`) memakai lebar penuh; pastikan tetap rapi saat sidebar ciut maupun lebar (1280px & 1920px).
+- Mobile (< 768px) tetap memakai drawer yang sudah ada; toggle ini khusus desktop.
+- Sidebar mengikuti tema (token `--sidebar*` di `app/globals.css`): terang di mode terang, gelap di mode gelap — jangan dikunci gelap lagi.
 
 ### Tidak dikerjakan (keputusan user)
 - Akun/organisasi demo di produksi (dihapus).
