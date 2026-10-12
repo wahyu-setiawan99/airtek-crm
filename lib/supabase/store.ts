@@ -48,6 +48,10 @@ const TABLES: [TableName, TableSpec][] = [
   ["audit_logs", { key: ["id"], org: "organization_id", newestFirst: true, limit: 200, appendOnly: true }],
   ["notifications", { key: ["id"], org: "organization_id", newestFirst: true }],
   ["saved_views", { key: ["id"], org: "organization_id", newestFirst: true }],
+  ["attachments", { key: ["id"], org: "organization_id", newestFirst: true }],
+  ["custom_fields", { key: ["id"], org: "organization_id" }],
+  ["custom_field_values", { key: ["id"], org: "organization_id" }],
+  ["import_batches", { key: ["id"], org: "organization_id", newestFirst: true }],
 ];
 
 const PAGE = 1000;

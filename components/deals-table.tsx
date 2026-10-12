@@ -3,14 +3,19 @@
 import type { LegacyColumnDef } from "@tanstack/react-table/legacy";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { reassignDealsAction } from "@/lib/actions/phase9";
+import { useRouter } from "@/i18n/navigation";
 import { Link } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/routing";
 import { formatCompact, formatDate } from "@/lib/format";
 import { cn, initials } from "@/lib/utils";
 import type { BoardDeal, TagChip } from "@/types/view";
 import { DataTable } from "@/components/data-table";
-import { FilterBar, useFilterQuery, type FilterValues } from "@/components/filters/filter-bar";
+import { FilterBar, filtersFromSearch, matchDeal, useFilterQuery } from "@/components/filters/filter-bar";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/form";
 
 type DealFilters = {
   owners: { id: string; name: string }[];
@@ -32,32 +37,33 @@ function Summary({ rows }: { rows: BoardDeal[] }) {
   );
 }
 
-export function DealsTable({ rows, filters, locale }: { rows: BoardDeal[]; filters: DealFilters; locale: AppLocale }) {
+export function DealsTable({ rows, filters, locale, canManage = false }: { rows: BoardDeal[]; filters: DealFilters; locale: AppLocale; canManage?: boolean }) {
   const t = useTranslations("deals");
   const tc = useTranslations("common");
   const params = useSearchParams();
   const applyQuery = useFilterQuery();
-  const values: FilterValues = {
-    q: params.get("q") ?? "",
-    owner: params.get("owner") ?? "",
-    tag: params.get("tag") ?? "",
-    status: params.get("status") ?? "",
-    mine: params.get("mine") === "1",
-  };
+  const router = useRouter();
+  const values = filtersFromSearch(params);
   const grouped = params.get("group") === "owner";
+  const [selected, setSelected] = useState<string[]>([]);
+  const [ownerId, setOwnerId] = useState(filters.owners[0]?.id ?? "");
 
-  const filtered = rows.filter((deal) => {
-    const q = values.q?.trim().toLowerCase();
-    if (q && !`${deal.title} ${deal.companyName ?? ""} ${deal.contactName ?? ""}`.toLowerCase().includes(q)) return false;
-    if (values.owner && deal.ownerId !== values.owner) return false;
-    if (values.mine && deal.ownerId !== filters.meId) return false;
-    if (values.tag && !deal.tags.some((item) => item.id === values.tag)) return false;
-    if (values.status && deal.status !== values.status) return false;
-    return true;
-  });
+  const filtered = rows.filter((deal) => matchDeal(deal, values, filters.meId));
 
   const columns = useMemo<LegacyColumnDef<BoardDeal>[]>(
     () => [
+      ...(canManage ? [{
+        id: "pick",
+        header: "",
+        cell: ({ row }: { row: { original: BoardDeal } }) => (
+          <input
+            type="checkbox"
+            aria-label={row.original.title}
+            checked={selected.includes(row.original.id)}
+            onChange={(event) => setSelected((current) => event.target.checked ? [...current, row.original.id] : current.filter((id) => id !== row.original.id))}
+          />
+        ),
+      } satisfies LegacyColumnDef<BoardDeal>] : []),
       { accessorKey: "title", header: tc("name"), cell: ({ row }) => <Link className="font-medium hover:underline" href={`/deals/${row.original.id}`}>{row.original.title}</Link> },
       { accessorKey: "companyName", header: tc("company"), cell: ({ row }) => row.original.companyName ?? "—" },
       { accessorKey: "stageId", header: tc("stage"), cell: ({ row }) => <span className="text-muted-foreground">{filters.stageNames[row.original.stageId] ?? "—"}</span> },
@@ -104,7 +110,7 @@ export function DealsTable({ rows, filters, locale }: { rows: BoardDeal[]; filte
         ),
       },
     ],
-    [filters.stageNames, locale, t, tc],
+    [canManage, filters.stageNames, locale, selected, t, tc],
   );
 
   const groups = grouped
@@ -131,8 +137,30 @@ export function DealsTable({ rows, filters, locale }: { rows: BoardDeal[]; filte
           owners={filters.owners}
           tags={filters.tags}
           statuses={(["open", "won", "lost"] as const).map((status) => ({ id: status, name: tc(status) }))}
+          extras={["priority", "value", "condition", "close", "created"]}
           onChange={(next) => applyQuery(next, { group: grouped ? "owner" : "" })}
         />
+        {canManage ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Select aria-label={t("salesperson")} value={ownerId} onChange={(event) => setOwnerId(event.target.value)}>
+              {filters.owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
+            </Select>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={selected.length === 0}
+              onClick={() => {
+                void reassignDealsAction({ dealIds: selected, ownerId }).then((result) => {
+                  if (!result.ok) return toast.error(result.error);
+                  setSelected([]);
+                  router.refresh();
+                });
+              }}
+            >
+              {tc("reassign")} ({selected.length})
+            </Button>
+          </div>
+        ) : null}
         <label className="flex w-fit items-center gap-2 text-sm">
           <input type="checkbox" checked={grouped} onChange={(event) => applyQuery(values, { group: event.target.checked ? "owner" : "" })} />
           {t("groupByOwner")}

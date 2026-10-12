@@ -1,10 +1,27 @@
 <!doctype html>
 <html lang="id">
-  <body style="font-family: sans-serif; color: #1c1917">
-    <p>Halo,</p>
-    <p>Konfirmasi email Anda untuk mulai memakai <strong>Airtek CRM</strong>.</p>
-    <p><a href="{{ .ConfirmationURL }}">Konfirmasi email</a></p>
-    <p>Jika Anda tidak mendaftar, abaikan email ini.</p>
-    <p>Airtek CRM</p>
+  <body style="margin:0;padding:0;background:#f6f3f4;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f3f4;padding:24px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:8px;padding:32px 28px;font-family:Arial,Helvetica,sans-serif;color:#1c1917;">
+            <tr>
+              <td>
+                <img src="https://airtek.my.id/brand/airtek-logo.png" alt="Airtek" width="180" style="display:block;height:auto;border:0;" />
+                <p style="margin:24px 0 8px;font-size:16px;">Halo,</p>
+                <p style="margin:0 0 16px;font-size:15px;line-height:1.5;">
+                  Konfirmasi email <strong>{{ .Email }}</strong> untuk mulai memakai <strong>Airtek CRM</strong>.
+                </p>
+                <p style="margin:0 0 24px;">
+                  <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=signup&amp;next=/id/onboarding" style="display:inline-block;background:#9a1b4b;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:6px;">Konfirmasi email</a>
+                </p>
+                <p style="margin:0 0 16px;font-size:13px;color:#78716c;">Jika Anda tidak mendaftar, abaikan email ini.</p>
+                <p style="margin:0;font-size:12px;color:#78716c;">Airtek CRM · PT. Airtek Solusi Nusantara</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
   </body>
 </html>

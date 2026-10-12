@@ -8,6 +8,7 @@ import { useRouter } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/routing";
 import { formatCompact, formatDate, formatRupiah } from "@/lib/format";
 import type { ReportData } from "@/types/view";
+import { FilterBar, type FilterValues } from "@/components/filters/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/form";
 
@@ -28,6 +29,7 @@ export function ReportsView({
   const td = useTranslations("dashboard");
   const tc = useTranslations("common");
   const router = useRouter();
+  const [query, setQuery] = useState("");
   function go(next: { pipeline?: string; owner?: string; period?: string }) {
     const params = new URLSearchParams({
       pipeline: next.pipeline ?? pipelineId,
@@ -43,6 +45,15 @@ export function ReportsView({
           <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
+        <FilterBar
+          values={{ q: query, owner: ownerId === "all" ? "" : ownerId }}
+          owners={data.owners}
+          showMine={false}
+          onChange={(next: FilterValues) => {
+            setQuery(next.q ?? "");
+            if ((next.owner ?? "") !== (ownerId === "all" ? "" : ownerId)) go({ owner: next.owner || "all" });
+          }}
+        />
         <div className="flex flex-wrap gap-2">
           <Select className="w-auto" value={pipelineId} aria-label={tc("pipeline")} onChange={(event) => go({ pipeline: event.target.value })}>
             <option value="all">{td("allPipelines")}</option>
@@ -73,7 +84,7 @@ export function ReportsView({
           <thead className="text-left text-xs text-muted-foreground"><tr><th className="p-3">{tc("name")}</th><th className="p-3">{tc("status")}</th><th className="p-3">{tc("value")}</th><th className="p-3">{tc("owner")}</th><th className="p-3">{t("closed")}</th></tr></thead>
           <tbody>
             {data.rows.length === 0 ? <tr><td className="p-3 text-muted-foreground" colSpan={5}>{t("noData")}</td></tr> : null}
-            {data.rows.map((row) => (
+            {data.rows.filter((row) => !query.trim() || `${row.title} ${row.owner} ${row.reason}`.toLowerCase().includes(query.trim().toLowerCase())).map((row) => (
               <tr key={`${row.title}${row.closed}`} className="border-t">
                 <td className="p-3">{row.title}</td>
                 <td className="p-3">{row.status}</td>

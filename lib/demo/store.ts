@@ -21,6 +21,10 @@ export function readStore(): Store {
       persist(fresh);
       return fresh;
     }
+    parsed.attachments ??= [];
+    parsed.custom_fields ??= [];
+    parsed.custom_field_values ??= [];
+    parsed.import_batches ??= [];
     return parsed;
   } catch {
     const fresh = createSeed();

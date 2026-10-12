@@ -1,6 +1,7 @@
 "use client";
 
 import type { LegacyColumnDef } from "@tanstack/react-table/legacy";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -12,6 +13,7 @@ import { formatDateTime, formatRupiah } from "@/lib/format";
 import type { ActivityRow, CompanyRow, ContactRow, Option } from "@/types/view";
 import type { Product } from "@/types/crm";
 import { DataTable } from "@/components/data-table";
+import { FilterBar, filtersFromSearch, useFilterQuery } from "@/components/filters/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
@@ -36,6 +38,15 @@ export function ContactsScreen({
   const [editing, setEditing] = useState<ContactRow | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [preview, setPreview] = useState<{ firstName: string; lastName: string; email: string; phone: string; company: string; jobTitle: string; duplicate: boolean }[]>([]);
+  const params = useSearchParams();
+  const apply = useFilterQuery();
+  const values = filtersFromSearch(params);
+  const visible = rows.filter((row) => {
+    const q = values.q?.trim().toLowerCase();
+    if (q && !`${row.name} ${row.email ?? ""} ${row.phone ?? ""} ${row.companyName ?? ""}`.toLowerCase().includes(q)) return false;
+    if (values.owner && row.ownerId !== values.owner) return false;
+    return true;
+  });
   const columns = useMemo<LegacyColumnDef<ContactRow>[]>(() => [
     { accessorKey: "name", header: tc("name"), cell: ({ row }) => <Link className="font-medium hover:underline" href={`/contacts/${row.original.id}`}>{row.original.name}</Link> },
     { accessorKey: "companyName", header: tc("company"), cell: ({ row }) => row.original.companyName ?? "—" },
@@ -58,7 +69,8 @@ export function ContactsScreen({
         {canCreate ? <Button onClick={() => { setEditing(null); setOpen(true); }}>{t("new")}</Button> : null}
       </>
     }>
-      {rows.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : <DataTable columns={columns} data={rows} />}
+      <FilterBar values={values} owners={owners} showMine={false} onChange={apply} />
+      {visible.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : <DataTable columns={columns} data={visible} />}
       <PersonDialog
         open={open}
         title={editing ? tc("edit") : t("new")}
@@ -162,6 +174,16 @@ export function CompaniesScreen({ rows, owners, canCreate, openNew }: { rows: Co
   const router = useRouter();
   const [open, setOpen] = useState(openNew);
   const [editing, setEditing] = useState<CompanyRow | null>(null);
+  const params = useSearchParams();
+  const apply = useFilterQuery();
+  const values = filtersFromSearch(params);
+  const visible = rows.filter((row) => {
+    const q = values.q?.trim().toLowerCase();
+    if (q && !`${row.name} ${row.city ?? ""} ${row.province ?? ""} ${row.phone ?? ""}`.toLowerCase().includes(q)) return false;
+    if (values.owner && row.ownerId !== values.owner) return false;
+    if (values.city && !`${row.city ?? ""} ${row.province ?? ""}`.toLowerCase().includes(values.city.toLowerCase())) return false;
+    return true;
+  });
   const columns = useMemo<LegacyColumnDef<CompanyRow>[]>(() => [
     { accessorKey: "name", header: tc("name"), cell: ({ row }) => <Link className="font-medium hover:underline" href={`/companies/${row.original.id}`}>{row.original.name}</Link> },
     { accessorKey: "industry", header: t("industry") },
@@ -177,7 +199,8 @@ export function CompaniesScreen({ rows, owners, canCreate, openNew }: { rows: Co
         {canCreate ? <Button onClick={() => { setEditing(null); setOpen(true); }}>{t("new")}</Button> : null}
       </>
     }>
-      {rows.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : <DataTable columns={columns} data={rows} />}
+      <FilterBar values={values} owners={owners} extras={["city"]} showMine={false} onChange={apply} />
+      {visible.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : <DataTable columns={columns} data={visible} />}
       <Dialog open={open} onOpenChange={setOpen} title={editing ? tc("edit") : t("new")} wide>
         <form className="grid gap-3 sm:grid-cols-2" onSubmit={(event) => {
           event.preventDefault();
@@ -242,10 +265,20 @@ export function ActivitiesScreen({
   const tc = useTranslations("common");
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const params = useSearchParams();
+  const apply = useFilterQuery();
+  const values = filtersFromSearch(params);
+  const visibleRows = rows.filter((row) => {
+    const q = values.q?.trim().toLowerCase();
+    if (q && !`${row.subject} ${row.dealTitle ?? ""} ${row.assigneeName}`.toLowerCase().includes(q)) return false;
+    if (values.owner && row.assigneeId !== values.owner) return false;
+    if (values.condition === "overdue" && row.bucket !== "overdue") return false;
+    return true;
+  });
   const groups = [
-    ["overdue", rows.filter((row) => row.bucket === "overdue")],
-    ["today", rows.filter((row) => row.bucket === "today")],
-    ["upcoming", rows.filter((row) => row.bucket === "upcoming")],
+    ["overdue", visibleRows.filter((row) => row.bucket === "overdue")],
+    ["today", visibleRows.filter((row) => row.bucket === "today")],
+    ["upcoming", visibleRows.filter((row) => row.bucket === "upcoming")],
   ] as const;
   return (
     <Screen title={t("title")} subtitle={t("subtitle")} actions={
@@ -255,6 +288,7 @@ export function ActivitiesScreen({
         {canCreate ? <Button onClick={() => setOpen(true)}>{t("new")}</Button> : null}
       </>
     }>
+      <FilterBar values={values} owners={owners} extras={["condition"]} showMine={false} onChange={(next) => apply(next, { scope })} />
       <div className="grid gap-4 lg:grid-cols-3">
         {groups.map(([key, items]) => (
           <section key={key} className="rounded-lg border bg-card p-3">
@@ -318,14 +352,24 @@ export function ProductsScreen({ products, tags, canCreate }: { products: Produc
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
+  const params = useSearchParams();
+  const apply = useFilterQuery();
+  const values = filtersFromSearch(params);
+  const visible = products.filter((product) => {
+    const q = values.q?.trim().toLowerCase();
+    if (q && !`${product.name} ${product.sku ?? ""}`.toLowerCase().includes(q)) return false;
+    if (values.tag && product.tag_id !== values.tag) return false;
+    return true;
+  });
   return (
     <Screen title={t("title")} subtitle={t("subtitle")} actions={canCreate ? <Button onClick={() => { setEditing(null); setOpen(true); }}>{t("new")}</Button> : null}>
-      {products.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : (
+      <FilterBar values={values} tags={tags} showMine={false} onChange={apply} />
+      {visible.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : (
         <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="w-full text-sm">
             <thead className="text-left text-xs text-muted-foreground"><tr><th className="p-3">{tc("name")}</th><th className="p-3">{t("sku")}</th><th className="p-3">{t("category")}</th><th className="p-3">{t("unitPrice")}</th><th /></tr></thead>
             <tbody>
-              {products.map((product) => (
+              {visible.map((product) => (
                 <tr key={product.id} className="border-t">
                   <td className="p-3 font-medium">{product.name}</td>
                   <td className="p-3">{product.sku}</td>

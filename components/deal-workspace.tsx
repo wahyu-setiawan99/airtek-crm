@@ -47,6 +47,8 @@ import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/dropdown";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AttachmentsPanel, type FileRow } from "@/components/attachments-panel";
+import { CustomFieldsPanel, type ExtraField } from "@/components/custom-fields-panel";
 
 type DealPatch = {
   title?: string;
@@ -103,7 +105,17 @@ function IconLink({ href, label, children, external }: { href: string; label: st
   );
 }
 
-export function DealWorkspace({ deal, locale }: { deal: DealDetailData; locale: AppLocale }) {
+export function DealWorkspace({
+  deal,
+  locale,
+  files = [],
+  fields = [],
+}: {
+  deal: DealDetailData;
+  locale: AppLocale;
+  files?: FileRow[];
+  fields?: ExtraField[];
+}) {
   const t = useTranslations("deals");
   const tc = useTranslations("common");
   const router = useRouter();
@@ -587,6 +599,8 @@ export function DealWorkspace({ deal, locale }: { deal: DealDetailData; locale: 
                 {t("tabContacts")}
                 {deal.related.length ? <span className="ml-1.5 rounded-full bg-muted-foreground/15 px-1.5 text-[11px]">{deal.related.length}</span> : null}
               </TabsTrigger>
+              <TabsTrigger value="files">{t("tabFiles")}</TabsTrigger>
+              <TabsTrigger value="extra">{t("tabExtra")}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="description" className="mt-3">
@@ -709,6 +723,13 @@ export function DealWorkspace({ deal, locale }: { deal: DealDetailData; locale: 
                   </li>
                 ))}
               </ul>
+            </TabsContent>
+
+            <TabsContent value="files" className="mt-3">
+              <AttachmentsPanel files={files} dealId={deal.id} canEdit={deal.canEdit} />
+            </TabsContent>
+            <TabsContent value="extra" className="mt-3">
+              <CustomFieldsPanel entityId={deal.id} fields={fields} canEdit={deal.canEdit} />
             </TabsContent>
           </Tabs>
 

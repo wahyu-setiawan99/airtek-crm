@@ -183,20 +183,27 @@ otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
-# Use a production-ready SMTP server
+# Production SMTP is Resend (user configures the dashboard). Local mail goes to Mailpit.
 # [auth.email.smtp]
 # enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# host = "smtp.resend.com"
+# port = 465
+# user = "resend"
+# pass = "env(RESEND_API_KEY)"
+# admin_email = "noreply@airtek.my.id"
+# sender_name = "Airtek CRM"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+[auth.email.template.invite]
+subject = "Anda diundang ke Airtek CRM"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.confirmation]
+subject = "Konfirmasi email Airtek CRM"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Atur ulang kata sandi Airtek CRM"
+content_path = "./supabase/templates/recovery.html"
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.

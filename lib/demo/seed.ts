@@ -503,6 +503,10 @@ export function createSeed(): Store {
     saved_views: [
       { id: u(89, 1), organization_id: ORG, user_id: people.fajrul, pipeline_id: pipe.sales, name: "Deal saya", filters: { mine: true, view: "kanban" }, is_shared: false, created_at: jakartaDate(-10, 9) },
     ],
+    attachments: [],
+    custom_fields: [],
+    custom_field_values: [],
+    import_batches: [],
   };
 }
 

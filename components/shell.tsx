@@ -14,12 +14,16 @@ import {
   Menu as MenuIcon,
   Moon,
   Package,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Search,
   Settings,
   SunMedium,
   Users,
 } from "lucide-react";
+import Image from "next/image";
+import * as Tooltip from "@radix-ui/react-tooltip";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
@@ -30,6 +34,7 @@ import type { AppLocale } from "@/i18n/routing";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { ShellData } from "@/types/view";
+import mark from "@/public/brand/airtek-mark.png";
 import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
 import { MenuContent, MenuItem, Menu, MenuTrigger } from "@/components/ui/dropdown";
@@ -55,10 +60,12 @@ export function AppShell({
   locale,
   shell,
   children,
+  sidebarCollapsed = false,
 }: {
   locale: AppLocale;
   shell: ShellData;
   children: React.ReactNode;
+  sidebarCollapsed?: boolean;
 }) {
   const t = useTranslations("nav");
   const tc = useTranslations("common");
@@ -73,6 +80,7 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const [mobile, setMobile] = useState(false);
   const [more, setMore] = useState(false);
+  const [collapsed, setCollapsed] = useState(sidebarCollapsed);
   const unread = shell.notifications.filter((item) => !item.read).length;
 
   useEffect(() => {
@@ -102,6 +110,14 @@ export function AppShell({
         event.preventDefault();
         router.push(`/pipelines/${shell.pipelineId}?new=1`);
       }
+      if (event.key === "[" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        event.preventDefault();
+        setCollapsed((current) => {
+          const next = !current;
+          document.cookie = `airtek_sidebar=${next ? "collapsed" : "expanded"}; path=/; max-age=31536000; samesite=lax`;
+          return next;
+        });
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -117,35 +133,77 @@ export function AppShell({
 
   return (
     <div className="min-h-dvh bg-background">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
-        <div className="flex h-14 items-center justify-center gap-3 border-b border-sidebar-border px-4">
-          <BrandLogo priority className="h-8" />
-          <span aria-hidden className="h-6 w-px bg-sidebar-border" />
-          <span className="text-xs font-semibold tracking-[0.25em] text-sidebar-muted">CRM</span>
+      <aside className={cn("fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:flex", collapsed ? "w-16" : "w-60")}>
+        <div className={cn("flex h-14 items-center border-b border-sidebar-border", collapsed ? "justify-center px-2" : "justify-between gap-2 px-3")}>
+          {collapsed ? <Image src={mark} alt="Airtek" priority className="h-8 w-8 object-contain" /> : (
+            <span className="flex min-w-0 items-center gap-3">
+              <BrandLogo priority className="h-8" />
+              <span aria-hidden className="h-6 w-px bg-sidebar-border" />
+              <span className="text-xs font-semibold tracking-[0.25em] text-sidebar-muted">CRM</span>
+            </span>
+          )}
+          {collapsed ? null : (
+            <button
+              type="button"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              aria-label={tc("collapseSidebar")}
+              onClick={() => {
+                document.cookie = "airtek_sidebar=collapsed; path=/; max-age=31536000; samesite=lax";
+                setCollapsed(true);
+              }}
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          )}
         </div>
-        <nav className="flex-1 space-y-1 px-3 py-2">
+        <nav className={cn("flex-1 space-y-1 py-2", collapsed ? "px-2" : "px-3")}>
           {links.map((item) => {
             const href = item.key === "pipeline" ? pipelineHref : item.href;
             const Icon = item.icon;
-            return (
+            const link = (
               <Link
-                key={item.key}
                 href={href}
+                aria-label={t(item.key)}
                 className={cn(
-                  "flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                  "flex items-center gap-2 rounded-md py-2 text-sm text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                  collapsed ? "justify-center px-0" : "px-2.5",
                   active(item.href) && "bg-sidebar-accent font-medium text-primary dark:text-sidebar-foreground",
                 )}
               >
-                <Icon className="h-4 w-4" />
-                {t(item.key)}
+                <Icon className="h-4 w-4 shrink-0" />
+                {collapsed ? null : t(item.key)}
               </Link>
+            );
+            if (!collapsed) return <div key={item.key}>{link}</div>;
+            return (
+              <Tooltip.Root key={item.key}>
+                <Tooltip.Trigger asChild>{link}</Tooltip.Trigger>
+                <Tooltip.Portal>
+                  <Tooltip.Content side="right" className="z-50 rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground shadow">
+                    {t(item.key)}
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip.Root>
             );
           })}
         </nav>
-        {shell.demo ? <p className="px-4 pb-4 text-[11px] text-sidebar-muted">{tc("demo")}</p> : null}
+        {collapsed ? (
+          <button
+            type="button"
+            className="mx-auto mb-3 grid h-8 w-8 place-items-center rounded-md text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            aria-label={tc("expandSidebar")}
+            onClick={() => {
+              document.cookie = "airtek_sidebar=expanded; path=/; max-age=31536000; samesite=lax";
+              setCollapsed(false);
+            }}
+          >
+            <PanelLeftOpen className="h-4 w-4" />
+          </button>
+        ) : null}
+        {shell.demo && !collapsed ? <p className="px-4 pb-4 text-[11px] text-sidebar-muted">{tc("demo")}</p> : null}
       </aside>
 
-      <div className="md:pl-60">
+      <div className={cn("transition-[padding] duration-200", collapsed ? "md:pl-16" : "md:pl-60")}>
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/85 px-3 backdrop-blur md:px-5">
           <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobile(true)} aria-label="Menu">
             <MenuIcon className="h-4 w-4" />

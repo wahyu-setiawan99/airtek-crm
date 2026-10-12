@@ -11,7 +11,6 @@ import {
   duplicatePipelineAction,
   inviteMemberAction,
   moveStageAction,
-  removeMemberAction,
   resetDemoAction,
   savePipelineAction,
   saveReasonAction,
@@ -21,6 +20,7 @@ import {
   updateOrganizationAction,
   updateProfileAction,
 } from "@/lib/actions/crm";
+import { cancelInvitationAction, deleteCustomFieldAction, resendInvitationAction, saveCustomFieldAction, setMemberActiveAction } from "@/lib/actions/phase9";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/routing";
 import { formatDateTime } from "@/lib/format";
@@ -33,8 +33,9 @@ type SettingsData = {
   organization: { name: string };
   canAdmin: boolean;
   canManage: boolean;
-  members: { userId: string; name: string; email: string; role: Role }[];
-  invitations: { id: string; email: string; role: Role; token: string; expiresAt: string }[];
+  members: { userId: string; name: string; email: string; role: Role; disabled: boolean }[];
+  invitations: { id: string; email: string; role: Role; expiresAt: string; status: "pending" | "accepted" | "expired" }[];
+  customFields: { id: string; entity: "deal" | "contact" | "company"; label: string; field_type: "text" | "number" | "date" | "select"; options: string | null }[];
   pipelines: { id: string; name: string; description: string | null; color: string; stages: { id: string; name: string; probability: number; rotting_days: number | null; type: "open" | "won" | "lost" }[] }[];
   tags: { id: string; name: string; color: string }[];
   reasons: { id: string; name: string }[];
@@ -48,6 +49,8 @@ const sections = [
   ["pipelines", "/settings/pipelines"],
   ["tags", "/settings/tags"],
   ["lostReasons", "/settings/lost-reasons"],
+  ["customFields", "/settings/custom-fields"],
+  ["import", "/settings/import"],
   ["audit", "/settings/audit"],
 ] as const;
 
@@ -142,10 +145,22 @@ export function SettingsScreen({
                     <p className="font-medium">{member.name}</p>
                     <p className="text-xs text-muted-foreground">{member.email}</p>
                   </div>
-                  <Select defaultValue={member.role} disabled={!data.canAdmin} aria-label={tc("role")} onChange={(event) => void setMemberRoleAction(member.userId, event.target.value as Role).then((result) => done(result))}>
+                  <Select defaultValue={member.role} disabled={!data.canAdmin || member.disabled} aria-label={tc("role")} onChange={(event) => void setMemberRoleAction(member.userId, event.target.value as Role).then((result) => done(result))}>
                     {(member.role === "owner" ? (["owner", "admin", "sales"] as const) : (["admin", "sales"] as const)).map((role) => <option key={role} value={role}>{tc(`roles.${role}`)}</option>)}
                   </Select>
-                  {data.canAdmin ? <Button size="sm" variant="outline" onClick={() => void removeMemberAction(member.userId).then((result) => done(result))}>{t("remove")}</Button> : null}
+                  {data.canAdmin && member.role !== "owner" ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const message = member.disabled ? t("enableConfirm") : t("disableConfirm");
+                        if (!window.confirm(message)) return;
+                        void setMemberActiveAction(member.userId, member.disabled).then((result) => done(result));
+                      }}
+                    >
+                      {member.disabled ? t("enable") : t("disable")}
+                    </Button>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -175,7 +190,21 @@ export function SettingsScreen({
               <div>
                 <h2 className="text-sm font-semibold">{t("pending")}</h2>
                 <ul className="mt-2 text-sm">
-                  {data.invitations.map((invite) => <li key={invite.id}>{invite.email} · {tc(`roles.${invite.role}`)} · {formatDateTime(invite.expiresAt, locale)}</li>)}
+                  {data.invitations.map((invite) => (
+                    <li key={invite.id} className="flex flex-wrap items-center gap-2 py-2">
+                      <span className="min-w-40 flex-1">{invite.email} · {tc(`roles.${invite.role}`)}</span>
+                      <span className="text-xs text-muted-foreground">{t(invite.status === "accepted" ? "statusAccepted" : invite.status === "expired" ? "statusExpired" : "statusPending")} · {formatDateTime(invite.expiresAt, locale)}</span>
+                      {invite.status !== "accepted" ? (
+                        <Button size="sm" variant="outline" onClick={() => void resendInvitationAction(invite.id).then((result) => done(result))}>{t("resend")}</Button>
+                      ) : null}
+                      {invite.status !== "accepted" ? (
+                        <Button size="sm" variant="ghost" onClick={() => {
+                          if (!window.confirm(t("cancelConfirm"))) return;
+                          void cancelInvitationAction(invite.id).then((result) => done(result));
+                        }}>{t("cancelInvite")}</Button>
+                      ) : null}
+                    </li>
+                  ))}
                 </ul>
               </div>
             ) : null}
@@ -296,6 +325,48 @@ export function SettingsScreen({
             </form>
           </div>
         ) : null}
+        {section === "customFields" && data.canAdmin ? (
+          <div className="grid max-w-lg gap-4">
+            <ul className="divide-y rounded-lg border bg-card text-sm">
+              {data.customFields.map((field) => (
+                <li key={field.id} className="flex items-center justify-between gap-2 p-3">
+                  <span>{field.label} · {field.entity} · {field.field_type}</span>
+                  <Button size="sm" variant="ghost" onClick={() => void deleteCustomFieldAction(field.id).then((result) => done(result))}>{tc("delete")}</Button>
+                </li>
+              ))}
+            </ul>
+            <form className="grid gap-3" onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              void saveCustomFieldAction({
+                entity: String(form.get("entity")) as "deal" | "contact" | "company",
+                label: String(form.get("label")),
+                fieldType: String(form.get("fieldType")) as "text" | "number" | "date" | "select",
+                options: String(form.get("options") ?? "") || null,
+              }).then((result) => done(result));
+            }}>
+              <Field label={t("fieldLabel")}><Input name="label" required /></Field>
+              <Field label={t("fieldEntity")}>
+                <Select name="entity" defaultValue="deal">
+                  <option value="deal">{tc("pipeline")}</option>
+                  <option value="contact">{tc("contact")}</option>
+                  <option value="company">{tc("company")}</option>
+                </Select>
+              </Field>
+              <Field label={t("fieldType")}>
+                <Select name="fieldType" defaultValue="text">
+                  <option value="text">Text</option>
+                  <option value="number">Number</option>
+                  <option value="date">Date</option>
+                  <option value="select">Select</option>
+                </Select>
+              </Field>
+              <Field label={t("description")}><Input name="options" placeholder="A, B, C" /></Field>
+              <Button type="submit">{t("addField")}</Button>
+            </form>
+          </div>
+        ) : null}
+        {section === "import" ? <p className="text-sm text-muted-foreground">{t("import")}</p> : null}
         {section === "audit" ? (
           data.audit.length === 0 ? <p className="text-sm text-muted-foreground">{t("auditEmpty")}</p> : (
             <ul className="divide-y rounded-lg border bg-card text-sm">

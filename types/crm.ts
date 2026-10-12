@@ -106,6 +106,8 @@ export type Company = Stamp & {
   email: string | null;
   website: string | null;
   owner_id: string | null;
+  external_ref?: string | null;
+  import_batch_id?: string | null;
 };
 
 export type Contact = Stamp & {
@@ -121,6 +123,8 @@ export type Contact = Stamp & {
   address: string | null;
   owner_id: string | null;
   source: string | null;
+  external_ref?: string | null;
+  import_batch_id?: string | null;
 };
 
 export type Deal = Stamp & {
@@ -144,6 +148,8 @@ export type Deal = Stamp & {
   lost_at: string | null;
   position: number;
   last_activity_at: string | null;
+  external_ref?: string | null;
+  import_batch_id?: string | null;
 };
 
 export type DealContact = {
@@ -184,6 +190,8 @@ export type Activity = Stamp & {
   deal_id: string | null;
   contact_id: string | null;
   company_id: string | null;
+  external_ref?: string | null;
+  import_batch_id?: string | null;
 };
 
 export type Note = Stamp & {
@@ -204,6 +212,8 @@ export type Product = Stamp & {
   unit: string;
   unit_price: number;
   tag_id: string | null;
+  external_ref?: string | null;
+  import_batch_id?: string | null;
 };
 
 export type DealProduct = {
@@ -243,6 +253,48 @@ export type AppNotification = {
   type: "deal_assigned" | "activity_due" | "mention";
   payload: { title: string; href: string };
   read_at: string | null;
+  created_at: string;
+};
+
+export type Attachment = {
+  id: string;
+  organization_id: string;
+  storage_path: string;
+  file_name: string;
+  size: number;
+  mime: string;
+  deal_id: string | null;
+  contact_id: string | null;
+  company_id: string | null;
+  created_at: string;
+  created_by: string | null;
+};
+
+export type CustomField = Stamp & {
+  id: string;
+  organization_id: string;
+  entity: "deal" | "contact" | "company";
+  label: string;
+  field_type: "text" | "number" | "date" | "select";
+  options: string | null;
+};
+
+export type CustomFieldValue = {
+  id: string;
+  organization_id: string;
+  field_id: string;
+  entity_id: string;
+  value: string;
+  created_at: string;
+};
+
+export type ImportBatch = {
+  id: string;
+  organization_id: string;
+  source: string;
+  file_names: string;
+  counts: JsonObject;
+  created_by: string;
   created_at: string;
 };
 
@@ -288,4 +340,8 @@ export type Store = {
   audit_logs: AuditLog[];
   notifications: AppNotification[];
   saved_views: SavedView[];
+  attachments: Attachment[];
+  custom_fields: CustomField[];
+  custom_field_values: CustomFieldValue[];
+  import_batches: ImportBatch[];
 };

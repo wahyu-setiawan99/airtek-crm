@@ -10,7 +10,7 @@ import { ThemeSwitch } from "@/components/theme-switch";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/form";
 
-type State = { status: "checking" } | { status: "ready"; email: string; name: string } | { status: "invalid" };
+type State = { status: "checking" } | { status: "ready"; email: string; name: string; organization: string; role: string } | { status: "invalid" };
 
 /**
  * Landing page of the invitation email. Supabase's default invite link puts the session in the
@@ -18,6 +18,7 @@ type State = { status: "checking" } | { status: "ready"; email: string; name: st
  */
 export function AcceptInviteForm() {
   const t = useTranslations("auth");
+  const tc = useTranslations("common");
   const router = useRouter();
   const [state, setState] = useState<State>({ status: "checking" });
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +27,7 @@ export function AcceptInviteForm() {
   useEffect(() => {
     const supabase = createClient();
     if (!supabase) {
-      setState({ status: "ready", email: "", name: "" });
+      setState({ status: "ready", email: "", name: "", organization: "", role: "" });
       return;
     }
     void (async () => {
@@ -39,8 +40,11 @@ export function AcceptInviteForm() {
       }
       const { data } = await supabase.auth.getUser();
       if (!data.user) return setState({ status: "invalid" });
-      const name = typeof data.user.user_metadata?.full_name === "string" ? data.user.user_metadata.full_name : "";
-      setState({ status: "ready", email: data.user.email ?? "", name });
+      const meta = data.user.user_metadata ?? {};
+      const name = typeof meta.full_name === "string" ? meta.full_name : "";
+      const organization = typeof meta.organization === "string" ? meta.organization : "";
+      const role = typeof meta.role === "string" ? meta.role : "";
+      setState({ status: "ready", email: data.user.email ?? "", name, organization, role });
     })();
   }, []);
 
@@ -79,6 +83,7 @@ export function AcceptInviteForm() {
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">{t("acceptTitle")}</h1>
               <p className="mt-2 text-sm text-muted-foreground">{t("acceptSubtitle", { email: state.email })}</p>
+              {state.organization ? <p className="mt-1 text-sm">{t("acceptOrg", { organization: state.organization, role: tc(`roles.${state.role === "admin" ? "admin" : "sales"}`) })}</p> : null}
             </div>
             <Field label={t("fullName")}><Input name="fullName" required minLength={2} defaultValue={state.name} autoComplete="name" /></Field>
             <Field label={t("newPassword")}><Input name="password" type="password" required minLength={8} autoComplete="new-password" /></Field>

@@ -25,12 +25,12 @@ import { formatCompact, formatDate, formatMonth, jakartaParts } from "@/lib/form
 import { cn, initials } from "@/lib/utils";
 import type { BoardDeal, BoardStage, PipelineData } from "@/types/view";
 import { DealDialog } from "@/components/deal-dialog";
-import { FilterBar } from "@/components/filters/filter-bar";
+import { FilterBar, matchDeal, type FilterValues } from "@/components/filters/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select } from "@/components/ui/form";
 
-type Filters = { q: string; owner: string; tag: string; mine: boolean; view: string };
+type Filters = FilterValues & { q: string; owner: string; tag: string; mine: boolean; view: string };
 
 export function PipelineBoard({
   data,
@@ -68,14 +68,7 @@ export function PipelineBoard({
   const visible = useMemo(() => {
     return stages.map((stage) => ({
       ...stage,
-      deals: stage.deals.filter((deal) => {
-        const q = filters.q.trim().toLowerCase();
-        if (q && !`${deal.title} ${deal.companyName ?? ""}`.toLowerCase().includes(q)) return false;
-        if (filters.owner && deal.ownerId !== filters.owner) return false;
-        if (filters.tag && !deal.tags.some((tag) => tag.id === filters.tag)) return false;
-        if (filters.mine && deal.ownerId !== data.me.id) return false;
-        return true;
-      }),
+      deals: stage.deals.filter((deal) => matchDeal(deal, filters, data.me.id)),
     }));
   }, [stages, filters, data.me.id]);
 
@@ -83,9 +76,11 @@ export function PipelineBoard({
     const params = new URLSearchParams();
     const merged = { ...filters, ...next };
     if (merged.view && merged.view !== "kanban") params.set("view", merged.view);
-    if (merged.q) params.set("q", merged.q);
-    if (merged.owner) params.set("owner", merged.owner);
-    if (merged.tag) params.set("tag", merged.tag);
+    const keys = ["q", "owner", "tag", "priority", "valueMin", "valueMax", "condition", "closeFrom", "closeTo", "createdFrom", "createdTo"] as const;
+    for (const key of keys) {
+      const value = merged[key];
+      if (typeof value === "string" && value) params.set(key, value);
+    }
     if (merged.mine) params.set("mine", "1");
     const query = params.toString();
     router.push(query ? `${pathname}?${query}` : pathname);
@@ -174,11 +169,20 @@ export function PipelineBoard({
           values={filters}
           owners={data.owners}
           tags={data.tags}
+          extras={["priority", "value", "condition", "close", "created"]}
           onChange={(next) => pushFilters({
             q: next.q ?? "",
             owner: next.owner ?? "",
             tag: next.tag ?? "",
             mine: Boolean(next.mine),
+            priority: next.priority ?? "",
+            valueMin: next.valueMin ?? "",
+            valueMax: next.valueMax ?? "",
+            condition: next.condition ?? "",
+            closeFrom: next.closeFrom ?? "",
+            closeTo: next.closeTo ?? "",
+            createdFrom: next.createdFrom ?? "",
+            createdTo: next.createdTo ?? "",
           })}
         />
         <div className="mt-2 hidden items-center gap-3 text-xs text-muted-foreground md:flex">

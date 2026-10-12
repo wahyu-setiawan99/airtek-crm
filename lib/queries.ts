@@ -17,7 +17,7 @@ import type {
 } from "@/types/view";
 
 /** Members of the organization. The owner ("boss") is hidden from everyone except owners. */
-function orgPeople(store: Store, organizationId: string, viewerRole: Session["role"]) {
+export function orgPeople(store: Store, organizationId: string, viewerRole: Session["role"]) {
   const ids = new Set(
     store.memberships
       .filter((item) => item.organization_id === organizationId && !item.disabled_at)
@@ -66,6 +66,7 @@ function toBoardDeal(store: Store, session: Session, dealId: string): BoardDeal 
     rotting: isRotting(deal, stage),
     canEdit: canEditOwned(session.role, session.userId, deal.owner_id),
     stageId: deal.stage_id,
+    createdAt: deal.created_at,
   };
 }
 
@@ -619,17 +620,25 @@ export function buildSettings(store: Store, session: Session) {
     canAdmin: session.role === "owner" || session.role === "admin",
     canManage: canManage(session.role),
     members: store.memberships
-      .filter((item) => item.organization_id === orgId && !item.disabled_at)
+      .filter((item) => item.organization_id === orgId)
       .filter((item) => session.role === "owner" || item.role !== "owner")
       .map((item) => ({
         userId: item.user_id,
         name: personName(store, item.user_id),
         email: store.profiles.find((profile) => profile.id === item.user_id)?.email ?? "",
         role: item.role,
+        disabled: Boolean(item.disabled_at),
       })),
     invitations: store.invitations
-      .filter((item) => item.organization_id === orgId && !item.accepted_at)
-      .map((item) => ({ id: item.id, email: item.email, role: item.role, token: item.token, expiresAt: item.expires_at })),
+      .filter((item) => item.organization_id === orgId && !item.cancelled_at)
+      .map((item) => ({
+        id: item.id,
+        email: item.email,
+        role: item.role,
+        expiresAt: item.expires_at,
+        status: (item.accepted_at ? "accepted" : new Date(item.expires_at).getTime() < Date.now() ? "expired" : "pending") as "accepted" | "expired" | "pending",
+      })),
+    customFields: store.custom_fields.filter((item) => item.organization_id === orgId),
     pipelines: store.pipelines
       .filter((item) => item.organization_id === orgId && !item.archived)
       .sort((a, b) => a.position - b.position)

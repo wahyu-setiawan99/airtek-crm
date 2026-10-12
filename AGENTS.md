@@ -171,15 +171,15 @@ Aturan DB:
 
 ### Fase 9 — Sisa pekerjaan & penyempurnaan (KERJAKAN SETELAH Fase 8, SEBELUM Fase 7) — detail di §13
 - [ ] Email undangan custom bergaya Odoo + SMTP Resend gratis (§12)
-- [ ] Kelola undangan: kirim ulang, batalkan, status Menunggu/Diterima/Kedaluwarsa (§13.1)
-- [ ] Filter seragam di Kontak, Perusahaan, Aktivitas, Produk, Laporan (§13.2)
-- [ ] Bulk ganti salesperson + ganti pemilik kontak/perusahaan (§13.3)
-- [ ] Lampiran file via Supabase Storage (§13.4)
-- [ ] Realtime kanban (§13.5)
-- [ ] Custom fields (§13.6)
-- [ ] Pengingat aktivitas via email harian (§13.7)
+- [x] Kelola undangan: kirim ulang, batalkan, status Menunggu/Diterima/Kedaluwarsa (§13.1)
+- [x] Filter seragam di Kontak, Perusahaan, Aktivitas, Produk, Laporan (§13.2)
+- [x] Bulk ganti salesperson + ganti pemilik kontak/perusahaan (§13.3)
+- [x] Lampiran file via Supabase Storage (§13.4)
+- [x] Realtime kanban (§13.5)
+- [x] Custom fields (§13.6)
+- [x] Pengingat aktivitas via email harian (§13.7)
 - [ ] QA: Lighthouse ≥ 90, aksesibilitas, hydration warning (§13.8)
-- [ ] Sidebar bisa diciutkan (mode ikon) / dimunculkan (§13.9)
+- [x] Sidebar bisa diciutkan (mode ikon) / dimunculkan (§13.9)
 - [ ] Akun testing khusus development untuk AI agent & developer (§18)
 - [ ] Impor data dari Odoo CRM (§14) — **hanya setelah semua sales sudah diundang & aktif** (§14.0)
 - [ ] Jenis klien Konsultan/Kontraktor/Owner + pihak proyek (§16.1–16.2)
@@ -416,14 +416,14 @@ Tujuan: email undangan seperti Odoo — penerima klik **Terima undangan**, langs
 - `/auth/callback` juga mendukung `?token_hash=&type=invite` (lebih andal bila template memakai TokenHash).
 
 **Yang harus dikerjakan:**
-- [ ] Template HTML `supabase/templates/invite.html` (ID, tabel/inline CSS agar tampil baik di Gmail/Outlook): logo dari `https://airtek.my.id/brand/airtek-logo.png`, salam, isi seperti contoh di atas, tombol **Terima undangan** warna `#9a1b4b`, footer. Variabel Supabase: `{{ .Data.full_name }}`, `{{ .Data.invited_by }}`, `{{ .Data.organization }}`, `{{ .Data.role }}`, `{{ .Email }}`, `{{ .SiteURL }}`.
+- [x] Template HTML `supabase/templates/invite.html` (ID, tabel/inline CSS agar tampil baik di Gmail/Outlook): logo dari `https://airtek.my.id/brand/airtek-logo.png`, salam, isi seperti contoh di atas, tombol **Terima undangan** warna `#9a1b4b`, footer. Variabel Supabase: `{{ .Data.full_name }}`, `{{ .Data.invited_by }}`, `{{ .Data.organization }}`, `{{ .Data.role }}`, `{{ .Email }}`, `{{ .SiteURL }}`.
   - Tombol memakai: `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite&next=/id/accept-invite`
   - Label role tampil sebagai "Administrator"/"Sales" (`role` berisi `admin`/`sales`; gunakan `{{ if eq .Data.role "admin" }}Administrator{{ else }}Sales{{ end }}`).
-- [ ] Template serupa untuk **Konfirmasi email** (`confirmation.html`, link `…/auth/callback?token_hash={{ .TokenHash }}&type=signup&next=/id/onboarding`) dan **Reset kata sandi** (`recovery.html`, `type=recovery&next=/id/reset-password`).
+- [x] Template serupa untuk **Konfirmasi email** (`confirmation.html`, link `…/auth/callback?token_hash={{ .TokenHash }}&type=signup&next=/id/onboarding`) dan **Reset kata sandi** (`recovery.html`, `type=recovery&next=/id/reset-password`).
 - [ ] Aktifkan di `supabase/config.toml` untuk lokal (`[auth.email.template.invite] subject=… content_path="./supabase/templates/invite.html"`, dst.) dan uji dengan Mailpit (`http://127.0.0.1:55424`).
 - [ ] Produksi (dikerjakan user, dipandu): Supabase → Authentication → **Email Templates** → tempel subjek + HTML untuk Invite user, Confirm signup, Reset password.
 - [ ] **SMTP gratis — Resend** (3.000 email/bulan, 100/hari): daftar resend.com → Domains → tambah `airtek.my.id` → masukkan record DNS (MX/TXT SPF/DKIM) di Domainesia → buat API key → Supabase → Authentication → **SMTP Settings**: host `smtp.resend.com`, port `465`, user `resend`, password = API key, sender `noreply@airtek.my.id`, nama "Airtek CRM". Naikkan rate limit email di Authentication → Rate Limits.
-- [ ] Halaman `/accept-invite`: tampilkan juga nama organisasi & role dari `user_metadata`; tombol "Kirim ulang undangan" tidak ada di sisi penerima (hanya admin).
+- [x] Halaman `/accept-invite`: tampilkan juga nama organisasi & role dari `user_metadata`; tombol "Kirim ulang undangan" tidak ada di sisi penerima (hanya admin).
 
 ## 13. Sisa Pekerjaan (status 12 Okt 2026)
 

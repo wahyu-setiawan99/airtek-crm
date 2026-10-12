@@ -24,6 +24,7 @@ export type BoardDeal = {
   rotting: boolean;
   canEdit: boolean;
   stageId: string;
+  createdAt: string;
 };
 
 export type BoardStage = {

@@ -1,10 +1,34 @@
 <!doctype html>
 <html lang="id">
-  <body style="font-family: sans-serif; color: #1c1917">
-    <p>Halo,</p>
-    <p>Anda diundang bergabung ke <strong>Airtek CRM</strong>.</p>
-    <p><a href="{{ .ConfirmationURL }}">Terima undangan</a></p>
-    <p>Tautan ini kedaluwarsa dalam 7 hari.</p>
-    <p>Airtek CRM</p>
+  <body style="margin:0;padding:0;background:#f6f3f4;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f3f4;padding:24px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:8px;padding:32px 28px;font-family:Arial,Helvetica,sans-serif;color:#1c1917;">
+            <tr>
+              <td>
+                <img src="https://airtek.my.id/brand/airtek-logo.png" alt="Airtek" width="180" style="display:block;height:auto;border:0;" />
+                <p style="margin:24px 0 8px;font-size:16px;">Halo {{ .Data.full_name }},</p>
+                <p style="margin:0 0 16px;font-size:13px;color:#78716c;"><em>Tautan ini berlaku 7 hari.</em></p>
+                <p style="margin:0 0 16px;font-size:15px;line-height:1.5;">
+                  <strong>{{ .Data.organization }}</strong> menggunakan <strong>Airtek CRM</strong> untuk mengelola pipeline penjualan.
+                  Anda diundang oleh <strong>{{ .Data.invited_by }}</strong> sebagai
+                  <strong>{{ if eq .Data.role "admin" }}Administrator{{ else }}Sales{{ end }}</strong>.
+                </p>
+                <p style="margin:0 0 8px;font-size:14px;">Setelah diterima, Anda dapat masuk melalui:</p>
+                <p style="margin:0 0 20px;font-size:14px;line-height:1.6;">
+                  • Login: {{ .Email }}<br />
+                  • Tautan: {{ .SiteURL }}
+                </p>
+                <p style="margin:0 0 24px;">
+                  <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/id/accept-invite" style="display:inline-block;background:#9a1b4b;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:6px;">Terima undangan</a>
+                </p>
+                <p style="margin:0;font-size:12px;color:#78716c;">Airtek CRM · PT. Airtek Solusi Nusantara</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
   </body>
 </html>
