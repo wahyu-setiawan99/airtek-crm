@@ -1,11 +1,11 @@
 "use client";
 
-import { Wind } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { forgotAction, loginAction, registerAction, resendConfirmationAction, resetAction } from "@/lib/actions/auth";
 import { DEMO_PASSWORD } from "@/lib/constants";
 import { Link, useRouter } from "@/i18n/navigation";
+import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/form";
 
@@ -95,12 +95,7 @@ export function AuthScreen({
   return (
     <div className="grid min-h-dvh lg:grid-cols-2">
       <section className="relative hidden overflow-hidden bg-sidebar px-12 py-14 text-sidebar-foreground lg:flex lg:flex-col lg:justify-between">
-        <div className="flex items-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground">
-            <Wind className="h-4 w-4" />
-          </span>
-          <span className="font-semibold">Airtek CRM</span>
-        </div>
+        <BrandLogo variant="onDark" priority className="h-10" />
         <div>
           <h1 className="max-w-md text-4xl font-semibold tracking-tight">{t("heroTitle")}</h1>
           <p className="mt-4 max-w-md text-sm leading-6 text-sidebar-muted">{t("heroBody")}</p>
@@ -117,11 +112,8 @@ export function AuthScreen({
       </section>
       <section className="grid place-items-center px-4 py-10">
         <div className="w-full max-w-md">
-          <div className="mb-8 flex items-center gap-2 lg:hidden">
-            <span className="grid h-8 w-8 place-items-center rounded-md bg-primary text-primary-foreground">
-              <Wind className="h-4 w-4" />
-            </span>
-            <span className="font-semibold">Airtek CRM</span>
+          <div className="mb-8 lg:hidden">
+            <BrandLogo className="h-10" />
           </div>
           <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>

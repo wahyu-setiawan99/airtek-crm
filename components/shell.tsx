@@ -20,7 +20,6 @@ import {
   Settings,
   SunMedium,
   Users,
-  Wind,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
@@ -32,6 +31,7 @@ import type { AppLocale } from "@/i18n/routing";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { ShellData } from "@/types/view";
+import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
 import { MenuContent, MenuItem, Menu, MenuTrigger } from "@/components/ui/dropdown";
 
@@ -110,13 +110,8 @@ export function AppShell({
     <div className="min-h-dvh bg-background">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
         <div className="flex h-14 items-center gap-2 px-4">
-          <span className="grid h-8 w-8 place-items-center rounded-md bg-primary text-primary-foreground">
-            <Wind className="h-4 w-4" />
-          </span>
-          <div>
-            <p className="text-sm font-semibold leading-none">Airtek</p>
-            <p className="mt-1 text-[11px] text-sidebar-muted">CRM</p>
-          </div>
+          <BrandLogo variant="onDark" priority className="h-6" />
+          <span className="rounded border border-sidebar-border px-1.5 py-0.5 text-[10px] font-semibold tracking-wider text-sidebar-muted">CRM</span>
         </div>
         <nav className="flex-1 space-y-1 px-3 py-2">
           {links.map((item) => {
@@ -280,7 +275,7 @@ export function AppShell({
         <div className="fixed inset-0 z-50 bg-black/50 md:hidden" onClick={() => { setMobile(false); setMore(false); }}>
           <div className="absolute inset-y-0 left-0 w-72 bg-sidebar p-4 text-sidebar-foreground" onClick={(event) => event.stopPropagation()}>
             <div className="mb-4 flex items-center gap-2 font-semibold">
-              <Wind className="h-4 w-4" /> Airtek
+              <BrandLogo variant="onDark" className="h-6" />
             </div>
             <div className="space-y-1">
               {links.map((item) => {
