@@ -134,29 +134,22 @@ export function AppShell({
   return (
     <div className="min-h-dvh bg-background">
       <aside className={cn("fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:flex", collapsed ? "w-16" : "w-60")}>
-        <div className={cn("flex h-14 items-center border-b border-sidebar-border", collapsed ? "justify-center px-2" : "justify-between gap-2 px-3")}>
-          {collapsed ? <Image src={mark} alt="Airtek" priority className="h-8 w-8 object-contain" /> : (
-            <span className="flex min-w-0 items-center gap-3">
-              <BrandLogo priority className="h-8" />
-              <span aria-hidden className="h-6 w-px bg-sidebar-border" />
-              <span className="text-xs font-semibold tracking-[0.25em] text-sidebar-muted">CRM</span>
-            </span>
-          )}
-          {collapsed ? null : (
-            <button
-              type="button"
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              aria-label={tc("collapseSidebar")}
-              onClick={() => {
-                document.cookie = "airtek_sidebar=collapsed; path=/; max-age=31536000; samesite=lax";
-                setCollapsed(true);
-              }}
-            >
-              <PanelLeftClose className="h-4 w-4" />
-            </button>
-          )}
+        <div className={cn("flex h-14 items-center border-b border-sidebar-border", collapsed ? "justify-center px-2" : "px-3")}>
+          <Link
+            href="/dashboard"
+            aria-label={t("dashboard")}
+            className={cn("flex min-w-0 items-center rounded-md hover:opacity-80", collapsed ? "justify-center" : "gap-3")}
+          >
+            {collapsed ? <Image src={mark} alt="" priority className="h-8 w-8 object-contain" /> : (
+              <>
+                <BrandLogo priority className="h-8" />
+                <span aria-hidden className="h-6 w-px bg-sidebar-border" />
+                <span className="text-xs font-semibold tracking-[0.25em] text-sidebar-muted">CRM</span>
+              </>
+            )}
+          </Link>
         </div>
-        <nav className={cn("flex-1 space-y-1 py-2", collapsed ? "px-2" : "px-3")}>
+        <nav className={cn("min-h-0 flex-1 space-y-1 overflow-y-auto py-2", collapsed ? "px-2" : "px-3")}>
           {links.map((item) => {
             const href = item.key === "pipeline" ? pipelineHref : item.href;
             const Icon = item.icon;
@@ -187,20 +180,44 @@ export function AppShell({
             );
           })}
         </nav>
-        {collapsed ? (
-          <button
-            type="button"
-            className="mx-auto mb-3 grid h-8 w-8 place-items-center rounded-md text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground"
-            aria-label={tc("expandSidebar")}
-            onClick={() => {
-              document.cookie = "airtek_sidebar=expanded; path=/; max-age=31536000; samesite=lax";
-              setCollapsed(false);
-            }}
-          >
-            <PanelLeftOpen className="h-4 w-4" />
-          </button>
-        ) : null}
-        {shell.demo && !collapsed ? <p className="px-4 pb-4 text-[11px] text-sidebar-muted">{tc("demo")}</p> : null}
+        {shell.demo && !collapsed ? <p className="px-4 pb-2 text-[11px] text-sidebar-muted">{tc("demo")}</p> : null}
+        <div className={cn("mt-auto border-t border-sidebar-border px-3 pb-16 pt-3", collapsed && "px-2")}>
+          {collapsed ? (
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
+                <button
+                  type="button"
+                  className="mx-auto grid h-11 w-11 place-items-center rounded-lg border border-sidebar-border bg-sidebar-accent text-sidebar-foreground shadow-sm hover:text-primary"
+                  aria-label={tc("expandSidebar")}
+                  onClick={() => {
+                    document.cookie = "airtek_sidebar=expanded; path=/; max-age=31536000; samesite=lax";
+                    setCollapsed(false);
+                  }}
+                >
+                  <PanelLeftOpen className="h-5 w-5" />
+                </button>
+              </Tooltip.Trigger>
+              <Tooltip.Portal>
+                <Tooltip.Content side="right" className="z-50 rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground shadow">
+                  {tc("expandSidebar")}
+                </Tooltip.Content>
+              </Tooltip.Portal>
+            </Tooltip.Root>
+          ) : (
+            <button
+              type="button"
+              className="flex h-11 w-full items-center gap-2.5 rounded-lg border border-sidebar-border bg-sidebar-accent px-3 text-sm font-medium text-sidebar-foreground shadow-sm hover:text-primary"
+              aria-label={tc("collapseSidebar")}
+              onClick={() => {
+                document.cookie = "airtek_sidebar=collapsed; path=/; max-age=31536000; samesite=lax";
+                setCollapsed(true);
+              }}
+            >
+              <PanelLeftClose className="h-5 w-5 shrink-0" />
+              {tc("collapseSidebar")}
+            </button>
+          )}
+        </div>
       </aside>
 
       <div className={cn("transition-[padding] duration-200", collapsed ? "md:pl-16" : "md:pl-60")}>
@@ -331,13 +348,11 @@ export function AppShell({
       {mobile || more ? (
         <div className="fixed inset-0 z-50 bg-black/50 md:hidden" onClick={() => { setMobile(false); setMore(false); }}>
           <div className="absolute inset-y-0 left-0 w-72 bg-sidebar p-4 text-sidebar-foreground" onClick={(event) => event.stopPropagation()}>
-            <div className="mb-4 flex items-center gap-2 font-semibold">
-              <span className="flex items-center gap-3">
-                <BrandLogo className="h-8" />
-                <span aria-hidden className="h-6 w-px bg-sidebar-border" />
-                <span className="text-xs font-semibold tracking-[0.25em] text-sidebar-muted">CRM</span>
-              </span>
-            </div>
+            <Link href="/dashboard" aria-label={t("dashboard")} onClick={() => { setMobile(false); setMore(false); }} className="mb-4 flex items-center gap-3 rounded-md hover:opacity-80">
+              <BrandLogo className="h-8" />
+              <span aria-hidden className="h-6 w-px bg-sidebar-border" />
+              <span className="text-xs font-semibold tracking-[0.25em] text-sidebar-muted">CRM</span>
+            </Link>
             <div className="space-y-1">
               {links.map((item) => {
                 const href = item.key === "pipeline" ? pipelineHref : item.href;
