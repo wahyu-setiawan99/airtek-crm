@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { forgotAction, loginAction, registerAction, resendConfirmationAction, resetAction } from "@/lib/actions/auth";
+import { devLoginAction, forgotAction, loginAction, registerAction, resendConfirmationAction, resetAction } from "@/lib/actions/auth";
 import { DEMO_PASSWORD } from "@/lib/constants";
 import { Link, useRouter } from "@/i18n/navigation";
 import { BrandLogo } from "@/components/brand-logo";
@@ -20,10 +20,13 @@ export function AuthScreen({
   mode,
   inviteToken = null,
   demo = false,
+  devAccounts = [],
 }: {
   mode: "login" | "register" | "forgot" | "reset";
   inviteToken?: string | null;
   demo?: boolean;
+  /** Local Docker Supabase only (AGENTS.md §18). */
+  devAccounts?: readonly { email: string; role: string }[];
 }) {
   const t = useTranslations("auth");
   const router = useRouter();
@@ -87,6 +90,16 @@ export function AuthScreen({
     setPending(false);
     if (!result.ok) return setError(result.error);
     router.push("/onboarding");
+    router.refresh();
+  }
+
+  async function loginDev(email: string) {
+    setPending(true);
+    setError(null);
+    const result = await devLoginAction(email);
+    setPending(false);
+    if (!result.ok) return setError(result.error);
+    router.push(result.data?.next === "onboarding" ? "/onboarding" : "/dashboard");
     router.refresh();
   }
 
@@ -183,6 +196,18 @@ export function AuthScreen({
             ) : null}
           </form>
           )}
+          {mode === "login" && devAccounts.length > 0 ? (
+            <div className="mt-6 rounded-lg border border-dashed p-3">
+              <p className="text-xs font-medium text-muted-foreground">Masuk cepat (dev) — Supabase lokal, `pnpm dev:seed`</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {devAccounts.map((account) => (
+                  <Button key={account.email} type="button" variant="outline" size="sm" disabled={pending} onClick={() => void loginDev(account.email)}>
+                    {account.email.split("@")[0]} · {account.role}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           {mode === "login" && demo ? (
             <div className="mt-6">
               <p className="text-xs text-muted-foreground">{t("demoHint")}</p>

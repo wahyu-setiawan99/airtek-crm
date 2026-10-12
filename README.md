@@ -3,17 +3,46 @@
 CRM web untuk PT. Airtek Solusi Nusantara — multi-pipeline, kanban, forecast, kontak, aktivitas, laporan.
 Produksi: **https://airtek.my.id** · Stack: Next.js 15, Supabase (Postgres + Auth), Vercel.
 
-## Jalankan lokal
+## Jalankan lokal (database lokal di Docker)
+
+Butuh Docker Desktop yang sedang berjalan.
 
 ```bash
 pnpm install
+pnpm db:start
+```
+
+`db:start` menyalakan Supabase lokal (Postgres, Auth, Storage, Realtime, Studio, Mailpit) dan menerapkan semua
+`supabase/migrations`. Salin **API URL**, **Publishable key**, dan **Secret key** yang tampil ke `.env.local`:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:55421
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<publishable key>
+SUPABASE_SERVICE_ROLE_KEY=<secret key>
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+BOOTSTRAP_ADMIN_EMAIL=boss@airtek.test
+DEV_TEST_PASSWORD=
+```
+
+```bash
+pnpm dev:seed
 pnpm dev
 ```
 
-- **Tanpa `.env.local`** → mode demo lokal: data contoh di `.data/crm.json`, kata sandi `airtek123`
-  (`admin.demo@airtek.my.id`, `sales1.demo@airtek.my.id`, `direksi.demo@airtek.my.id`). Hanya untuk development.
-- **Dengan Supabase lokal** (butuh Docker): `npx supabase start`, lalu salin URL + publishable/secret key yang
-  ditampilkan ke `.env.local` (lihat `.env.example`). Migration di `supabase/migrations` diterapkan otomatis.
+`dev:seed` membuat organisasi **PT. Airtek Solusi Nusantara (DEV)** berisi data contoh dan 4 akun (kata sandi
+`DEV_TEST_PASSWORD`, default `airtek-dev-123`): `boss@airtek.test` (Boss), `admin@airtek.test` (Administrator),
+`sales1@airtek.test`, `sales2@airtek.test` (Sales). Di halaman login muncul tombol **Masuk cepat (dev)**.
+Script menolak berjalan jika URL Supabase bukan localhost.
+
+| Alat lokal | Alamat |
+|---|---|
+| Aplikasi | http://localhost:3000 |
+| Supabase Studio (lihat isi tabel) | http://127.0.0.1:55423 |
+| Mailpit (email undangan/konfirmasi) | http://127.0.0.1:55424 |
+| Postgres | `postgresql://postgres:postgres@127.0.0.1:55422/postgres` |
+
+`pnpm db:stop` mematikan, `pnpm db:reset` mengulang database dari migration (lalu jalankan `pnpm dev:seed` lagi).
+Tanpa `.env.local` aplikasi jalan di mode demo (file JSON, kata sandi `airtek123`).
 
 ## Deploy (GitHub → Vercel + Supabase)
 

@@ -180,7 +180,7 @@ Aturan DB:
 - [x] Pengingat aktivitas via email harian (§13.7)
 - [ ] QA: Lighthouse ≥ 90, aksesibilitas, hydration warning (§13.8)
 - [x] Sidebar bisa diciutkan (mode ikon) / dimunculkan (§13.9)
-- [ ] Akun testing khusus development untuk AI agent & developer (§18)
+- [x] Lingkungan dev lokal (Docker) + akun testing + masuk cepat (§18)
 - [ ] Impor data dari Odoo CRM (§14) — **hanya setelah semua sales sudah diundang & aktif** (§14.0)
 - [ ] Jenis klien Konsultan/Kontraktor/Owner + pihak proyek (§16.1–16.2)
 - [ ] Visibilitas & filter proyek lintas sales (§16.3)
@@ -699,39 +699,33 @@ Prinsip: **AI memberi saran, manusia yang memutuskan.** AI tidak pernah menulis 
 - Uji dengan data demo lokal dulu (`lib/demo/seed.ts`), lalu produksi dengan paid tier.
 - Tiap fitur: role & visibilitas dihormati, hasil divalidasi zod, pemakaian tercatat di `ai_usage`, kuota berjalan, teks dalam ID/EN sesuai locale.
 
-## 18. Akun Testing untuk Development (AI agent & developer)
+## 18. Lingkungan Development Lokal (Docker) & Akun Testing — ✅ SUDAH ADA
 
-Tujuan: Cursor/Claude/developer bisa **login, menguji, dan debug** di lingkungan lokal tanpa membuat akun manual — **tanpa pernah ada akun demo di produksi** (§11.3).
+Untuk Cursor/Claude/developer: database **lokal di Docker** (Supabase lokal), bisa login, melihat isi CRM, dan debug. **Tidak pernah** memakai atau membuat akun di produksi `airtek.my.id`.
 
-### 18.1 Status saat ini
-- **Mode demo lokal (tanpa `.env.local` Supabase)** — ✅ sudah bisa: akun `admin.demo@airtek.my.id` (owner), `manager.demo@…`, `sales1.demo@…`, `sales2.demo@…`, `presales.demo@…`, `direksi.demo@…`, kata sandi `airtek123` (`DEMO_PASSWORD` di `lib/constants.ts`), plus tombol masuk cepat di halaman login (hanya muncul di mode demo).
-- **Supabase lokal (`npx supabase start`)** — ❌ belum: tidak ada akun/seed otomatis (script `seed:demo` dihapus). Harus dibuat seperti di bawah.
-- **Produksi (`airtek.my.id`)** — tidak boleh ada akun testing. AI agent **tidak** login ke produksi.
+### 18.1 Cara menjalankan (lihat juga README)
+1. Docker Desktop menyala → `pnpm db:start` (Postgres, Auth, Storage, Realtime, Studio, Mailpit; port 554xx karena 543xx dipakai project lain). Semua `supabase/migrations` diterapkan otomatis.
+2. `.env.local`: URL `http://127.0.0.1:55421`, publishable & secret key dari output `db:start`, `BOOTSTRAP_ADMIN_EMAIL=boss@airtek.test`, `DEV_TEST_PASSWORD=` (kosong = `airtek-dev-123`).
+3. `pnpm dev:seed` → organisasi **PT. Airtek Solusi Nusantara (DEV)** dengan data contoh `lib/demo/seed.ts` (36 deal, 12 perusahaan, 20 kontak, produk, aktivitas) + akun:
 
-### 18.2 Yang harus dibuat
-- Script **`pnpm dev:seed`** (`scripts/dev-seed.ts`, jalankan dengan `tsx` sebagai devDependency) yang:
-  - **Menolak berjalan** jika `NEXT_PUBLIC_SUPABASE_URL` bukan `http://127.0.0.1:*` / `http://localhost:*` (guard keras, keluar dengan error). Tidak boleh bisa diarahkan ke Supabase produksi.
-  - Membuat (atau me-reset) akun berikut lewat `admin.auth.admin.createUser({ email_confirm: true })` dan memasukkannya ke satu organisasi lokal **"PT. Airtek Solusi Nusantara (DEV)"** berisi data contoh dari `lib/demo/seed.ts`:
+   | Email | Level |
+   |---|---|
+   | `boss@airtek.test` | Boss (owner, tersembunyi) |
+   | `admin@airtek.test` | Administrator |
+   | `sales1@airtek.test` | Sales |
+   | `sales2@airtek.test` | Sales |
 
-    | Email | Role | Untuk menguji |
-    |---|---|---|
-    | `boss@airtek.test` | owner (Boss, tersembunyi) | akses penuh, Boss tidak terlihat oleh level lain |
-    | `admin@airtek.test` | admin (Administrator) | undang sales, ubah role, pengaturan |
-    | `sales1@airtek.test` | sales | proyek milik sendiri, lihat proyek sales lain (read-only) |
-    | `sales2@airtek.test` | sales | uji visibilitas & filter lintas sales |
+4. `pnpm dev` → `/id/login` → tombol **Masuk cepat (dev)** (hanya muncul saat `next dev` + Supabase localhost; aksi `devLoginAction` menolak di luar itu, kata sandi tidak pernah dikirim ke browser).
 
-  - Kata sandi dari env **`DEV_TEST_PASSWORD`** di `.env.local` (default bila kosong: `airtek-dev-123`). Domain `.test` dipakai agar tidak pernah bentrok dengan email nyata.
-  - Idempotent: aman dijalankan berulang (reset password & data organisasi DEV).
-- Tambah ke `.env.example` (bagian lokal): `DEV_TEST_PASSWORD=` dengan komentar "khusus Supabase lokal".
-- Halaman login: tombol **"Masuk cepat (dev)"** per role hanya tampil bila `process.env.NODE_ENV === "development"` **dan** URL Supabase lokal (atau mode demo). Tidak pernah ada di build produksi.
-- README & bagian ini: langkah cepat untuk agent:
-  1. `npx supabase start` (port 554xx, lihat `supabase/config.toml`)
-  2. salin URL + key lokal ke `.env.local`, set `BOOTSTRAP_ADMIN_EMAIL=boss@airtek.test`
-  3. `pnpm dev:seed` → `pnpm dev`
-  4. login dengan akun di tabel; email undangan/konfirmasi/reset dibaca di **Mailpit** `http://127.0.0.1:55424`
-- Preview deployment Vercel memakai Supabase produksi → **jangan** menjalankan seed di sana. (Opsional nanti: project Supabase terpisah untuk preview.)
+### 18.2 Alat debug
+- **Supabase Studio** `http://127.0.0.1:55423` — lihat/ubah isi tabel, SQL editor, storage.
+- **Mailpit** `http://127.0.0.1:55424` — semua email (undangan, konfirmasi, reset) tertangkap di sini; klik link untuk menguji alur undangan.
+- **psql** `postgresql://postgres:postgres@127.0.0.1:55422/postgres`.
+- `pnpm db:reset` mengulang database dari migration, lalu `pnpm dev:seed` lagi. `pnpm db:stop` mematikan.
 
 ### 18.3 Aturan untuk AI agent
-- Uji fitur di lokal dengan akun §18.2 sesuai role yang relevan (mis. fitur visibilitas: login sebagai `sales1` lalu `sales2`).
+- Uji di lokal dengan akun §18.1 sesuai level (fitur visibilitas: masuk sebagai `sales1` lalu `sales2`; fitur admin: `admin`; Boss tersembunyi: cek dari `admin`/`sales`).
+- `scripts/dev-seed.ts` **menolak** URL selain localhost — jangan dihapus pengamannya.
 - Jangan menyimpan kredensial produksi di repo, jangan membuat akun di Supabase produksi, jangan login ke `airtek.my.id` untuk testing.
+- Migration baru: tulis di `supabase/migrations/000N_*.sql`, uji dengan `pnpm db:reset` + `pnpm dev:seed`, baru minta user menjalankannya di produksi.
 

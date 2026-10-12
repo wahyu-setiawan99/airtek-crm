@@ -9,9 +9,13 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "db:types": "supabase gen types typescript --linked > types/database.ts",
-    "db:push": "supabase db push",
-    "db:reset": "supabase db reset"
+    "db:types": "npx -y supabase@2.48.3 gen types typescript --local > types/database.ts",
+    "db:push": "npx -y supabase@2.48.3 db push",
+    "db:reset": "npx -y supabase@2.48.3 db reset",
+    "db:start": "npx -y supabase@2.48.3 start -x imgproxy,edge-runtime,logflare,vector,supavisor",
+    "db:stop": "npx -y supabase@2.48.3 stop",
+    "db:status": "npx -y supabase@2.48.3 status",
+    "dev:seed": "tsx --tsconfig tsconfig.json scripts/dev-seed.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -62,6 +66,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.27",
     "tailwindcss": "^4",
+    "tsx": "4.19.2",
     "typescript": "^5"
   }
 }

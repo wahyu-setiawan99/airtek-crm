@@ -7,7 +7,7 @@ import { ActionError, type ActionResult } from "@/lib/action";
 import { cookieOptions, ORG_COOKIE, SESSION_COOKIE } from "@/lib/constants";
 import { addMembership, provisionOrganization } from "@/lib/demo/onboarding";
 import { createId, mutateStore, readStore } from "@/lib/demo/store";
-import { isBootstrapAdmin, siteUrl, supabaseEnabled } from "@/lib/env";
+import { DEV_ACCOUNTS, isBootstrapAdmin, isLocalDevSupabase, siteUrl, supabaseEnabled } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { mutate } from "@/lib/store";
@@ -74,6 +74,15 @@ export async function loginAction(input: unknown): Promise<ActionResult<{ next: 
   await setOrg(membership.organization_id);
   revalidatePath("/", "layout");
   return { ok: true, data: null };
+}
+
+/** Dev-only quick login for the accounts from `pnpm dev:seed`. Never available in production builds. */
+export async function devLoginAction(email: string): Promise<ActionResult<{ next: "onboarding" } | null>> {
+  if (!isLocalDevSupabase() || !DEV_ACCOUNTS.some((item) => item.email === email)) {
+    const t = await getTranslations("common");
+    return { ok: false, error: t("forbidden") };
+  }
+  return loginAction({ email, password: process.env.DEV_TEST_PASSWORD?.trim() || "airtek-dev-123" });
 }
 
 async function registerWithSupabase(data: {
