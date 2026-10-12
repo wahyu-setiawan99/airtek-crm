@@ -1,0 +1,3 @@
+-- Sample CRM rows are created by the app in demo mode (lib/demo/seed.ts).
+-- After Supabase Auth is linked, the first registration provisions an organization,
+-- a Sales pipeline, tags (HVAC, PUMP, TDG, LIFT), and lost reasons.

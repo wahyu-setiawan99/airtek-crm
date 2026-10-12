@@ -1,0 +1,132 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Link, useRouter } from "@/i18n/navigation";
+import type { AppLocale } from "@/i18n/routing";
+import { formatCompact, formatDate, formatMonth, formatRupiah } from "@/lib/format";
+import type { DashboardData } from "@/types/view";
+import { Select } from "@/components/ui/form";
+
+export function DashboardView({ data, locale }: { data: DashboardData; locale: AppLocale }) {
+  const t = useTranslations("dashboard");
+  const router = useRouter();
+  const funnel = data.funnel.map((item) => ({ ...item, label: item.name }));
+  const forecast = data.forecast.map((item) => ({ ...item, label: formatMonth(item.key, locale) }));
+
+  return (
+    <div className="grid gap-5">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("greeting", { name: data.name })}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Select
+            className="w-auto"
+            value={data.pipelineId}
+            aria-label="Pipeline"
+            onChange={(event) => router.push(`/dashboard?pipeline=${event.target.value}&period=${data.period}`)}
+          >
+            <option value="all">{t("allPipelines")}</option>
+            {data.pipelines.map((pipeline) => <option key={pipeline.id} value={pipeline.id}>{pipeline.name}</option>)}
+          </Select>
+          <Select
+            className="w-auto"
+            value={data.period}
+            aria-label="Period"
+            onChange={(event) => router.push(`/dashboard?pipeline=${data.pipelineId}&period=${event.target.value}`)}
+          >
+            <option value="month">{t("thisMonth")}</option>
+            <option value="quarter">{t("thisQuarter")}</option>
+            <option value="year">{t("thisYear")}</option>
+          </Select>
+        </div>
+      </div>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <Kpi label={t("pipelineValue")} value={formatCompact(data.pipelineValue)} hint={t("openDeals", { count: data.openCount })} />
+        <Kpi label={t("weightedForecast")} value={formatCompact(data.weighted)} />
+        <Kpi label={t("wonThisMonth")} value={formatCompact(data.wonValue)} />
+        <Kpi label={t("winRate")} value={`${data.winRate}%`} />
+        <Kpi label={t("avgCycle")} value={t("days", { count: data.avgCycle })} />
+      </section>
+      <section className="grid gap-3 xl:grid-cols-5">
+        <ChartCard title={t("funnel")} className="xl:col-span-3" empty={funnel.every((item) => item.total === 0)} emptyLabel={t("noChart")}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={funnel}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} interval={0} />
+              <YAxis tickFormatter={(value) => formatCompact(Number(value))} width={78} tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(value) => formatRupiah(Number(value ?? 0))} />
+              <Bar dataKey="total" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="weighted" fill="var(--color-success)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+        <ChartCard title={t("forecast")} className="xl:col-span-2" empty={forecast.every((item) => item.weighted === 0)} emptyLabel={t("noChart")}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={forecast}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis tickFormatter={(value) => formatCompact(Number(value))} width={78} tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(value) => formatRupiah(Number(value ?? 0))} />
+              <Bar dataKey="weighted" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </section>
+      <section className="grid gap-3 lg:grid-cols-2">
+        <div className="rounded-lg border bg-card p-4">
+          <h2 className="text-sm font-semibold">{t("topSales")}</h2>
+          <ul className="mt-3 space-y-2">
+            {data.sales.length === 0 ? <li className="text-sm text-muted-foreground">{t("noChart")}</li> : null}
+            {data.sales.map((person) => (
+              <li key={person.name} className="flex items-center justify-between text-sm">
+                <span>{person.name}</span>
+                <span className="money font-medium">{formatCompact(person.won)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <h2 className="text-sm font-semibold">{t("overdue")}</h2>
+          <ul className="mt-3 space-y-2">
+            {data.overdue.length === 0 ? <li className="text-sm text-muted-foreground">{t("noOverdue")}</li> : null}
+            {data.overdue.map((item) => (
+              <li key={item.id}>
+                <Link href={item.href} className="flex items-center justify-between gap-3 text-sm hover:underline">
+                  <span>{item.subject}</span>
+                  <span className="text-xs text-destructive">{formatDate(item.dueAt, locale)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <article className="rounded-lg border bg-card p-4">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="money mt-2 text-xl font-semibold tracking-tight">{value}</p>
+      {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
+    </article>
+  );
+}
+
+function ChartCard({ title, children, className, empty, emptyLabel }: { title: string; children: React.ReactNode; className?: string; empty: boolean; emptyLabel: string }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
+  return (
+    <article className={`rounded-lg border bg-card p-4 ${className ?? ""}`}>
+      <h2 className="text-sm font-semibold">{title}</h2>
+      <div className="mt-3 h-64">
+        {empty || !ready ? <p className="text-sm text-muted-foreground">{empty ? emptyLabel : ""}</p> : children}
+      </div>
+    </article>
+  );
+}

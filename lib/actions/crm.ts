@@ -1,0 +1,1030 @@
+"use server";
+
+import { cookies } from "next/headers";
+import { getTranslations } from "next-intl/server";
+import { revalidatePath } from "next/cache";
+import { ActionError, runAction, touch } from "@/lib/action";
+import { cookieOptions, ORG_COOKIE } from "@/lib/constants";
+import { subtotal } from "@/lib/domain";
+import { resetStore, createId } from "@/lib/demo/store";
+import { canAdmin, canEditOwned, canManage, canWrite } from "@/lib/permissions";
+import { getSession } from "@/lib/session";
+import type { Deal, DealStatus, Stage, Store } from "@/types/crm";
+import type { Session } from "@/lib/session";
+import {
+  activitySchema,
+  companySchema,
+  contactSchema,
+  dealSchema,
+  importContactSchema,
+  inviteSchema,
+  lineSchema,
+  moveDealSchema,
+  noteSchema,
+  organizationSchema,
+  passwordSchema,
+  pipelineSchema,
+  productSchema,
+  profileSchema,
+  quickDealSchema,
+  reasonSchema,
+  savedViewSchema,
+  stageSchema,
+  tagSchema,
+} from "@/lib/validations";
+
+function audit(store: Store, session: Session, entity: string, entityId: string, action: string, diff: Store["audit_logs"][number]["diff"] = {}) {
+  store.audit_logs.unshift({
+    id: createId(),
+    organization_id: session.organizationId,
+    entity,
+    entity_id: entityId,
+    action,
+    diff,
+    user_id: session.userId,
+    created_at: new Date().toISOString(),
+  });
+  store.audit_logs = store.audit_logs.slice(0, 200);
+}
+
+function assertDeal(store: Store, session: Session, dealId: string) {
+  const deal = store.deals.find((item) => item.id === dealId && item.organization_id === session.organizationId);
+  if (!deal) throw new ActionError("Deal tidak ditemukan.");
+  if (!canEditOwned(session.role, session.userId, deal.owner_id)) throw new ActionError("forbidden");
+  return deal;
+}
+
+function applyStage(deal: Deal, stage: Stage, lostReasonId: string | null) {
+  const previous = deal.stage_id;
+  deal.stage_id = stage.id;
+  deal.pipeline_id = stage.pipeline_id;
+  if (stage.type === "won") {
+    deal.status = "won";
+    deal.won_at = deal.won_at ?? new Date().toISOString();
+    deal.lost_at = null;
+    deal.lost_reason_id = null;
+  } else if (stage.type === "lost") {
+    deal.status = "lost";
+    deal.lost_at = deal.lost_at ?? new Date().toISOString();
+    deal.won_at = null;
+    deal.lost_reason_id = lostReasonId;
+  } else {
+    deal.status = "open";
+    deal.won_at = null;
+    deal.lost_at = null;
+    deal.lost_reason_id = null;
+  }
+  touch(deal);
+  return previous;
+}
+
+function placeDeal(store: Store, deal: Deal, stageId: string) {
+  const siblings = store.deals
+    .filter((item) => item.stage_id === stageId && item.id !== deal.id)
+    .sort((a, b) => a.position - b.position);
+  siblings.forEach((item, index) => {
+    item.position = index + 1;
+  });
+  deal.position = 0;
+  deal.stage_id = stageId;
+}
+
+export async function switchOrgAction(organizationId: string) {
+  const session = await getSession();
+  if (!session) return { ok: false as const, error: "Unauthorized" };
+  if (!session.memberships.some((item) => item.organization_id === organizationId)) {
+    return { ok: false as const, error: "Unauthorized" };
+  }
+  const jar = await cookies();
+  jar.set(ORG_COOKIE, organizationId, cookieOptions);
+  revalidatePath("/", "layout");
+  return { ok: true as const, data: null };
+}
+
+export async function moveDealAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    const parsed = moveDealSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    const deal = assertDeal(store, session, parsed.data.dealId);
+    const stage = store.stages.find((item) => item.id === parsed.data.toStageId && item.pipeline_id === parsed.data.pipelineId);
+    if (!stage) throw new ActionError(t("error"));
+    if (stage.type === "lost" && !parsed.data.lostReasonId) throw new ActionError(t("required"));
+
+    const known = new Set(store.deals.filter((item) => item.pipeline_id === parsed.data.pipelineId).map((item) => item.id));
+    const incoming = parsed.data.columns.flatMap((column) => column.dealIds);
+    if (incoming.length !== known.size || incoming.some((item) => !known.has(item))) {
+      throw new ActionError(t("error"));
+    }
+
+    const previous = deal.stage_id;
+    for (const column of parsed.data.columns) {
+      column.dealIds.forEach((dealId, index) => {
+        const row = store.deals.find((item) => item.id === dealId);
+        if (!row) return;
+        row.stage_id = column.stageId;
+        row.position = index;
+        if (dealId === deal.id) applyStage(row, stage, parsed.data.lostReasonId);
+        touch(row);
+      });
+    }
+    if (previous !== deal.stage_id) {
+      store.stage_history.push({
+        id: createId(),
+        deal_id: deal.id,
+        from_stage_id: previous,
+        to_stage_id: deal.stage_id,
+        changed_by: session.userId,
+        changed_at: new Date().toISOString(),
+      });
+      audit(store, session, "deal", deal.id, "move", { to: stage.name });
+    }
+    return null;
+  });
+}
+
+export async function saveDealAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canWrite(session.role)) throw new ActionError(t("forbidden"));
+    const parsed = dealSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("invalid") === "invalid" ? t("error") : t("error"));
+    const stage = store.stages.find((item) => item.id === parsed.data.stageId && item.organization_id === session.organizationId);
+    if (!stage) throw new ActionError(t("error"));
+    const ownerId = canManage(session.role) ? parsed.data.ownerId : session.userId;
+
+    if (parsed.data.id) {
+      const deal = assertDeal(store, session, parsed.data.id);
+      const previousStage = deal.stage_id;
+      deal.title = parsed.data.title;
+      deal.value = parsed.data.value;
+      deal.company_id = parsed.data.companyId;
+      deal.primary_contact_id = parsed.data.contactId;
+      deal.owner_id = ownerId;
+      deal.priority = parsed.data.priority;
+      deal.expected_close_date = parsed.data.expectedCloseDate;
+      deal.probability_override = parsed.data.probabilityOverride;
+      if (previousStage !== stage.id) {
+        applyStage(deal, stage, null);
+        store.stage_history.push({
+          id: createId(),
+          deal_id: deal.id,
+          from_stage_id: previousStage,
+          to_stage_id: stage.id,
+          changed_by: session.userId,
+          changed_at: new Date().toISOString(),
+        });
+      }
+      touch(deal);
+      store.deal_tags = store.deal_tags.filter((item) => item.deal_id !== deal.id);
+      parsed.data.tagIds.forEach((tagId) => store.deal_tags.push({ deal_id: deal.id, tag_id: tagId }));
+      audit(store, session, "deal", deal.id, "update", { title: deal.title });
+      return deal.id;
+    }
+
+    const dealId = createId();
+    const timestamp = new Date().toISOString();
+    const deal: Deal = {
+      id: dealId,
+      organization_id: session.organizationId,
+      title: parsed.data.title,
+      pipeline_id: stage.pipeline_id,
+      stage_id: stage.id,
+      value: parsed.data.value,
+      currency: "IDR",
+      probability_override: parsed.data.probabilityOverride,
+      expected_close_date: parsed.data.expectedCloseDate,
+      priority: parsed.data.priority,
+      company_id: parsed.data.companyId,
+      primary_contact_id: parsed.data.contactId,
+      owner_id: ownerId,
+      status: stage.type === "open" ? "open" : (stage.type as DealStatus),
+      lost_reason_id: null,
+      won_at: stage.type === "won" ? timestamp : null,
+      lost_at: stage.type === "lost" ? timestamp : null,
+      position: 0,
+      last_activity_at: null,
+      created_at: timestamp,
+      updated_at: timestamp,
+      created_by: session.userId,
+    };
+    placeDeal(store, deal, stage.id);
+    store.deals.push(deal);
+    parsed.data.tagIds.forEach((tagId) => store.deal_tags.push({ deal_id: dealId, tag_id: tagId }));
+    if (parsed.data.contactId) {
+      store.deal_contacts.push({ id: createId(), deal_id: dealId, contact_id: parsed.data.contactId, role: null });
+    }
+    if (ownerId !== session.userId) {
+      store.notifications.unshift({
+        id: createId(),
+        organization_id: session.organizationId,
+        user_id: ownerId,
+        type: "deal_assigned",
+        payload: { title: deal.title, href: `/deals/${dealId}` },
+        read_at: null,
+        created_at: timestamp,
+      });
+    }
+    audit(store, session, "deal", dealId, "create", { title: deal.title });
+    return dealId;
+  });
+}
+
+export async function quickDealAction(input: unknown) {
+  const parsed = quickDealSchema.safeParse(input);
+  if (!parsed.success) return saveDealAction(input);
+  const session = await getSession();
+  if (!session) return { ok: false as const, error: "Unauthorized" };
+  return saveDealAction({
+    id: null,
+    title: parsed.data.title,
+    pipelineId: parsed.data.pipelineId,
+    stageId: parsed.data.stageId,
+    value: parsed.data.value,
+    companyId: parsed.data.companyId,
+    contactId: null,
+    ownerId: session.userId,
+    priority: 0,
+    expectedCloseDate: null,
+    tagIds: [],
+    probabilityOverride: null,
+  });
+}
+
+export async function deleteDealAction(dealId: string) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    assertDeal(store, session, dealId);
+    store.deals = store.deals.filter((item) => item.id !== dealId);
+    store.deal_tags = store.deal_tags.filter((item) => item.deal_id !== dealId);
+    store.deal_contacts = store.deal_contacts.filter((item) => item.deal_id !== dealId);
+    store.deal_products = store.deal_products.filter((item) => item.deal_id !== dealId);
+    store.notes = store.notes.filter((item) => item.deal_id !== dealId);
+    audit(store, session, "deal", dealId, "delete");
+    return null;
+  }).catch(() => ({ ok: false as const, error: t("error") }));
+}
+
+export async function markLostAction(dealId: string, lostReasonId: string) {
+  return runAction(({ session, store }) => {
+    const deal = assertDeal(store, session, dealId);
+    const stage = store.stages.find((item) => item.pipeline_id === deal.pipeline_id && item.type === "lost");
+    if (!stage) throw new ActionError("Lost stage missing");
+    const previous = deal.stage_id;
+    applyStage(deal, stage, lostReasonId);
+    store.stage_history.push({
+      id: createId(),
+      deal_id: deal.id,
+      from_stage_id: previous,
+      to_stage_id: stage.id,
+      changed_by: session.userId,
+      changed_at: new Date().toISOString(),
+    });
+    audit(store, session, "deal", deal.id, "lost", { reason: lostReasonId });
+    return null;
+  });
+}
+
+export async function markWonAction(dealId: string) {
+  return runAction(({ session, store }) => {
+    const deal = assertDeal(store, session, dealId);
+    const stage = store.stages.find((item) => item.pipeline_id === deal.pipeline_id && item.type === "won");
+    if (!stage) throw new ActionError("Won stage missing");
+    const previous = deal.stage_id;
+    applyStage(deal, stage, null);
+    store.stage_history.push({
+      id: createId(),
+      deal_id: deal.id,
+      from_stage_id: previous,
+      to_stage_id: stage.id,
+      changed_by: session.userId,
+      changed_at: new Date().toISOString(),
+    });
+    audit(store, session, "deal", deal.id, "won");
+    return null;
+  });
+}
+
+export async function restoreDealAction(dealId: string) {
+  return runAction(({ session, store }) => {
+    const deal = assertDeal(store, session, dealId);
+    const stage = store.stages
+      .filter((item) => item.pipeline_id === deal.pipeline_id && item.type === "open")
+      .sort((a, b) => a.position - b.position)[0];
+    if (!stage) throw new ActionError("Stage missing");
+    const previous = deal.stage_id;
+    applyStage(deal, stage, null);
+    store.stage_history.push({
+      id: createId(),
+      deal_id: deal.id,
+      from_stage_id: previous,
+      to_stage_id: stage.id,
+      changed_by: session.userId,
+      changed_at: new Date().toISOString(),
+    });
+    return null;
+  });
+}
+
+export async function saveContactAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canWrite(session.role)) throw new ActionError(t("forbidden"));
+    const parsed = contactSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    const ownerId = canManage(session.role) ? parsed.data.ownerId : session.userId;
+    const timestamp = new Date().toISOString();
+    if (parsed.data.id) {
+      const contact = store.contacts.find((item) => item.id === parsed.data.id && item.organization_id === session.organizationId);
+      if (!contact || !canEditOwned(session.role, session.userId, contact.owner_id)) throw new ActionError(t("forbidden"));
+      Object.assign(contact, {
+        first_name: parsed.data.firstName,
+        last_name: parsed.data.lastName,
+        company_id: parsed.data.companyId,
+        job_title: parsed.data.jobTitle,
+        email: parsed.data.email || null,
+        phone: parsed.data.phone,
+        whatsapp: parsed.data.whatsapp,
+        source: parsed.data.source,
+        owner_id: ownerId,
+      });
+      touch(contact);
+      audit(store, session, "contact", contact.id, "update");
+      return contact.id;
+    }
+    const contactId = createId();
+    store.contacts.push({
+      id: contactId,
+      organization_id: session.organizationId,
+      first_name: parsed.data.firstName,
+      last_name: parsed.data.lastName,
+      company_id: parsed.data.companyId,
+      job_title: parsed.data.jobTitle,
+      email: parsed.data.email || null,
+      phone: parsed.data.phone,
+      whatsapp: parsed.data.whatsapp,
+      address: null,
+      owner_id: ownerId,
+      source: parsed.data.source,
+      created_at: timestamp,
+      updated_at: timestamp,
+      created_by: session.userId,
+    });
+    audit(store, session, "contact", contactId, "create");
+    return contactId;
+  });
+}
+
+export async function deleteContactAction(contactId: string) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    const contact = store.contacts.find((item) => item.id === contactId && item.organization_id === session.organizationId);
+    if (!contact || !canEditOwned(session.role, session.userId, contact.owner_id)) throw new ActionError(t("forbidden"));
+    store.contacts = store.contacts.filter((item) => item.id !== contactId);
+    audit(store, session, "contact", contactId, "delete");
+    return null;
+  });
+}
+
+export async function importContactsAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canWrite(session.role)) throw new ActionError(t("forbidden"));
+    const parsed = importContactSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    let created = 0;
+    for (const row of parsed.data.rows) {
+      const email = row.email.toLowerCase();
+      if (email && store.contacts.some((item) => item.organization_id === session.organizationId && item.email?.toLowerCase() === email)) {
+        continue;
+      }
+      let companyId: string | null = null;
+      if (row.company.trim()) {
+        const existing = store.companies.find(
+          (item) => item.organization_id === session.organizationId && item.name.toLowerCase() === row.company.trim().toLowerCase(),
+        );
+        if (existing) companyId = existing.id;
+        else {
+          companyId = createId();
+          const timestamp = new Date().toISOString();
+          store.companies.push({
+            id: companyId,
+            organization_id: session.organizationId,
+            name: row.company.trim(),
+            industry: null,
+            npwp: null,
+            address: null,
+            city: null,
+            province: null,
+            phone: null,
+            email: null,
+            website: null,
+            owner_id: session.userId,
+            created_at: timestamp,
+            updated_at: timestamp,
+            created_by: session.userId,
+          });
+        }
+      }
+      const timestamp = new Date().toISOString();
+      store.contacts.push({
+        id: createId(),
+        organization_id: session.organizationId,
+        first_name: row.firstName,
+        last_name: row.lastName,
+        company_id: companyId,
+        job_title: row.jobTitle || null,
+        email: email || null,
+        phone: row.phone || null,
+        whatsapp: null,
+        address: null,
+        owner_id: session.userId,
+        source: "CSV",
+        created_at: timestamp,
+        updated_at: timestamp,
+        created_by: session.userId,
+      });
+      created += 1;
+    }
+    return created;
+  });
+}
+
+export async function saveCompanyAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canWrite(session.role)) throw new ActionError(t("forbidden"));
+    const parsed = companySchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    const ownerId = canManage(session.role) ? parsed.data.ownerId : session.userId;
+    const timestamp = new Date().toISOString();
+    if (parsed.data.id) {
+      const company = store.companies.find((item) => item.id === parsed.data.id && item.organization_id === session.organizationId);
+      if (!company || !canEditOwned(session.role, session.userId, company.owner_id)) throw new ActionError(t("forbidden"));
+      Object.assign(company, {
+        name: parsed.data.name,
+        industry: parsed.data.industry,
+        city: parsed.data.city,
+        province: parsed.data.province,
+        phone: parsed.data.phone,
+        email: parsed.data.email || null,
+        website: parsed.data.website,
+        npwp: parsed.data.npwp,
+        address: parsed.data.address,
+        owner_id: ownerId,
+      });
+      touch(company);
+      return company.id;
+    }
+    const companyId = createId();
+    store.companies.push({
+      id: companyId,
+      organization_id: session.organizationId,
+      name: parsed.data.name,
+      industry: parsed.data.industry,
+      city: parsed.data.city,
+      province: parsed.data.province,
+      phone: parsed.data.phone,
+      email: parsed.data.email || null,
+      website: parsed.data.website,
+      npwp: parsed.data.npwp,
+      address: parsed.data.address,
+      owner_id: ownerId,
+      created_at: timestamp,
+      updated_at: timestamp,
+      created_by: session.userId,
+    });
+    return companyId;
+  });
+}
+
+export async function deleteCompanyAction(companyId: string) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    const company = store.companies.find((item) => item.id === companyId && item.organization_id === session.organizationId);
+    if (!company || !canEditOwned(session.role, session.userId, company.owner_id)) throw new ActionError(t("forbidden"));
+    store.companies = store.companies.filter((item) => item.id !== companyId);
+    return null;
+  });
+}
+
+export async function saveActivityAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canWrite(session.role)) throw new ActionError(t("forbidden"));
+    const parsed = activitySchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    const timestamp = new Date().toISOString();
+    const activityId = parsed.data.id ?? createId();
+    if (parsed.data.id) {
+      const activity = store.activities.find((item) => item.id === parsed.data.id && item.organization_id === session.organizationId);
+      if (!activity) throw new ActionError(t("error"));
+      if (!canManage(session.role) && activity.assigned_to !== session.userId && activity.created_by !== session.userId) {
+        throw new ActionError(t("forbidden"));
+      }
+      Object.assign(activity, {
+        type: parsed.data.type,
+        subject: parsed.data.subject,
+        note: parsed.data.note,
+        due_at: parsed.data.dueAt,
+        assigned_to: parsed.data.assignedTo,
+        deal_id: parsed.data.dealId,
+        contact_id: parsed.data.contactId,
+        company_id: parsed.data.companyId,
+      });
+      touch(activity);
+    } else {
+      store.activities.push({
+        id: activityId,
+        organization_id: session.organizationId,
+        type: parsed.data.type,
+        subject: parsed.data.subject,
+        note: parsed.data.note,
+        due_at: parsed.data.dueAt,
+        done_at: null,
+        result_note: null,
+        assigned_to: parsed.data.assignedTo,
+        deal_id: parsed.data.dealId,
+        contact_id: parsed.data.contactId,
+        company_id: parsed.data.companyId,
+        created_at: timestamp,
+        updated_at: timestamp,
+        created_by: session.userId,
+      });
+    }
+    if (parsed.data.dealId) {
+      const deal = store.deals.find((item) => item.id === parsed.data.dealId);
+      if (deal) deal.last_activity_at = timestamp;
+    }
+    return activityId;
+  });
+}
+
+export async function completeActivityAction(activityId: string, resultNote: string) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    const activity = store.activities.find((item) => item.id === activityId && item.organization_id === session.organizationId);
+    if (!activity) throw new ActionError(t("error"));
+    if (!canManage(session.role) && activity.assigned_to !== session.userId) throw new ActionError(t("forbidden"));
+    const timestamp = new Date().toISOString();
+    activity.done_at = timestamp;
+    activity.result_note = resultNote || null;
+    touch(activity);
+    if (activity.deal_id) {
+      const deal = store.deals.find((item) => item.id === activity.deal_id);
+      if (deal) deal.last_activity_at = timestamp;
+    }
+    return null;
+  });
+}
+
+export async function addNoteAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canWrite(session.role)) throw new ActionError(t("forbidden"));
+    const parsed = noteSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    const timestamp = new Date().toISOString();
+    const noteId = createId();
+    store.notes.unshift({
+      id: noteId,
+      organization_id: session.organizationId,
+      body: parsed.data.body,
+      deal_id: parsed.data.dealId,
+      contact_id: parsed.data.contactId,
+      company_id: parsed.data.companyId,
+      pinned: false,
+      created_at: timestamp,
+      updated_at: timestamp,
+      created_by: session.userId,
+    });
+    if (parsed.data.dealId) {
+      const deal = store.deals.find((item) => item.id === parsed.data.dealId);
+      if (deal) deal.last_activity_at = timestamp;
+    }
+    return noteId;
+  });
+}
+
+export async function saveLineAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    const parsed = lineSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    assertDeal(store, session, parsed.data.dealId);
+    store.deal_products.push({
+      id: createId(),
+      deal_id: parsed.data.dealId,
+      product_id: parsed.data.productId,
+      qty: parsed.data.qty,
+      unit_price: parsed.data.unitPrice,
+      discount_pct: parsed.data.discountPct,
+      subtotal: subtotal(parsed.data.qty, parsed.data.unitPrice, parsed.data.discountPct),
+    });
+    return null;
+  });
+}
+
+export async function deleteLineAction(lineId: string) {
+  return runAction(({ session, store }) => {
+    const line = store.deal_products.find((item) => item.id === lineId);
+    if (!line) throw new ActionError("Missing");
+    assertDeal(store, session, line.deal_id);
+    store.deal_products = store.deal_products.filter((item) => item.id !== lineId);
+    return null;
+  });
+}
+
+export async function applyLineTotalAction(dealId: string) {
+  return runAction(({ session, store }) => {
+    const deal = assertDeal(store, session, dealId);
+    const total = store.deal_products.filter((item) => item.deal_id === dealId).reduce((sum, item) => sum + item.subtotal, 0);
+    deal.value = total;
+    touch(deal);
+    return null;
+  });
+}
+
+export async function saveProductAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canWrite(session.role)) throw new ActionError(t("forbidden"));
+    const parsed = productSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    const timestamp = new Date().toISOString();
+    if (parsed.data.id) {
+      const product = store.products.find((item) => item.id === parsed.data.id && item.organization_id === session.organizationId);
+      if (!product) throw new ActionError(t("error"));
+      Object.assign(product, {
+        name: parsed.data.name,
+        sku: parsed.data.sku,
+        unit: parsed.data.unit,
+        unit_price: parsed.data.unitPrice,
+        category: parsed.data.category,
+      });
+      touch(product);
+      return product.id;
+    }
+    const productId = createId();
+    store.products.push({
+      id: productId,
+      organization_id: session.organizationId,
+      name: parsed.data.name,
+      sku: parsed.data.sku,
+      unit: parsed.data.unit,
+      unit_price: parsed.data.unitPrice,
+      category: parsed.data.category,
+      created_at: timestamp,
+      updated_at: timestamp,
+      created_by: session.userId,
+    });
+    return productId;
+  });
+}
+
+export async function deleteProductAction(productId: string) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canWrite(session.role)) throw new ActionError(t("forbidden"));
+    store.products = store.products.filter((item) => !(item.id === productId && item.organization_id === session.organizationId));
+    return null;
+  });
+}
+
+export async function updateProfileAction(input: unknown) {
+  const t = await getTranslations("settings");
+  return runAction(({ session, store }) => {
+    const parsed = profileSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("savedProfile"));
+    const profile = store.profiles.find((item) => item.id === session.userId);
+    if (!profile) throw new ActionError("Missing");
+    profile.full_name = parsed.data.fullName;
+    profile.phone = parsed.data.phone;
+    profile.locale = parsed.data.locale;
+    profile.updated_at = new Date().toISOString();
+    return parsed.data.locale;
+  });
+}
+
+export async function changePasswordAction(input: unknown) {
+  const t = await getTranslations("settings");
+  return runAction(({ session, store }) => {
+    const parsed = passwordSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("wrongPassword"));
+    const profile = store.profiles.find((item) => item.id === session.userId);
+    if (!profile || profile.password !== parsed.data.currentPassword) throw new ActionError(t("wrongPassword"));
+    profile.password = parsed.data.newPassword;
+    profile.updated_at = new Date().toISOString();
+    return null;
+  });
+}
+
+export async function updateOrganizationAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canAdmin(session.role)) throw new ActionError(t("forbidden"));
+    const parsed = organizationSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    const org = store.organizations.find((item) => item.id === session.organizationId);
+    if (!org) throw new ActionError(t("error"));
+    org.name = parsed.data.name;
+    touch(org);
+    return null;
+  });
+}
+
+export async function inviteMemberAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canAdmin(session.role)) throw new ActionError(t("forbidden"));
+    const parsed = inviteSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    const token = createId();
+    store.invitations.unshift({
+      id: createId(),
+      organization_id: session.organizationId,
+      email: parsed.data.email.toLowerCase(),
+      role: parsed.data.role,
+      token,
+      expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+      accepted_at: null,
+      created_at: new Date().toISOString(),
+      created_by: session.userId,
+    });
+    return token;
+  });
+}
+
+export async function setMemberRoleAction(userId: string, role: "owner" | "admin" | "manager" | "sales" | "viewer") {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canAdmin(session.role)) throw new ActionError(t("forbidden"));
+    const membership = store.memberships.find((item) => item.user_id === userId && item.organization_id === session.organizationId);
+    if (!membership) throw new ActionError(t("error"));
+    const owners = store.memberships.filter((item) => item.organization_id === session.organizationId && item.role === "owner");
+    if (membership.role === "owner" && owners.length === 1 && role !== "owner") throw new ActionError(t("forbidden"));
+    membership.role = role;
+    touch(membership);
+    return null;
+  });
+}
+
+export async function removeMemberAction(userId: string) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canAdmin(session.role)) throw new ActionError(t("forbidden"));
+    if (userId === session.userId) throw new ActionError(t("forbidden"));
+    const membership = store.memberships.find((item) => item.user_id === userId && item.organization_id === session.organizationId);
+    if (!membership) throw new ActionError(t("error"));
+    if (membership.role === "owner") {
+      const owners = store.memberships.filter((item) => item.organization_id === session.organizationId && item.role === "owner");
+      if (owners.length === 1) throw new ActionError(t("forbidden"));
+    }
+    store.memberships = store.memberships.filter((item) => item.id !== membership.id);
+    return null;
+  });
+}
+
+export async function savePipelineAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canManage(session.role)) throw new ActionError(t("forbidden"));
+    const parsed = pipelineSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    const timestamp = new Date().toISOString();
+    if (parsed.data.id) {
+      const pipeline = store.pipelines.find((item) => item.id === parsed.data.id && item.organization_id === session.organizationId);
+      if (!pipeline) throw new ActionError(t("error"));
+      pipeline.name = parsed.data.name;
+      pipeline.description = parsed.data.description;
+      pipeline.color = parsed.data.color;
+      touch(pipeline);
+      return pipeline.id;
+    }
+    const pipelineId = createId();
+    const position = store.pipelines.filter((item) => item.organization_id === session.organizationId).length;
+    store.pipelines.push({
+      id: pipelineId,
+      organization_id: session.organizationId,
+      name: parsed.data.name,
+      description: parsed.data.description,
+      color: parsed.data.color,
+      position,
+      is_default: position === 0,
+      archived: false,
+      created_at: timestamp,
+      updated_at: timestamp,
+      created_by: session.userId,
+    });
+    store.stages.push(
+      { id: createId(), organization_id: session.organizationId, pipeline_id: pipelineId, name: "Won", position: 1, probability: 100, rotting_days: null, type: "won", created_at: timestamp, updated_at: timestamp, created_by: session.userId },
+      { id: createId(), organization_id: session.organizationId, pipeline_id: pipelineId, name: "Lost", position: 2, probability: 0, rotting_days: null, type: "lost", created_at: timestamp, updated_at: timestamp, created_by: session.userId },
+      { id: createId(), organization_id: session.organizationId, pipeline_id: pipelineId, name: "Kualifikasi", position: 0, probability: 10, rotting_days: 14, type: "open", created_at: timestamp, updated_at: timestamp, created_by: session.userId },
+    );
+    return pipelineId;
+  });
+}
+
+export async function archivePipelineAction(pipelineId: string) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canManage(session.role)) throw new ActionError(t("forbidden"));
+    const active = store.pipelines.filter((item) => item.organization_id === session.organizationId && !item.archived);
+    const pipeline = active.find((item) => item.id === pipelineId);
+    if (!pipeline || active.length === 1) throw new ActionError(t("forbidden"));
+    pipeline.archived = true;
+    if (pipeline.is_default) {
+      pipeline.is_default = false;
+      const next = active.find((item) => item.id !== pipelineId);
+      if (next) next.is_default = true;
+    }
+    return null;
+  });
+}
+
+export async function saveStageAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canManage(session.role)) throw new ActionError(t("forbidden"));
+    const parsed = stageSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    const timestamp = new Date().toISOString();
+    if (parsed.data.id) {
+      const stage = store.stages.find((item) => item.id === parsed.data.id && item.organization_id === session.organizationId);
+      if (!stage) throw new ActionError(t("error"));
+      stage.name = parsed.data.name;
+      stage.probability = parsed.data.probability;
+      stage.rotting_days = parsed.data.type === "open" ? parsed.data.rottingDays : null;
+      stage.type = parsed.data.type;
+      touch(stage);
+      return stage.id;
+    }
+    const stages = store.stages.filter((item) => item.pipeline_id === parsed.data.pipelineId);
+    const stageId = createId();
+    store.stages.push({
+      id: stageId,
+      organization_id: session.organizationId,
+      pipeline_id: parsed.data.pipelineId,
+      name: parsed.data.name,
+      position: stages.length,
+      probability: parsed.data.probability,
+      rotting_days: parsed.data.type === "open" ? parsed.data.rottingDays : null,
+      type: parsed.data.type,
+      created_at: timestamp,
+      updated_at: timestamp,
+      created_by: session.userId,
+    });
+    return stageId;
+  });
+}
+
+export async function moveStageAction(stageId: string, direction: "up" | "down") {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canManage(session.role)) throw new ActionError(t("forbidden"));
+    const stage = store.stages.find((item) => item.id === stageId && item.organization_id === session.organizationId);
+    if (!stage) throw new ActionError(t("error"));
+    const siblings = store.stages.filter((item) => item.pipeline_id === stage.pipeline_id).sort((a, b) => a.position - b.position);
+    const index = siblings.findIndex((item) => item.id === stageId);
+    const swap = direction === "up" ? index - 1 : index + 1;
+    const other = siblings[swap];
+    if (!other) return null;
+    const current = stage.position;
+    stage.position = other.position;
+    other.position = current;
+    return null;
+  });
+}
+
+export async function deleteStageAction(stageId: string) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canManage(session.role)) throw new ActionError(t("forbidden"));
+    const stage = store.stages.find((item) => item.id === stageId && item.organization_id === session.organizationId);
+    if (!stage) throw new ActionError(t("error"));
+    if (store.deals.some((item) => item.stage_id === stageId)) throw new ActionError(t("forbidden"));
+    const sameType = store.stages.filter((item) => item.pipeline_id === stage.pipeline_id && item.type === stage.type);
+    if (sameType.length <= 1 && stage.type !== "open") throw new ActionError(t("forbidden"));
+    store.stages = store.stages.filter((item) => item.id !== stageId);
+    return null;
+  });
+}
+
+export async function saveTagAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canManage(session.role)) throw new ActionError(t("forbidden"));
+    const parsed = tagSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    const timestamp = new Date().toISOString();
+    if (parsed.data.id) {
+      const tag = store.tags.find((item) => item.id === parsed.data.id && item.organization_id === session.organizationId);
+      if (!tag) throw new ActionError(t("error"));
+      tag.name = parsed.data.name;
+      tag.color = parsed.data.color;
+      touch(tag);
+      return tag.id;
+    }
+    const tagId = createId();
+    store.tags.push({
+      id: tagId,
+      organization_id: session.organizationId,
+      name: parsed.data.name,
+      color: parsed.data.color,
+      created_at: timestamp,
+      updated_at: timestamp,
+      created_by: session.userId,
+    });
+    return tagId;
+  });
+}
+
+export async function deleteTagAction(tagId: string) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canManage(session.role)) throw new ActionError(t("forbidden"));
+    store.tags = store.tags.filter((item) => !(item.id === tagId && item.organization_id === session.organizationId));
+    store.deal_tags = store.deal_tags.filter((item) => item.tag_id !== tagId);
+    return null;
+  });
+}
+
+export async function saveReasonAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canManage(session.role)) throw new ActionError(t("forbidden"));
+    const parsed = reasonSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    const timestamp = new Date().toISOString();
+    if (parsed.data.id) {
+      const reason = store.lost_reasons.find((item) => item.id === parsed.data.id && item.organization_id === session.organizationId);
+      if (!reason) throw new ActionError(t("error"));
+      reason.name = parsed.data.name;
+      touch(reason);
+      return reason.id;
+    }
+    const reasonId = createId();
+    store.lost_reasons.push({
+      id: reasonId,
+      organization_id: session.organizationId,
+      name: parsed.data.name,
+      created_at: timestamp,
+      updated_at: timestamp,
+      created_by: session.userId,
+    });
+    return reasonId;
+  });
+}
+
+export async function deleteReasonAction(reasonId: string) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canManage(session.role)) throw new ActionError(t("forbidden"));
+    if (store.deals.some((item) => item.lost_reason_id === reasonId)) throw new ActionError(t("forbidden"));
+    store.lost_reasons = store.lost_reasons.filter((item) => item.id !== reasonId);
+    return null;
+  });
+}
+
+export async function saveViewAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    const parsed = savedViewSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    store.saved_views.unshift({
+      id: createId(),
+      organization_id: session.organizationId,
+      user_id: session.userId,
+      pipeline_id: parsed.data.pipelineId,
+      name: parsed.data.name,
+      filters: parsed.data.filters,
+      is_shared: false,
+      created_at: new Date().toISOString(),
+    });
+    return null;
+  });
+}
+
+export async function markNotificationsReadAction() {
+  return runAction(({ session, store }) => {
+    const timestamp = new Date().toISOString();
+    store.notifications.forEach((item) => {
+      if (item.user_id === session.userId && item.organization_id === session.organizationId && !item.read_at) {
+        item.read_at = timestamp;
+      }
+    });
+    return null;
+  });
+}
+
+export async function resetDemoAction() {
+  const t = await getTranslations("common");
+  const session = await getSession();
+  if (!session || !canAdmin(session.role)) return { ok: false as const, error: t("forbidden") };
+  resetStore();
+  const jar = await cookies();
+  jar.delete("airtek_session");
+  jar.delete(ORG_COOKIE);
+  revalidatePath("/", "layout");
+  return { ok: true as const, data: null };
+}
