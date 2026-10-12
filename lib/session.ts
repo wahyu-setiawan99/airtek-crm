@@ -8,6 +8,7 @@ import { supabaseEnabled } from "@/lib/env";
 import { loadStore } from "@/lib/store";
 import { createClient } from "@/lib/supabase/server";
 import type { CommitScope } from "@/lib/supabase/store";
+import type { User } from "@supabase/supabase-js";
 import type { Membership, Organization, Profile, Role } from "@/types/crm";
 
 export type Session = {
@@ -19,13 +20,18 @@ export type Session = {
   memberships: Membership[];
 };
 
+/** One Auth round-trip per request. Every other helper reads this cache. */
+export const getAuthUser = cache(async (): Promise<User | null> => {
+  if (!supabaseEnabled) return null;
+  const supabase = await createClient();
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getUser();
+  return data.user;
+});
+
 /** Signed-in user id: Supabase Auth in production, a cookie in demo mode. */
 export const getUserId = cache(async (): Promise<string | null> => {
-  if (supabaseEnabled) {
-    const supabase = await createClient();
-    const { data } = (await supabase?.auth.getUser()) ?? { data: { user: null } };
-    return data.user?.id ?? null;
-  }
+  if (supabaseEnabled) return (await getAuthUser())?.id ?? null;
   const jar = await cookies();
   return jar.get(SESSION_COOKIE)?.value ?? null;
 });

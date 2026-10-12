@@ -8,6 +8,7 @@ import { cookieOptions, ORG_COOKIE, SESSION_COOKIE } from "@/lib/constants";
 import { addMembership, provisionOrganization } from "@/lib/demo/onboarding";
 import { createId, mutateStore, readStore } from "@/lib/demo/store";
 import { DEV_ACCOUNTS, isBootstrapAdmin, isLocalDevSupabase, siteUrl, supabaseEnabled } from "@/lib/env";
+import { getAuthUser, getUserId } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { mutate } from "@/lib/store";
@@ -147,17 +148,16 @@ export async function resendConfirmationAction(email: string): Promise<ActionRes
 
 export async function completeOnboardingAction(): Promise<ActionResult> {
   const t = await getTranslations("auth");
-  const userId = supabaseEnabled ? (await (await requireSupabase()).auth.getUser()).data.user?.id : (await cookies()).get(SESSION_COOKIE)?.value;
+  const user = supabaseEnabled ? await getAuthUser() : null;
+  const userId = supabaseEnabled ? user?.id : (await cookies()).get(SESSION_COOKIE)?.value;
   if (!userId) return { ok: false, error: t("invalidInput") };
 
   let email = "";
   let invitationId: string | null = null;
   let preloadedInvite: Invitation | null = null;
-  if (supabaseEnabled) {
-    const supabase = await requireSupabase();
-    const { data } = await supabase.auth.getUser();
-    email = data.user?.email?.toLowerCase() ?? "";
-    invitationId = typeof data.user?.user_metadata?.invitation_id === "string" ? data.user.user_metadata.invitation_id : null;
+  if (user) {
+    email = user.email?.toLowerCase() ?? "";
+    invitationId = typeof user.user_metadata?.invitation_id === "string" ? user.user_metadata.invitation_id : null;
     if (invitationId) {
       const admin = createAdminClient();
       const { data: row } = await admin.from("invitations").select("*").eq("id", invitationId).maybeSingle();
@@ -295,9 +295,8 @@ export async function resetAction(input: unknown): Promise<ActionResult> {
 
   if (supabaseEnabled) {
     // The recovery link signed the user in via /auth/callback.
+    if (!(await getUserId())) return { ok: false, error: t("invalidToken") };
     const supabase = await requireSupabase();
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) return { ok: false, error: t("invalidToken") };
     const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
     if (error) return { ok: false, error: t("invalidInput") };
     return { ok: true, data: null };

@@ -15,8 +15,12 @@ const GUEST_ONLY = new Set(["/login", "/register", "/forgot-password"]);
 type AppLocale = "id" | "en";
 type PendingCookie = { name: string; value: string; options: CookieOptions };
 
-/** Refreshes the Supabase session and returns whether a user is signed in. */
-async function readUser(request: NextRequest, pending: PendingCookie[]) {
+/**
+ * Session cookie refresh plus a local JWT check (`getClaims`).
+ * With asymmetric signing keys this does not call the Auth server.
+ * Symmetric keys (local Docker default) fall back to that call inside the SDK.
+ */
+async function readSignedIn(request: NextRequest, pending: PendingCookie[]) {
   if (!supabaseEnabled) return Boolean(request.cookies.get(SESSION_COOKIE)?.value);
   const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     cookies: {
@@ -31,8 +35,14 @@ async function readUser(request: NextRequest, pending: PendingCookie[]) {
       },
     },
   });
-  const { data } = await supabase.auth.getUser();
-  return Boolean(data.user);
+  const { data } = await supabase.auth.getClaims();
+  const role = data?.claims?.role;
+  return Boolean(data?.claims?.sub) && role !== "anon";
+}
+
+/** Public pages that stay reachable when signed in need no session check. */
+function redirectsOnAuth(rest: string) {
+  return !PUBLIC_PATHS.has(rest) || GUEST_ONLY.has(rest);
 }
 
 function withCookies(response: NextResponse, pending: PendingCookie[]) {
@@ -90,13 +100,22 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const pending: PendingCookie[] = [];
-  const signedIn = await readUser(request, pending);
   const localized = splitLocale(pathname);
+  const rest = localized ? localized.rest : barePath(pathname);
+  if (!redirectsOnAuth(rest)) {
+    if (!localized) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/${preferredLocale(request)}${rest === "/" ? "" : rest}`;
+      return NextResponse.redirect(url);
+    }
+    return handleI18n(request);
+  }
+
+  const pending: PendingCookie[] = [];
+  const signedIn = await readSignedIn(request, pending);
 
   if (!localized) {
     const locale = preferredLocale(request);
-    const rest = barePath(pathname);
     const localizedSamePath = `/${locale}${rest === "/" ? "" : rest}`;
     const target = authTarget(locale, rest, signedIn) ?? localizedSamePath;
     const search = target === localizedSamePath ? request.nextUrl.search : target.endsWith("/login") ? loginSearch(rest, request) : "";
