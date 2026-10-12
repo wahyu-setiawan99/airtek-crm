@@ -1,10 +1,11 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { Languages } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { devLoginAction, forgotAction, loginAction, registerAction, resendConfirmationAction, resetAction } from "@/lib/actions/auth";
 import { DEMO_PASSWORD } from "@/lib/constants";
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { BrandLogo } from "@/components/brand-logo";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,9 @@ export function AuthScreen({
   devAccounts?: readonly { email: string; role: string }[];
 }) {
   const t = useTranslations("auth");
+  const tc = useTranslations("common");
+  const locale = useLocale();
+  const pathname = usePathname();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -125,7 +129,18 @@ export function AuthScreen({
         <p className="text-xs text-muted-foreground dark:text-sidebar-muted">PT. Airtek Solusi Nusantara</p>
       </section>
       <section className="relative grid place-items-center px-4 py-16">
-        <ThemeSwitch className="absolute right-4 top-4" />
+        <div className="absolute right-4 top-4 flex items-center gap-2">
+          <Link
+            href={pathname}
+            locale={locale === "id" ? "en" : "id"}
+            aria-label={tc("language")}
+            className="inline-flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <Languages className="h-3.5 w-3.5" />
+            {locale === "id" ? "EN" : "ID"}
+          </Link>
+          <ThemeSwitch />
+        </div>
         <div className="w-full max-w-md">
           <div className="mb-8 lg:hidden">
             <BrandLogo className="h-10" />
