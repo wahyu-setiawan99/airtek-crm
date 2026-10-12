@@ -281,13 +281,83 @@ export function buildDeals(store: Store, session: Session): BoardDeal[] {
     .sort((a, b) => b.value - a.value);
 }
 
-export function buildDeal(store: Store, session: Session, dealId: string): DealDetailData | null {
+function stageTimes(store: Store, deal: Store["deals"][number], now = Date.now()) {
+  const history = store.stage_history
+    .filter((item) => item.deal_id === deal.id)
+    .sort((a, b) => a.changed_at.localeCompare(b.changed_at));
+  const times: Record<string, { ms: number; enteredAt: string }> = {};
+  let stageId = history[0]?.from_stage_id ?? deal.stage_id;
+  let since = deal.created_at;
+  const close = (until: string | number) => {
+    const ms = Math.max(0, new Date(until).getTime() - new Date(since).getTime());
+    const entry = times[stageId] ?? { ms: 0, enteredAt: since };
+    times[stageId] = { ms: entry.ms + ms, enteredAt: since };
+  };
+  for (const item of history) {
+    close(item.changed_at);
+    stageId = item.to_stage_id;
+    since = item.changed_at;
+  }
+  close(now);
+  return times;
+}
+
+export function buildDeal(
+  store: Store,
+  session: Session,
+  dealId: string,
+  auditRows: Store["audit_logs"] = store.audit_logs,
+): DealDetailData | null {
   const card = toBoardDeal(store, session, dealId);
   const deal = store.deals.find((item) => item.id === dealId && item.organization_id === session.organizationId);
   if (!card || !deal) return null;
   const stages = store.stages
     .filter((item) => item.pipeline_id === deal.pipeline_id)
     .sort((a, b) => a.position - b.position);
+  const stageOrder = new Map(stages.map((item, index) => [item.id, index]));
+  const siblings = store.deals
+    .filter((item) => item.pipeline_id === deal.pipeline_id)
+    .sort((a, b) => (stageOrder.get(a.stage_id) ?? 0) - (stageOrder.get(b.stage_id) ?? 0) || a.position - b.position);
+  const index = siblings.findIndex((item) => item.id === deal.id);
+  const contact = store.contacts.find((item) => item.id === deal.primary_contact_id);
+  const company = store.companies.find((item) => item.id === deal.company_id);
+  const relatedCount = store.deals.filter(
+    (item) =>
+      item.id !== deal.id &&
+      item.organization_id === session.organizationId &&
+      ((deal.company_id && item.company_id === deal.company_id) ||
+        (deal.primary_contact_id && item.primary_contact_id === deal.primary_contact_id)),
+  ).length;
+  const extra = {
+    description: deal.description ?? null,
+    pipelineName: store.pipelines.find((item) => item.id === deal.pipeline_id)?.name ?? "",
+    nav: {
+      index: index + 1,
+      total: siblings.length,
+      prevId: siblings[index - 1]?.id ?? null,
+      nextId: siblings[index + 1]?.id ?? null,
+    },
+    stageTimes: stageTimes(store, deal),
+    relatedCount,
+    primaryContact: contact
+      ? { id: contact.id, name: contactName(contact), jobTitle: contact.job_title, email: contact.email, phone: contact.phone, whatsapp: contact.whatsapp }
+      : null,
+    company: company ? { id: company.id, name: company.name, city: company.city, phone: company.phone, email: company.email } : null,
+    createdByName: personName(store, deal.created_by),
+    source: contact?.source ?? null,
+    canManage: canManage(session.role),
+    events: auditRows
+      .filter((item) => item.entity === "deal" && item.entity_id === deal.id)
+      .map((item) => ({
+        id: item.id,
+        action: item.action,
+        field: typeof item.diff.field === "string" ? item.diff.field : null,
+        from: item.diff.from === undefined || item.diff.from === null ? null : String(item.diff.from),
+        to: item.diff.to === undefined || item.diff.to === null ? null : String(item.diff.to),
+        at: item.created_at,
+        by: personName(store, item.user_id),
+      })),
+  };
   const lines = store.deal_products
     .filter((item) => item.deal_id === deal.id)
     .map((item) => ({
@@ -343,6 +413,7 @@ export function buildDeal(store: Store, session: Session, dealId: string): DealD
         by: personName(store, item.changed_by),
       })),
     lostReasons: store.lost_reasons.filter((item) => item.organization_id === session.organizationId).map((item) => ({ id: item.id, name: item.name })),
+    ...extra,
   };
 }
 

@@ -100,3 +100,20 @@ export function addMonthsKey(offset: number, now = new Date()) {
   const m = String(date.getUTCMonth() + 1).padStart(2, "0");
   return `${y}-${m}`;
 }
+
+export function formatTime(iso: string, locale: AppLocale) {
+  return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-GB", {
+    timeZone: "Asia/Jakarta",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+/** Whole days from today (Jakarta) to the given date; negative when past. */
+export function daysUntil(iso: string, now = new Date()) {
+  const target = jakartaParts(new Date(iso));
+  const today = jakartaParts(now);
+  const a = Date.UTC(target.year, target.month - 1, target.day);
+  const b = Date.UTC(today.year, today.month - 1, today.day);
+  return Math.round((a - b) / 86_400_000);
+}

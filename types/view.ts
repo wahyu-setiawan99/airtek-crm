@@ -49,6 +49,8 @@ export type PipelineData = {
 };
 
 export type ShellData = {
+  /** Running on the local JSON store instead of Supabase. */
+  demo?: boolean;
   user: { id: string; name: string; email: string; role: Role };
   organization: Option;
   organizations: Option[];
@@ -100,6 +102,28 @@ export type DealDetailData = BoardDeal & {
   notes: { id: string; body: string; author: string; createdAt: string; pinned: boolean }[];
   history: { id: string; from: string | null; to: string; at: string; by: string }[];
   lostReasons: Option[];
+  description: string | null;
+  pipelineName: string;
+  nav: { index: number; total: number; prevId: string | null; nextId: string | null };
+  /** Time spent per stage (ms) and when the deal last entered it. */
+  stageTimes: Record<string, { ms: number; enteredAt: string }>;
+  relatedCount: number;
+  primaryContact: { id: string; name: string; jobTitle: string | null; email: string | null; phone: string | null; whatsapp: string | null } | null;
+  company: { id: string; name: string; city: string | null; phone: string | null; email: string | null } | null;
+  createdByName: string;
+  source: string | null;
+  canManage: boolean;
+  events: DealEvent[];
+};
+
+export type DealEvent = {
+  id: string;
+  action: string;
+  field: string | null;
+  from: string | null;
+  to: string | null;
+  at: string;
+  by: string;
 };
 
 export type ContactRow = {

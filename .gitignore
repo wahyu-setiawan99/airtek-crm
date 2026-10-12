@@ -48,3 +48,4 @@ next-env.d.ts
 .claude/
 supabase/.temp
 supabase/.branches
+/.next-build/

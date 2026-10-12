@@ -19,6 +19,9 @@ begin
 end;
 $$;
 
+-- Free-form project description shown on the deal page.
+alter table public.deals add column if not exists description text;
+
 -- Stage history and won/lost status are maintained by the app.
 drop trigger if exists deals_stage_change on public.deals;
 
@@ -46,6 +49,11 @@ drop policy if exists views_all on public.saved_views;
 
 create policy views_read on public.saved_views for select
   using (user_id = auth.uid() or (is_shared and public.is_member(organization_id)));
+
+-- Deal change history (audit) is part of the deal timeline, so members can read it.
+drop policy if exists audit_read on public.audit_logs;
+create policy audit_read on public.audit_logs for select using (public.is_member(organization_id));
+create index if not exists audit_entity_idx on public.audit_logs (entity, entity_id, created_at);
 
 -- Invitation tokens are visible to admins only.
 drop policy if exists invitations_read on public.invitations;

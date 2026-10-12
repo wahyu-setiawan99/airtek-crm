@@ -104,12 +104,12 @@ Aturan DB:
 
 ### Fase 0 — Setup
 - [x] `pnpm create next-app` (TS, Tailwind, App Router, ESLint), pasang shadcn/ui, next-intl, next-themes
-- [ ] Supabase project + Supabase CLI (`supabase init`, `supabase link`), `.env.local` dari `.env.example`
+- [x] Supabase project + Supabase CLI (`supabase init`, `supabase link`), `.env.local` dari `.env.example` (lokal sudah; project produksi dibuat user)
 - [x] Layout dasar: sidebar (Dashboard, Pipeline, Deals, Kontak, Perusahaan, Aktivitas, Produk, Laporan, Pengaturan), topbar (switch org, search, notifikasi, profil, tema, bahasa)
-- [ ] `git init`, push ke GitHub, hubungkan ke Vercel (lihat §8)
+- [x] `git init`, push ke GitHub — [ ] hubungkan ke Vercel + domain airtek.my.id (lihat §8)
 
 ### Fase 1 — Auth & Akun
-- [x] Login, register, lupa/reset password, magic link; (opsional) Google OAuth
+- [x] Login, register, lupa/reset password (Supabase Auth) — [ ] magic link, (opsional) Google OAuth
 - [x] Middleware proteksi route `(app)`; redirect ke `/login`
 - [x] Onboarding: setelah register pertama → buat organization + pipeline default (Qualification, Needs Analysis, Quotation, Negotiation, Closing, Won, Lost)
 - [x] Halaman profil (nama, foto, telepon, bahasa, ganti password)
@@ -131,7 +131,7 @@ Aturan DB:
 - [x] Mark Won / Lost (wajib pilih lost reason), restore
 - [x] View lain: **List** (tabel, bulk edit/hapus/pindah stage), **Calendar** (expected close date), **Forecast** (kolom per bulan)
 - [x] Filter & group: owner, tag, tanggal, nilai, prioritas, status; "My deals"; saved views
-- [ ] Halaman detail deal **sesuai spesifikasi §7.1** (header + stage bar, ringkasan nilai, info grid, tab Notes/Produk/Kontak/Lampiran/Info tambahan, panel kanan activity + timeline)
+- [x] Halaman detail deal **sesuai spesifikasi §7.1** (belum: tab Lampiran — butuh Supabase Storage; editor Tiptap diganti textarea autosave) (header + stage bar, ringkasan nilai, info grid, tab Notes/Produk/Kontak/Lampiran/Info tambahan, panel kanan activity + timeline)
 - [ ] Realtime: perubahan deal oleh user lain langsung muncul di kanban
 
 ### Fase 4 — Aktivitas & Notifikasi
@@ -239,16 +239,24 @@ Script `package.json`: `dev`, `build`, `lint`, `typecheck` (`tsc --noEmit`), `db
 
 Target deploy (sudah ditentukan):
 - **GitHub repo:** https://github.com/wahyu-setiawan99/airtek-crm (branch `main`)
-- **Vercel:** import repo di atas, hubungkan ke project Supabase.
-- **Supabase:** project dibuat oleh user memakai **akun Supabase lain** (akun utama sudah kena limit 2 project) yang login via GitHub user. Agent TIDAK membuat project Supabase sendiri — tunggu user memberikan URL & anon key, lalu isi `.env.local` dan env Vercel.
-- Push/deploy baru dilakukan setelah build awal selesai dan user memberi aba-aba.
+- **Domain produksi:** **https://airtek.my.id** (custom domain di Vercel). `NEXT_PUBLIC_SITE_URL=https://airtek.my.id`.
+- **Vercel:** import repo di atas, region function `sin1` (lihat `vercel.json`), hubungkan ke project Supabase.
+- **Supabase:** project dibuat oleh user memakai **akun Supabase lain** (akun utama sudah kena limit 2 project) yang login via GitHub user. Region **Southeast Asia (Singapore)** agar dekat dengan Vercel `sin1`. Agent TIDAK membuat project Supabase sendiri — user mengisi URL/keys di Vercel.
+
+Arsitektur data (penting):
+- Server Next.js adalah satu-satunya penulis data: server action → cek izin → `lib/store.ts#mutate` → hanya baris yang berubah ditulis dengan service-role key (`lib/supabase/store.ts`).
+- Browser/anon key hanya bisa **membaca** data organisasinya (RLS read policies). Semua policy tulis sengaja dihapus di migration 0002.
+- Tanpa env Supabase, app jalan di mode demo (file JSON lokal, di Vercel memakai `/tmp` yang tidak permanen).
+- Local dev Supabase: `npx supabase start` (port 554xx di `supabase/config.toml`, karena 543xx dipakai project lain).
 
 Langkah deploy:
-1. `git remote add origin https://github.com/wahyu-setiawan99/airtek-crm.git`, push `main`.
-2. Vercel → New Project → import repo → isi env vars di atas (Production & Preview) → Deploy.
-3. Supabase → Authentication → URL Configuration: Site URL = domain Vercel, Redirect URLs tambah `https://<domain>/auth/callback` dan `http://localhost:3000/auth/callback`.
-4. Jalankan `pnpm db:push` untuk migration ke Supabase production; `seed.sql` hanya untuk lokal/dev.
-5. Setiap push ke `main` → auto deploy production; branch/PR → preview deploy.
+1. Push ke `main` di repo GitHub di atas.
+2. Supabase (akun baru) → New project (region Singapore) → SQL Editor: jalankan `supabase/migrations/0001_init.sql` lalu `0002_server_writes.sql` (atau `supabase link` + `pnpm db:push`).
+3. Supabase → Authentication → URL Configuration: Site URL `https://airtek.my.id`; Redirect URLs: `https://airtek.my.id/auth/callback`, `https://*.vercel.app/auth/callback`, `http://localhost:3000/auth/callback`.
+4. Vercel → New Project → import repo → Environment Variables (Production & Preview): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL=https://airtek.my.id` → Deploy.
+5. Vercel → Project → Settings → Domains → tambah `airtek.my.id` (+ `www.airtek.my.id` redirect). Di DNS registrar `.my.id`: record `A @ 76.76.21.21` dan `CNAME www cname.vercel-dns.com` (ikuti nilai yang ditampilkan Vercel).
+6. Email reset password: Supabase default SMTP sangat terbatas → pasang custom SMTP (mis. Resend) di Authentication → SMTP Settings.
+7. Setiap push ke `main` → auto deploy production; branch/PR → preview deploy.
 
 ## 9. Seed Data (dev)
 Org "PT. Airtek Solusi Nusantara", pipeline "Sales" dengan stage seperti Odoo, tag HVAC/PUMP/TDG/LIFT, beberapa perusahaan (PT NINDYA KARYA, PT. Palindo Inti Nusantara, CV BINTANG LEO JAYA, IAIN Pare-pare), dan deal contoh (Gd Barak CPI Rp 850 jt, Lift IAIN Pare-pare Rp 910,2 jt, dll).

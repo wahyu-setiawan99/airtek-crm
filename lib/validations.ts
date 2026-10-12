@@ -35,6 +35,7 @@ export const dealSchema = z.object({
   expectedCloseDate: z.string().nullable(),
   tagIds: z.array(z.string()),
   probabilityOverride: z.number().min(0).max(100).nullable(),
+  description: z.string().max(8000).nullable().optional(),
 });
 
 export const quickDealSchema = z.object({
@@ -186,4 +187,19 @@ export const savedViewSchema = z.object({
     mine: z.boolean().optional(),
     view: z.string().optional(),
   }),
+});
+
+/** Inline edits on the deal page: every field optional, only sent fields change. */
+export const dealPatchSchema = z.object({
+  title: z.string().trim().min(2).max(160).optional(),
+  value: z.number().nonnegative().optional(),
+  probabilityOverride: z.number().int().min(0).max(100).nullable().optional(),
+  expectedCloseDate: z.string().nullable().optional(),
+  priority: z.number().int().min(0).max(3).optional(),
+  companyId: z.string().nullable().optional(),
+  contactId: z.string().nullable().optional(),
+  ownerId: z.string().min(1).optional(),
+  tagIds: z.array(z.string()).optional(),
+  description: z.string().max(8000).nullable().optional(),
+  stageId: z.string().min(1).optional(),
 });

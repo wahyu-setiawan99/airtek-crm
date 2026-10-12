@@ -18,6 +18,10 @@ type TableSpec = {
   strip?: string[];
   /** Load order; the app keeps these newest-first. */
   newestFirst?: boolean;
+  /** Load only the latest N rows (the store keeps a recent window). */
+  limit?: number;
+  /** Rows are never deleted by a commit (a trimmed window is not a delete). */
+  appendOnly?: boolean;
 };
 
 /** Write order respects foreign keys; deletes run in reverse. */
@@ -41,7 +45,7 @@ const TABLES: [TableName, TableSpec][] = [
   ["notes", { key: ["id"], org: "organization_id", newestFirst: true }],
   ["deal_products", { key: ["id"], deal: true, strip: ["subtotal"] }],
   ["stage_history", { key: ["id"], deal: true }],
-  ["audit_logs", { key: ["id"], org: "organization_id", newestFirst: true }],
+  ["audit_logs", { key: ["id"], org: "organization_id", newestFirst: true, limit: 200, appendOnly: true }],
   ["notifications", { key: ["id"], org: "organization_id", newestFirst: true }],
   ["saved_views", { key: ["id"], org: "organization_id", newestFirst: true }],
 ];
@@ -57,10 +61,11 @@ async function fetchAll(client: SupabaseClient, table: TableName, spec: TableSpe
       query = query.order("created_at", { ascending: !spec.newestFirst });
     }
     for (const column of spec.key) query = query.order(column, { ascending: true });
-    const { data, error } = await query.range(from, from + PAGE - 1);
+    const size = spec.limit ? Math.min(PAGE, spec.limit) : PAGE;
+    const { data, error } = await query.range(from, from + size - 1);
     if (error) throw new Error(`load ${table}: ${error.message}`);
     rows.push(...(data as Row[]));
-    if (!data || data.length < PAGE) return rows;
+    if (!data || data.length < size || (spec.limit && rows.length >= spec.limit)) return rows;
   }
 }
 
@@ -140,9 +145,11 @@ export async function commitSupabaseStore(before: Store, after: Store, scope: Co
       const old = previous.get(key);
       if (!old || JSON.stringify(old) !== JSON.stringify(row)) upserts.push(row);
     });
-    previous.forEach((row, key) => {
-      if (!next.has(key)) deletes.push(row);
-    });
+    if (!spec.appendOnly) {
+      previous.forEach((row, key) => {
+        if (!next.has(key)) deletes.push(row);
+      });
+    }
     upserts.forEach((row) => assertScope(table, spec, row));
     deletes.forEach((row) => assertScope(table, spec, row));
     return { table, spec, upserts, deletes };

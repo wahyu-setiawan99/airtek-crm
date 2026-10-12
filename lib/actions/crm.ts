@@ -18,6 +18,7 @@ import {
   activitySchema,
   companySchema,
   contactSchema,
+  dealPatchSchema,
   dealSchema,
   importContactSchema,
   inviteSchema,
@@ -207,6 +208,7 @@ export async function saveDealAction(input: unknown) {
       lost_at: stage.type === "lost" ? timestamp : null,
       position: 0,
       last_activity_at: null,
+      description: parsed.data.description ?? null,
       created_at: timestamp,
       updated_at: timestamp,
       created_by: session.userId,
@@ -251,6 +253,120 @@ export async function quickDealAction(input: unknown) {
     expectedCloseDate: null,
     tagIds: [],
     probabilityOverride: null,
+  });
+}
+
+/** Inline edit from the deal page. Each changed field is written to the audit log for the timeline. */
+export async function updateDealAction(dealId: string, input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    const parsed = dealPatchSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    const deal = assertDeal(store, session, dealId);
+    const patch = parsed.data;
+    const orgId = session.organizationId;
+    const changes: { field: string; from: string | null; to: string | null }[] = [];
+    const track = (field: string, from: string | null, to: string | null) => {
+      if (from !== to) changes.push({ field, from, to });
+    };
+    const companyName = (id: string | null) => (id ? store.companies.find((item) => item.id === id)?.name ?? null : null);
+    const contactLabel = (id: string | null) => {
+      const contact = id ? store.contacts.find((item) => item.id === id) : undefined;
+      return contact ? `${contact.first_name} ${contact.last_name}`.trim() : null;
+    };
+    const personLabel = (id: string | null) => (id ? store.profiles.find((item) => item.id === id)?.full_name ?? null : null);
+
+    if (patch.title !== undefined) {
+      track("title", deal.title, patch.title);
+      deal.title = patch.title;
+    }
+    if (patch.value !== undefined) {
+      track("value", String(deal.value), String(patch.value));
+      deal.value = patch.value;
+    }
+    if (patch.probabilityOverride !== undefined) {
+      const label = (value: number | null) => (value === null ? null : String(value));
+      track("probability", label(deal.probability_override), label(patch.probabilityOverride));
+      deal.probability_override = patch.probabilityOverride;
+    }
+    if (patch.expectedCloseDate !== undefined) {
+      track("expectedClose", deal.expected_close_date?.slice(0, 10) ?? null, patch.expectedCloseDate?.slice(0, 10) ?? null);
+      deal.expected_close_date = patch.expectedCloseDate;
+    }
+    if (patch.priority !== undefined) {
+      track("priority", String(deal.priority), String(patch.priority));
+      deal.priority = patch.priority;
+    }
+    if (patch.companyId !== undefined) {
+      if (patch.companyId && !store.companies.some((item) => item.id === patch.companyId && item.organization_id === orgId)) {
+        throw new ActionError(t("error"));
+      }
+      track("company", companyName(deal.company_id), companyName(patch.companyId));
+      deal.company_id = patch.companyId;
+    }
+    if (patch.contactId !== undefined) {
+      if (patch.contactId && !store.contacts.some((item) => item.id === patch.contactId && item.organization_id === orgId)) {
+        throw new ActionError(t("error"));
+      }
+      track("contact", contactLabel(deal.primary_contact_id), contactLabel(patch.contactId));
+      deal.primary_contact_id = patch.contactId;
+      if (patch.contactId && !store.deal_contacts.some((item) => item.deal_id === deal.id && item.contact_id === patch.contactId)) {
+        store.deal_contacts.push({ id: createId(), deal_id: deal.id, contact_id: patch.contactId, role: null });
+      }
+    }
+    if (patch.ownerId !== undefined && patch.ownerId !== deal.owner_id) {
+      if (!canManage(session.role)) throw new ActionError(t("forbidden"));
+      if (!store.memberships.some((item) => item.user_id === patch.ownerId && item.organization_id === orgId)) {
+        throw new ActionError(t("error"));
+      }
+      track("owner", personLabel(deal.owner_id), personLabel(patch.ownerId));
+      deal.owner_id = patch.ownerId;
+      if (patch.ownerId !== session.userId) {
+        store.notifications.unshift({
+          id: createId(),
+          organization_id: orgId,
+          user_id: patch.ownerId,
+          type: "deal_assigned",
+          payload: { title: deal.title, href: `/deals/${deal.id}` },
+          read_at: null,
+          created_at: new Date().toISOString(),
+        });
+      }
+    }
+    if (patch.tagIds !== undefined) {
+      const valid = patch.tagIds.filter((tagId) => store.tags.some((tag) => tag.id === tagId && tag.organization_id === orgId));
+      const names = (ids: string[]) =>
+        ids.map((id) => store.tags.find((tag) => tag.id === id)?.name).filter(Boolean).sort().join(", ") || null;
+      const current = store.deal_tags.filter((item) => item.deal_id === deal.id).map((item) => item.tag_id);
+      track("tags", names(current), names(valid));
+      store.deal_tags = store.deal_tags.filter((item) => item.deal_id !== deal.id);
+      valid.forEach((tagId) => store.deal_tags.push({ deal_id: deal.id, tag_id: tagId }));
+    }
+    if (patch.description !== undefined) {
+      if ((deal.description ?? "") !== (patch.description ?? "")) track("description", null, null);
+      deal.description = patch.description || null;
+    }
+    if (patch.stageId !== undefined && patch.stageId !== deal.stage_id) {
+      const stage = store.stages.find((item) => item.id === patch.stageId && item.pipeline_id === deal.pipeline_id);
+      // Won and lost go through their own actions (lost needs a reason).
+      if (!stage || stage.type !== "open") throw new ActionError(t("error"));
+      const previous = deal.stage_id;
+      applyStage(deal, stage, null);
+      placeDeal(store, deal, stage.id);
+      store.stage_history.push({
+        id: createId(),
+        deal_id: deal.id,
+        from_stage_id: previous,
+        to_stage_id: stage.id,
+        changed_by: session.userId,
+        changed_at: new Date().toISOString(),
+      });
+      audit(store, session, "deal", deal.id, "move", { to: stage.name });
+    }
+
+    touch(deal);
+    changes.forEach((change) => audit(store, session, "deal", deal.id, "field", change));
+    return null;
   });
 }
 

@@ -131,7 +131,7 @@ export function AppShell({
             );
           })}
         </nav>
-        <p className="px-4 pb-4 text-[11px] text-sidebar-muted">{tc("demo")}</p>
+        {shell.demo ? <p className="px-4 pb-4 text-[11px] text-sidebar-muted">{tc("demo")}</p> : null}
       </aside>
 
       <div className="md:pl-60">

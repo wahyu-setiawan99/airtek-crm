@@ -116,6 +116,7 @@ export type Deal = Stamp & {
   id: string;
   organization_id: string;
   title: string;
+  description: string | null;
   pipeline_id: string;
   stage_id: string;
   value: number;

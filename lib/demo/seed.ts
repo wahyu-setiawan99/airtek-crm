@@ -3,7 +3,7 @@ import { subtotal } from "@/lib/domain";
 import { jakartaDate, jakartaParts } from "@/lib/format";
 import type { Stage, StageType, Store } from "@/types/crm";
 
-export const STORE_VERSION = 1;
+export const STORE_VERSION = 2;
 
 const id = {
   org: "10000000-0000-4000-8000-000000000001",
@@ -333,6 +333,7 @@ function deal(
     lost_at: null,
     position,
     last_activity_at: jakartaDate(lastActivityDays, 11),
+    description: null,
     created_at: jakartaDate(-30, 9),
     updated_at: jakartaDate(lastActivityDays, 11),
     created_by: ownerId,
