@@ -2,6 +2,45 @@
 
 Panduan untuk AI agent (Cursor, Claude, dll) yang membangun project ini. Baca seluruh file ini sebelum menulis kode. Kerjakan per fase, centang checklist saat selesai.
 
+## 0. Cara Kerja Agent & Antrian Kerja (BACA PERTAMA)
+
+User memberi **satu perintah yang sama** setiap sesi: *"Baca AGENTS.md dan lanjutkan Antrian Kerja §0."* Agent menentukan sendiri tugas berikutnya dari daftar di bawah, mengerjakannya sampai selesai, lalu **lanjut ke item berikutnya** — sampai bertemu **kondisi berhenti**.
+
+### 0.1 Antrian kerja (kerjakan berurutan, item teratas yang belum ✅ dan tidak 🔒)
+1. [ ] **§15.0 Langkah 3** — Speed Insights + Analytics, ukur ulang, isi tabel §15.1.
+2. [ ] **§16.1–16.2** — jenis klien Konsultan/Kontraktor/Owner (hapus "Industri") + pihak proyek di deal. *(butuh migration `0005`)*
+3. [ ] **§16.3–16.4** — filter lintas sales di daftar Deal (pipeline, tahap, jenis klien, lokasi, target closing, nilai), badge "Milik {nama}", target sales per bulan, cek duplikat, lokasi proyek. *(kemungkinan migration `0006`)*
+4. [ ] **§13.8** — QA: Lighthouse desktop ≥ 90, aksesibilitas, nol hydration warning, uji alur lengkap di lokal.
+5. [ ] 🔒 **§14 Impor Odoo** — TERKUNCI sampai user menulis di chat bahwa direktur & semua sales sudah aktif di CRM.
+6. [ ] **§15.3, §15.5, §15.6, §15.7** — optimasi besar (query per halaman, revalidasi sempit, bundle, index). Setelah item 5, atau lebih dulu bila user meminta.
+7. [ ] **Fase 7 PWA** (§5).
+8. [ ] 🔒 **Fase 11 AI Gemini** (§17) — TERKUNCI sampai user memberikan `GEMINI_API_KEY` di Vercel/`.env.local`.
+
+Saat item selesai: centang di sini **dan** di checklist fasenya (§5), perbarui status di §13 bila relevan.
+
+### 0.2 Langkah wajib setiap item
+1. Baca bagian spesifikasi item itu + §6 (konvensi), §8 (arsitektur data), §18 (lingkungan lokal).
+2. Nyalakan lingkungan lokal: `pnpm db:start` → `pnpm dev:seed` → `pnpm dev`. Uji dengan akun §18 sesuai level (`boss`, `admin`, `sales1`, `sales2` @airtek.test); email dicek di Mailpit `http://127.0.0.1:55424`.
+3. Tabel/kolom baru → migration baru `supabase/migrations/000N_*.sql` (jangan edit yang lama), `types/crm.ts`, `TABLES` di `lib/supabase/store.ts`, `lib/demo/seed.ts`, `scripts/dev-seed.ts` bila perlu. Uji dengan `pnpm db:reset` + `pnpm dev:seed`.
+4. `pnpm lint && pnpm typecheck && pnpm build` harus lulus.
+5. Commit kecil (Conventional Commits) → **push** ke `main` → pastikan deploy Vercel **Ready** (status commit di GitHub, atau minta user melihat Vercel → Deployments).
+
+### 0.3 Kondisi berhenti (hentikan antrian, laporkan, tunggu user)
+- **Migration baru untuk produksi:** commit di lokal tetapi **JANGAN push** kode yang bergantung padanya. Minta user menjalankan isi `supabase/migrations/000N_*.sql` di Supabase produksi (SQL Editor) dan membalas "SQL 000N sudah" — baru push. (Migration yang murni menambah kolom/tabel boleh dijalankan user lebih dulu; kode baru tidak boleh live sebelum SQL-nya.)
+- Butuh tindakan user di dashboard: env/kunci baru di Vercel, pengaturan Supabase, DNS, Resend, dsb.
+- Item berikutnya 🔒 terkunci, atau butuh keputusan bisnis yang tidak tertulis di sini.
+- Gagal yang tidak bisa diperbaiki setelah 2–3 percobaan (build/test/deploy).
+
+### 0.4 Format laporan ke user (Bahasa Indonesia, singkat)
+1. **Selesai:** item apa, commit apa, sudah di-push & deploy Ready atau belum.
+2. **Perlu Anda lakukan:** langkah konkret (mis. "jalankan SQL 0005 di Supabase → balas 'SQL 0005 sudah'"), atau "tidak ada".
+3. **Berikutnya:** item antrian selanjutnya / alasan berhenti.
+
+### 0.5 Larangan
+- Tidak membuat akun, login, atau menjalankan seed di produksi (`airtek.my.id`); seed hanya lokal (`scripts/dev-seed.ts` punya pengaman localhost — jangan dihapus).
+- Tidak menyimpan kredensial produksi di repo; tidak mengubah migration lama yang sudah dijalankan.
+- Tidak menghapus keputusan user yang tercatat (§11.2 level Boss/Administrator/Sales, §11.3 tanpa demo di produksi, §12 undangan email saja, §13 "Tidak dikerjakan", §16 hanya 3 jenis klien).
+
 ## 1. Tujuan
 CRM web untuk PT. Airtek Solusi Nusantara (kontraktor HVAC, Pump, TDG, Lift) — menggantikan Odoo CRM dengan UX lebih cepat, multi-pipeline, forecast yang jelas. **Desktop-first** (PC/laptop); versi mobile menyusul sebagai PWA (Fase 7).
 
