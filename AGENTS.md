@@ -180,7 +180,7 @@ Aturan DB:
 - [ ] Pengingat aktivitas via email harian (§13.7)
 - [ ] QA: Lighthouse ≥ 90, aksesibilitas, hydration warning (§13.8)
 - [ ] Sidebar bisa diciutkan (mode ikon) / dimunculkan (§13.9)
-- [ ] Impor data dari Odoo CRM (§14)
+- [ ] Impor data dari Odoo CRM (§14) — **hanya setelah semua sales sudah diundang & aktif** (§14.0)
 - [ ] Jenis klien Konsultan/Kontraktor/Owner + pihak proyek (§16.1–16.2)
 - [ ] Visibilitas & filter proyek lintas sales (§16.3)
 - [ ] Fitur sederhana dari riset CRM lain: target sales, cek duplikat, lokasi proyek (§16.4)
@@ -476,6 +476,13 @@ Sudah selesai & live: Supabase (data + auth, RLS read-only, server writes), mult
 ## 14. Impor Data dari Odoo
 
 Tujuan: memindahkan data CRM lama dari `pt-airtek-solusi-nusantara.odoo.com` ke Airtek CRM sekali jalan (bisa diulang tanpa duplikat), dikerjakan oleh **Boss/Administrator**.
+
+### 14.0 Urutan wajib (keputusan user 12 Okt 2026)
+1. Boss mendaftar → mengundang Administrator (direktur).
+2. Boss/Administrator **mengundang semua sales** yang ada di Odoo, dan setiap sales **sudah menerima undangan & membuat kata sandi** (status anggota aktif, bukan "Menunggu").
+3. **Baru setelah itu impor Odoo dijalankan**, supaya setiap proyek langsung terpasang ke akun salesperson yang benar (tag sales per proyek, §16.3).
+- Halaman impor menampilkan **daftar cek sebelum mulai**: salesperson unik di file Odoo vs anggota aktif di CRM. Jika masih ada salesperson Odoo yang belum punya akun aktif → tampilkan peringatan + tombol ke Pengaturan → Anggota untuk mengundang; tombol **Impor** baru aktif setelah semua salesperson terpetakan ke anggota aktif (atau secara sadar dipetakan ke salesperson lain oleh Boss/Administrator).
+- Undangan yang masih "Menunggu" tidak dihitung sebagai siap — data tidak boleh diimpor ke akun yang belum aktif.
 
 ### 14.1 Sumber data (ekspor dari Odoo, tanpa API)
 Odoo Online paket standar tidak membuka API eksternal, jadi pakai fitur **Export** bawaan Odoo (list view → pilih semua → ⚙ Action → **Export** → format **XLSX** atau **CSV**, centang *"I want to update data (import-compatible export)"* agar kolom `id` / External ID ikut). File yang diekspor:
