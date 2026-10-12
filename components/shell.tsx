@@ -67,21 +67,22 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
-  const appliedTheme = useRef<string | null>(null);
+  // Last theme received from the server; applied only when the saved value itself changes,
+  // because setTheme's identity changes with every theme switch and would re-run the effect.
+  const syncedTheme = useRef<string | null>(null);
   const [open, setOpen] = useState(false);
   const [mobile, setMobile] = useState(false);
   const [more, setMore] = useState(false);
   const unread = shell.notifications.filter((item) => !item.read).length;
 
   useEffect(() => {
-    if (appliedTheme.current === shell.user.theme) return;
-    appliedTheme.current = shell.user.theme;
+    if (syncedTheme.current === shell.user.theme) return;
+    syncedTheme.current = shell.user.theme;
     setTheme(shell.user.theme);
   }, [setTheme, shell.user.theme]);
 
   function toggleTheme() {
     const next = resolvedTheme === "dark" ? "light" : "dark";
-    appliedTheme.current = next;
     setTheme(next);
     void updateThemeAction(next);
   }
