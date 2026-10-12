@@ -62,16 +62,16 @@ export function MembersPanel({
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <section className="grid gap-3">
         <h2 className="text-sm font-semibold">{t("levelsTitle")}</h2>
-        <div className={cn("grid gap-3", levels.length > 2 ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
+        <div className={cn("grid items-stretch gap-3", levels.length > 2 ? "md:grid-cols-3" : "md:grid-cols-2")}>
           {levels.map((level, index) => {
             const Icon = level.icon;
             return (
-              <article key={level.role} className="rounded-lg border bg-card p-4">
+              <article key={level.role} className="flex h-full flex-col rounded-lg border bg-card p-4">
                 <div className="flex items-center gap-2">
-                  <span className="grid h-8 w-8 place-items-center rounded-md bg-primary/10 text-primary">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                     <Icon className="h-4 w-4" />
                   </span>
                   <div>
@@ -86,28 +86,28 @@ export function MembersPanel({
         </div>
       </section>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="grid gap-4">
-          {grouped.map((group) => (
-            <div key={group.role} className="grid gap-2">
-              <h2 className="text-sm font-semibold">{tc(`roles.${group.role}`)}</h2>
-              <ul className="grid gap-2">
-                {group.people.map((member) => {
-                  const isBoss = member.role === "owner";
-                  const canRemove = canAdmin && !isBoss && member.userId !== currentUserId;
-                  return (
-                    <li key={member.userId} className={cn("flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3", member.disabled && "opacity-70")}>
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/15 text-xs font-semibold text-primary">{initials(member.name)}</span>
-                      <div className="min-w-48 flex-1">
-                        <p className="font-medium">{member.name}</p>
-                        <p className="text-xs text-muted-foreground">{member.email}</p>
-                      </div>
-                      {member.disabled ? <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{t("inactive")}</span> : null}
+      <section className="grid gap-6">
+        {grouped.map((group) => (
+          <div key={group.role} className="grid gap-3">
+            <h2 className="text-sm font-semibold">{tc(`roles.${group.role}`)}</h2>
+            <ul className="grid gap-3">
+              {group.people.map((member) => {
+                const isBoss = member.role === "owner";
+                const canRemove = canAdmin && !isBoss && member.userId !== currentUserId;
+                return (
+                  <li key={member.userId} className={cn("flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3", member.disabled && "opacity-70")}>
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/15 text-xs font-semibold text-primary">{initials(member.name)}</span>
+                    <div className="min-w-48 flex-1">
+                      <p className="font-medium">{member.name}</p>
+                      <p className="text-xs text-muted-foreground">{member.email}</p>
+                    </div>
+                    <div className="ml-auto flex flex-wrap items-center gap-2">
+                      {member.disabled ? <span className="inline-flex h-9 items-center rounded-full bg-muted px-3 text-xs text-muted-foreground">{t("inactive")}</span> : null}
                       {isBoss ? (
-                        <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">{t("bossLocked")}</span>
+                        <span className="inline-flex h-9 items-center rounded-full bg-primary/10 px-3 text-xs font-medium text-primary">{t("bossLocked")}</span>
                       ) : (
                         <Select
-                          className="w-auto"
+                          className="h-9 w-40"
                           defaultValue={member.role}
                           disabled={!canAdmin || member.disabled}
                           aria-label={tc("role")}
@@ -118,7 +118,7 @@ export function MembersPanel({
                       )}
                       {canRemove ? (
                         <Button
-                          size="sm"
+                          className="h-9"
                           variant="outline"
                           onClick={() => {
                             const message = member.disabled ? t("enableConfirm") : t("disableConfirm");
@@ -130,45 +130,16 @@ export function MembersPanel({
                         </Button>
                       ) : null}
                       {canRemove ? (
-                        <Button size="sm" variant="destructive" onClick={() => setRemoving(member)}>{t("deleteAccount")}</Button>
+                        <Button className="h-9" variant="destructive" onClick={() => setRemoving(member)}>{t("deleteAccount")}</Button>
                       ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </section>
-
-        {canAdmin ? (
-          <form
-            className="grid gap-3 rounded-lg border bg-card p-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const form = new FormData(event.currentTarget);
-              const email = String(form.get("email"));
-              const formElement = event.currentTarget;
-              void inviteMemberAction({ email, fullName: String(form.get("fullName")), role: String(form.get("role")), teamId: null }).then((result) => {
-                if (!result.ok) return toast.error(result.error);
-                toast.success(t("inviteSent", { email }));
-                formElement.reset();
-                router.refresh();
-              });
-            }}
-          >
-            <h2 className="text-sm font-semibold">{t("invite")}</h2>
-            <Field label={tc("name")}><Input name="fullName" required /></Field>
-            <Field label={tc("email")}><Input name="email" type="email" required /></Field>
-            <Field label={tc("role")}>
-              <Select name="role" defaultValue="sales">
-                <option value="sales">{tc("roles.sales")}</option>
-                <option value="admin">{tc("roles.admin")}</option>
-              </Select>
-            </Field>
-            <Button type="submit">{t("copyInvite")}</Button>
-          </form>
-        ) : null}
-      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </section>
 
       <section className="grid gap-3">
         <div>
@@ -203,6 +174,37 @@ export function MembersPanel({
           </ul>
         )}
       </section>
+
+      {canAdmin ? (
+        <form
+          className="grid gap-4 rounded-lg border bg-card p-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const form = new FormData(event.currentTarget);
+            const email = String(form.get("email"));
+            const formElement = event.currentTarget;
+            void inviteMemberAction({ email, fullName: String(form.get("fullName")), role: String(form.get("role")), teamId: null }).then((result) => {
+              if (!result.ok) return toast.error(result.error);
+              toast.success(t("inviteSent", { email }));
+              formElement.reset();
+              router.refresh();
+            });
+          }}
+        >
+          <h2 className="text-sm font-semibold">{t("invite")}</h2>
+          <div className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem_auto]">
+            <Field label={tc("name")}><Input name="fullName" required /></Field>
+            <Field label={tc("email")}><Input name="email" type="email" required /></Field>
+            <Field label={tc("role")}>
+              <Select name="role" defaultValue="sales">
+                <option value="sales">{tc("roles.sales")}</option>
+                <option value="admin">{tc("roles.admin")}</option>
+              </Select>
+            </Field>
+            <Button type="submit" className="h-10">{t("copyInvite")}</Button>
+          </div>
+        </form>
+      ) : null}
 
       <Dialog
         open={Boolean(removing)}
