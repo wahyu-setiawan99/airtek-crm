@@ -1,13 +1,19 @@
 <!doctype html>
 <html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Konfirmasi email Airtek CRM</title>
+  </head>
   <body style="margin:0;padding:0;background:#f6f3f4;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f6f3f4;">Konfirmasi alamat email Anda untuk mengaktifkan akun Airtek CRM.</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f3f4;padding:24px 12px;">
       <tr>
         <td align="center">
           <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:8px;padding:32px 28px;font-family:Arial,Helvetica,sans-serif;color:#1c1917;">
             <tr>
               <td>
-                <img src="https://airtek.my.id/brand/airtek-logo.png" alt="Airtek" width="180" style="display:block;height:auto;border:0;" />
+                <img src="https://airtek.my.id/brand/airtek-logo.png" alt="Airtek CRM" width="180" height="59" style="display:block;width:180px;height:59px;border:0;outline:none;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:700;line-height:59px;color:#9a1b4b;" />
                 <p style="margin:24px 0 8px;font-size:16px;">Halo,</p>
                 <p style="margin:0 0 16px;font-size:15px;line-height:1.5;">
                   Konfirmasi email <strong>{{ .Email }}</strong> untuk mulai memakai <strong>Airtek CRM</strong>.
@@ -16,7 +22,9 @@
                   <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=signup&amp;next=/id/onboarding" style="display:inline-block;background:#9a1b4b;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:6px;">Konfirmasi email</a>
                 </p>
                 <p style="margin:0 0 16px;font-size:13px;color:#78716c;">Jika Anda tidak mendaftar, abaikan email ini.</p>
-                <p style="margin:0;font-size:12px;color:#78716c;">Airtek CRM · PT. Airtek Solusi Nusantara</p>
+                <p style="margin:0 0 20px;font-size:12px;line-height:1.5;color:#78716c;">Jika tombol tidak berfungsi, salin tautan berikut ke browser:<br /><a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=signup&amp;next=/id/onboarding" style="color:#9a1b4b;word-break:break-all;">{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=signup&amp;next=/id/onboarding</a></p>
+                <p style="margin:0 0 8px;font-size:12px;line-height:1.5;color:#78716c;">Anda menerima email ini karena alamat {{ .Email }} didaftarkan di Airtek CRM. Jika bukan Anda, abaikan email ini.</p>
+                <p style="margin:0;font-size:12px;color:#78716c;">Airtek CRM · PT. Airtek Solusi Nusantara · <a href="https://airtek.my.id" style="color:#78716c;">airtek.my.id</a></p>
               </td>
             </tr>
           </table>
