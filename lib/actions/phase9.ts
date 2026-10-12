@@ -5,9 +5,10 @@ import { ActionError, runAction, touch } from "@/lib/action";
 import { createId } from "@/lib/demo/store";
 import { siteUrl, supabaseEnabled } from "@/lib/env";
 import { canAdmin, canEditOwned, canManage, canWrite } from "@/lib/permissions";
+import { getSession, type Session } from "@/lib/session";
+import { loadStore } from "@/lib/store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Store } from "@/types/crm";
-import type { Session } from "@/lib/session";
 
 function audit(store: Store, session: Session, entity: string, entityId: string, action: string, diff: Store["audit_logs"][number]["diff"] = {}) {
   store.audit_logs.unshift({
@@ -101,6 +102,86 @@ export async function setMemberActiveAction(userId: string, active: boolean) {
     touch(membership);
     return null;
   });
+}
+
+function retiredEmail(userId: string) {
+  return `retired.${userId.replaceAll("-", "")}@invalid.airtek.local`;
+}
+
+/** Removes someone from the organization and frees their login email. The boss account cannot be removed. */
+export async function deleteMemberAccountAction(userId: string) {
+  const t = await getTranslations("common");
+  const ts = await getTranslations("settings");
+  const session = await getSession();
+  if (!session || !canAdmin(session.role) || userId === session.userId) return { ok: false as const, error: t("forbidden") };
+  const store = await loadStore();
+  const membership = store.memberships.find((item) => item.user_id === userId && item.organization_id === session.organizationId);
+  if (!membership || membership.role === "owner") return { ok: false as const, error: t("forbidden") };
+  const email = store.profiles.find((item) => item.id === userId)?.email ?? "";
+  const otherOrgs = store.memberships.some((item) => item.user_id === userId && item.organization_id !== session.organizationId && !item.disabled_at);
+  const released = retiredEmail(userId);
+
+  if (supabaseEnabled && !otherOrgs && email) {
+    try {
+      const admin = createAdminClient();
+      const { error } = await admin.auth.admin.updateUserById(userId, {
+        email: released,
+        email_confirm: true,
+        ban_duration: "876000h",
+      });
+      if (error) {
+        console.error(error);
+        return { ok: false as const, error: ts("deleteAccountFailed") };
+      }
+    } catch (error) {
+      console.error(error);
+      return { ok: false as const, error: ts("deleteAccountFailed") };
+    }
+  }
+
+  const result = await runAction(({ session: current, store: next }) => {
+    if (!canAdmin(current.role) || userId === current.userId) throw new ActionError(t("forbidden"));
+    const row = next.memberships.find((item) => item.user_id === userId && item.organization_id === current.organizationId);
+    if (!row || row.role === "owner") throw new ActionError(t("forbidden"));
+    next.memberships = next.memberships.filter((item) => item.id !== row.id);
+    const person = next.profiles.find((item) => item.id === userId);
+    if (person && !otherOrgs && !supabaseEnabled) person.email = released;
+    const now = new Date().toISOString();
+    for (const invitation of next.invitations) {
+      if (
+        invitation.organization_id === current.organizationId
+        && invitation.email.toLowerCase() === email.toLowerCase()
+        && !invitation.cancelled_at
+        && !invitation.accepted_at
+      ) {
+        invitation.cancelled_at = now;
+      }
+    }
+    audit(next, current, "membership", userId, "delete_account", { email });
+    return null;
+  });
+
+  if (!result.ok) {
+    if (supabaseEnabled && !otherOrgs && email) {
+      try {
+        const admin = createAdminClient();
+        await admin.auth.admin.updateUserById(userId, { email, ban_duration: "none" });
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    return result;
+  }
+
+  if (supabaseEnabled && !otherOrgs) {
+    try {
+      const admin = createAdminClient();
+      await admin.from("profiles").update({ email: released }).eq("id", userId);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  return { ok: true as const, data: null };
 }
 
 export async function reassignDealsAction(input: { dealIds: string[]; ownerId: string }) {

@@ -9,18 +9,17 @@ import {
   deleteStageAction,
   deleteTagAction,
   duplicatePipelineAction,
-  inviteMemberAction,
   moveStageAction,
   resetDemoAction,
   savePipelineAction,
   saveReasonAction,
   saveStageAction,
   saveTagAction,
-  setMemberRoleAction,
   updateOrganizationAction,
   updateProfileAction,
 } from "@/lib/actions/crm";
-import { cancelInvitationAction, deleteCustomFieldAction, resendInvitationAction, saveCustomFieldAction, setMemberActiveAction } from "@/lib/actions/phase9";
+import { deleteCustomFieldAction, saveCustomFieldAction } from "@/lib/actions/phase9";
+import { MembersPanel } from "@/components/members-panel";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/routing";
 import { formatDateTime } from "@/lib/format";
@@ -33,6 +32,7 @@ type SettingsData = {
   organization: { name: string };
   canAdmin: boolean;
   canManage: boolean;
+  currentUserId: string;
   members: { userId: string; name: string; email: string; role: Role; disabled: boolean }[];
   invitations: { id: string; email: string; role: Role; expiresAt: string; status: "pending" | "accepted" | "expired" }[];
   customFields: { id: string; entity: "deal" | "contact" | "company"; label: string; field_type: "text" | "number" | "date" | "select"; options: string | null }[];
@@ -137,78 +137,13 @@ export function SettingsScreen({
           </form>
         ) : null}
         {section === "members" ? (
-          <div className="grid gap-4">
-            <ul className="divide-y rounded-lg border bg-card">
-              {data.members.map((member) => (
-                <li key={member.userId} className="flex flex-wrap items-center gap-3 p-3 text-sm">
-                  <div className="min-w-40 flex-1">
-                    <p className="font-medium">{member.name}</p>
-                    <p className="text-xs text-muted-foreground">{member.email}</p>
-                  </div>
-                  <Select defaultValue={member.role} disabled={!data.canAdmin || member.disabled} aria-label={tc("role")} onChange={(event) => void setMemberRoleAction(member.userId, event.target.value as Role).then((result) => done(result))}>
-                    {(member.role === "owner" ? (["owner", "admin", "sales"] as const) : (["admin", "sales"] as const)).map((role) => <option key={role} value={role}>{tc(`roles.${role}`)}</option>)}
-                  </Select>
-                  {data.canAdmin && member.role !== "owner" ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        const message = member.disabled ? t("enableConfirm") : t("disableConfirm");
-                        if (!window.confirm(message)) return;
-                        void setMemberActiveAction(member.userId, member.disabled).then((result) => done(result));
-                      }}
-                    >
-                      {member.disabled ? t("enable") : t("disable")}
-                    </Button>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-            {data.canAdmin ? (
-              <form className="grid max-w-lg gap-3" onSubmit={(event) => {
-                event.preventDefault();
-                const form = new FormData(event.currentTarget);
-                const email = String(form.get("email"));
-                const formElement = event.currentTarget;
-                void inviteMemberAction({ email, fullName: String(form.get("fullName")), role: String(form.get("role")), teamId: null }).then((result) => {
-                  if (!result.ok) return toast.error(result.error);
-                  toast.success(t("inviteSent", { email }));
-                  formElement.reset();
-                  router.refresh();
-                });
-              }}>
-                <h2 className="text-sm font-semibold">{t("invite")}</h2>
-                <Field label={tc("name")}><Input name="fullName" required /></Field>
-                <Field label={tc("email")}><Input name="email" type="email" required /></Field>
-                <Field label={tc("role")}>
-                  <Select name="role" defaultValue="sales">{(["sales", "admin"] as const).map((role) => <option key={role} value={role}>{tc(`roles.${role}`)}</option>)}</Select>
-                </Field>
-                <Button type="submit">{t("copyInvite")}</Button>
-              </form>
-            ) : null}
-            {data.invitations.length > 0 ? (
-              <div>
-                <h2 className="text-sm font-semibold">{t("pending")}</h2>
-                <ul className="mt-2 text-sm">
-                  {data.invitations.map((invite) => (
-                    <li key={invite.id} className="flex flex-wrap items-center gap-2 py-2">
-                      <span className="min-w-40 flex-1">{invite.email} · {tc(`roles.${invite.role}`)}</span>
-                      <span className="text-xs text-muted-foreground">{t(invite.status === "accepted" ? "statusAccepted" : invite.status === "expired" ? "statusExpired" : "statusPending")} · {formatDateTime(invite.expiresAt, locale)}</span>
-                      {invite.status !== "accepted" ? (
-                        <Button size="sm" variant="outline" onClick={() => void resendInvitationAction(invite.id).then((result) => done(result))}>{t("resend")}</Button>
-                      ) : null}
-                      {invite.status !== "accepted" ? (
-                        <Button size="sm" variant="ghost" onClick={() => {
-                          if (!window.confirm(t("cancelConfirm"))) return;
-                          void cancelInvitationAction(invite.id).then((result) => done(result));
-                        }}>{t("cancelInvite")}</Button>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </div>
+          <MembersPanel
+            members={data.members}
+            invitations={data.invitations}
+            canAdmin={data.canAdmin}
+            currentUserId={data.currentUserId}
+            locale={locale}
+          />
         ) : null}
         {section === "pipelines" && data.canManage ? (
           <div className="grid gap-4">

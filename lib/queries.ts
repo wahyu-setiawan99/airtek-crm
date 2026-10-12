@@ -619,6 +619,7 @@ export function buildSettings(store: Store, session: Session) {
     organization: session.organization,
     canAdmin: session.role === "owner" || session.role === "admin",
     canManage: canManage(session.role),
+    currentUserId: session.userId,
     members: store.memberships
       .filter((item) => item.organization_id === orgId)
       .filter((item) => session.role === "owner" || item.role !== "owner")
