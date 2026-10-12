@@ -1,7 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
 import { ContactsScreen } from "@/components/directory";
 import { canWrite } from "@/lib/permissions";
-import { readStore } from "@/lib/demo/store";
+import { loadStore } from "@/lib/store";
 import { buildContacts } from "@/lib/queries";
 import { requireSession } from "@/lib/session";
 import { contactName } from "@/lib/utils";
@@ -17,7 +17,7 @@ export default async function ContactsPage({
   const query = await searchParams;
   setRequestLocale(locale);
   const session = await requireSession();
-  const store = readStore();
+  const store = await loadStore();
   const org = session.organizationId;
   return (
     <ContactsScreen

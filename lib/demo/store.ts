@@ -1,9 +1,11 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { createSeed, STORE_VERSION } from "@/lib/demo/seed";
 import type { Store } from "@/types/crm";
 
-const dataDir = path.join(process.cwd(), ".data");
+// Serverless file systems are read-only outside the temp dir, so demo data there is ephemeral.
+const dataDir = process.env.VERCEL ? path.join(tmpdir(), "airtek-crm") : path.join(process.cwd(), ".data");
 const dataFile = path.join(dataDir, "crm.json");
 
 function persist(store: Store) {

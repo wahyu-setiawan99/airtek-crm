@@ -18,9 +18,11 @@ const demos = [
 export function AuthScreen({
   mode,
   inviteToken = null,
+  demo = false,
 }: {
   mode: "login" | "register" | "forgot" | "reset";
   inviteToken?: string | null;
+  demo?: boolean;
 }) {
   const t = useTranslations("auth");
   const router = useRouter();
@@ -28,6 +30,7 @@ export function AuthScreen({
   const [pending, setPending] = useState(false);
   const [resetLink, setResetLink] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [sent, setSent] = useState(false);
 
   async function onSubmit(formData: FormData) {
     setPending(true);
@@ -60,7 +63,8 @@ export function AuthScreen({
       const result = await forgotAction({ email });
       setPending(false);
       if (!result.ok) return setError(result.error);
-      setResetLink(`/reset-password?token=${result.data}`);
+      if (result.data) setResetLink(`/reset-password?token=${result.data}`);
+      else setSent(true);
       return;
     }
     const result = await resetAction({ token: String(formData.get("token") ?? ""), password });
@@ -69,7 +73,7 @@ export function AuthScreen({
     setDone(true);
   }
 
-  async function demo(email: string) {
+  async function loginDemo(email: string) {
     setPending(true);
     const result = await loginAction({ email, password: DEMO_PASSWORD });
     setPending(false);
@@ -140,6 +144,7 @@ export function AuthScreen({
             ) : null}
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             {done ? <p className="text-sm text-success">{t("passwordUpdated")}</p> : null}
+            {sent ? <p className="text-sm text-success">{t("resetEmailSent")}</p> : null}
             {resetLink ? (
               <p className="text-sm">
                 {t("resetReady")}{" "}
@@ -152,12 +157,12 @@ export function AuthScreen({
               {mode === "login" ? t("signIn") : mode === "register" ? t("signUp") : mode === "forgot" ? t("sendLink") : t("updatePassword")}
             </Button>
           </form>
-          {mode === "login" ? (
+          {mode === "login" && demo ? (
             <div className="mt-6">
               <p className="text-xs text-muted-foreground">{t("demoHint")}</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {demos.map((demoUser) => (
-                  <Button key={demoUser.email} type="button" variant="outline" size="sm" disabled={pending} onClick={() => void demo(demoUser.email)}>
+                  <Button key={demoUser.email} type="button" variant="outline" size="sm" disabled={pending} onClick={() => void loginDemo(demoUser.email)}>
                     {t(demoUser.label)}
                   </Button>
                 ))}

@@ -1,6 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 import { CompaniesScreen } from "@/components/directory";
-import { readStore } from "@/lib/demo/store";
+import { loadStore } from "@/lib/store";
 import { buildCompanies } from "@/lib/queries";
 import { canWrite } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
@@ -16,7 +16,7 @@ export default async function CompaniesPage({
   const query = await searchParams;
   setRequestLocale(locale);
   const session = await requireSession();
-  const store = readStore();
+  const store = await loadStore();
   return (
     <CompaniesScreen
       rows={buildCompanies(store, session)}

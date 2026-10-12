@@ -18,7 +18,7 @@ export const forgotSchema = z.object({
 });
 
 export const resetSchema = z.object({
-  token: z.string().min(8),
+  token: z.string().max(200),
   password: z.string().min(8).max(100),
 });
 

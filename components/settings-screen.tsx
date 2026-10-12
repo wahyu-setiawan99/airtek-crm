@@ -54,10 +54,12 @@ export function SettingsScreen({
   section,
   data,
   locale,
+  demo = false,
 }: {
   section: (typeof sections)[number][0];
   data: SettingsData;
   locale: AppLocale;
+  demo?: boolean;
 }) {
   const t = useTranslations("settings");
   const tc = useTranslations("common");
@@ -302,7 +304,7 @@ export function SettingsScreen({
             </ul>
           )
         ) : null}
-        {section === "profile" && data.canAdmin ? (
+        {section === "profile" && data.canAdmin && demo ? (
           <div className="max-w-lg rounded-lg border border-destructive/30 p-4">
             <h2 className="text-sm font-semibold">{t("danger")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("dangerBody")}</p>

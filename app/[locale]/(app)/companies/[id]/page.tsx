@@ -1,7 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
-import { readStore } from "@/lib/demo/store";
+import { loadStore } from "@/lib/store";
 import { formatCompact } from "@/lib/format";
 import { entityNotes, relatedDeals } from "@/lib/queries";
 import { requireSession } from "@/lib/session";
@@ -12,7 +12,7 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
   setRequestLocale(locale);
   const t = await getTranslations("companies");
   const session = await requireSession();
-  const store = readStore();
+  const store = await loadStore();
   const company = store.companies.find((item) => item.id === id && item.organization_id === session.organizationId);
   if (!company) notFound();
   const contacts = store.contacts.filter((item) => item.company_id === id);

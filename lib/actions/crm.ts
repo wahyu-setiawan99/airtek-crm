@@ -7,6 +7,9 @@ import { ActionError, runAction, touch } from "@/lib/action";
 import { cookieOptions, ORG_COOKIE } from "@/lib/constants";
 import { subtotal } from "@/lib/domain";
 import { resetStore, createId } from "@/lib/demo/store";
+import { supabaseEnabled } from "@/lib/env";
+import { createStatelessClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { canAdmin, canEditOwned, canManage, canWrite } from "@/lib/permissions";
 import { getSession } from "@/lib/session";
 import type { Deal, DealStatus, Stage, Store } from "@/types/crm";
@@ -686,6 +689,7 @@ export async function deleteProductAction(productId: string) {
   const t = await getTranslations("common");
   return runAction(({ session, store }) => {
     if (!canWrite(session.role)) throw new ActionError(t("forbidden"));
+    if (store.deal_products.some((item) => item.product_id === productId)) throw new ActionError(t("forbidden"));
     store.products = store.products.filter((item) => !(item.id === productId && item.organization_id === session.organizationId));
     return null;
   });
@@ -708,6 +712,20 @@ export async function updateProfileAction(input: unknown) {
 
 export async function changePasswordAction(input: unknown) {
   const t = await getTranslations("settings");
+  if (supabaseEnabled) {
+    const session = await getSession();
+    const parsed = passwordSchema.safeParse(input);
+    if (!session || !parsed.success) return { ok: false as const, error: t("wrongPassword") };
+    const check = await createStatelessClient().auth.signInWithPassword({
+      email: session.profile.email,
+      password: parsed.data.currentPassword,
+    });
+    if (check.error) return { ok: false as const, error: t("wrongPassword") };
+    const supabase = await createClient();
+    const { error } = (await supabase?.auth.updateUser({ password: parsed.data.newPassword })) ?? { error: true };
+    if (error) return { ok: false as const, error: t("wrongPassword") };
+    return { ok: true as const, data: null };
+  }
   return runAction(({ session, store }) => {
     const parsed = passwordSchema.safeParse(input);
     if (!parsed.success) throw new ActionError(t("wrongPassword"));
@@ -1020,7 +1038,7 @@ export async function markNotificationsReadAction() {
 export async function resetDemoAction() {
   const t = await getTranslations("common");
   const session = await getSession();
-  if (!session || !canAdmin(session.role)) return { ok: false as const, error: t("forbidden") };
+  if (supabaseEnabled || !session || !canAdmin(session.role)) return { ok: false as const, error: t("forbidden") };
   resetStore();
   const jar = await cookies();
   jar.delete("airtek_session");

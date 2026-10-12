@@ -103,6 +103,7 @@
     "point2": "Geser deal antar stage",
     "point3": "Aktivitas terlambat dan deal basi",
     "resetReady": "Tautan reset demo:",
+    "resetEmailSent": "Jika email terdaftar, tautan reset kata sandi sudah dikirim. Cek kotak masuk Anda.",
     "invalidToken": "Tautan tidak valid atau kedaluwarsa.",
     "passwordUpdated": "Kata sandi diperbarui. Silakan masuk.",
     "inviteJoin": "Anda diundang bergabung. Email harus sama dengan undangan."

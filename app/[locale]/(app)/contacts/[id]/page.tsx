@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/routing";
-import { readStore } from "@/lib/demo/store";
+import { loadStore } from "@/lib/store";
 import { entityNotes, relatedDeals } from "@/lib/queries";
 import { requireSession } from "@/lib/session";
 import { contactName } from "@/lib/utils";
@@ -13,7 +13,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   setRequestLocale(locale);
   const t = await getTranslations("contacts");
   const session = await requireSession();
-  const store = readStore();
+  const store = await loadStore();
   const contact = store.contacts.find((item) => item.id === id && item.organization_id === session.organizationId);
   if (!contact) notFound();
   const company = store.companies.find((item) => item.id === contact.company_id);

@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { revalidatePath } from "next/cache";
-import { mutateStore } from "@/lib/demo/store";
-import { getSession, type Session } from "@/lib/session";
+import { getSession, sessionScope, type Session } from "@/lib/session";
+import { mutate } from "@/lib/store";
 import type { Store } from "@/types/crm";
 
 export type ActionResult<T = null> = { ok: true; data: T } | { ok: false; error: string };
@@ -16,7 +16,7 @@ export async function runAction<T>(fn: (ctx: Ctx) => T): Promise<ActionResult<T>
   if (!session) return { ok: false, error: t("forbidden") };
 
   try {
-    const data = mutateStore((store) => fn({ session, store }));
+    const data = await mutate((store) => fn({ session, store }), sessionScope(session));
     revalidatePath("/", "layout");
     return { ok: true, data };
   } catch (error) {
