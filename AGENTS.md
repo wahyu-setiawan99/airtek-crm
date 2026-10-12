@@ -189,6 +189,15 @@ Aturan DB:
 - [ ] Tombol telepon/WA besar, quick-add aktivitas sekali tap
 - [ ] Web push notification untuk aktivitas jatuh tempo
 
+### Fase 10 — Optimasi kecepatan (FASE TERAKHIR, setelah Fase 9 dan Fase 7) — detail di §15
+- [ ] Ukur baseline (Vercel Speed Insights, Lighthouse, waktu server per halaman) (§15.1)
+- [ ] Kurangi redirect berantai menjadi maksimal 1 lompatan (§15.2)
+- [ ] Ganti snapshot "muat semua tabel" dengan query per halaman (§15.3)
+- [ ] Kurangi panggilan auth per request (§15.4)
+- [ ] Revalidasi & cache yang lebih sempit (§15.5)
+- [ ] Perkecil bundle JavaScript (§15.6)
+- [ ] Cek region & index database (§15.7)
+
 ## 6. Konvensi Kode
 - TypeScript strict, **tanpa `any`**. Tipe DB dari `types/database.ts` (regenerate setiap migration: `pnpm db:types`).
 - Server Components default; `"use client"` hanya untuk interaktif (kanban, form, chart).
@@ -502,4 +511,66 @@ Odoo Online paket standar tidak membuka API eksternal, jadi pakai fitur **Export
 ### 14.6 Uji
 - Uji di Supabase lokal dulu dengan ekspor nyata dari Odoo (minimal 8 deal di screenshot awal: Gd Barak CPI, ADD Gd Sauraja CPI, Gd. Wisma Negara CPI (Pump), Mobile Fire Pump PTVI, AC Presisi UNAM, Gd. Bunker Wahidin, Lift IAIN Pare-pare, Gd. PA Mamuju) → cocokkan total "Negotiation Rp 18,463M" dan "Closing Rp 21,026M" dengan Odoo.
 - Impor dua kali → jumlah data tidak bertambah. Batalkan batch → data hilang bersih.
+
+## 15. Optimasi Kecepatan (fase akhir)
+
+Aplikasi terasa berat. Kerjakan **setelah fitur stabil** (Fase 9 & 7), kecuali "quick win" redirect di §15.2 yang boleh lebih awal. Setiap langkah: ukur sebelum → ubah → ukur sesudah, catat angkanya di PR/commit.
+
+### 15.1 Baseline & target
+Baseline terukur 12 Okt 2026 (curl dari Indonesia, belum login):
+
+| URL | Redirect | Waktu |
+|---|---|---|
+| `http://airtek.my.id/` | 3 (http→https → `/`→`/id` → `/id`→`/id/login`) | ±2,9 s |
+| `https://www.airtek.my.id/` | 3 | ±1,9 s |
+| `https://airtek.my.id/` | 2 | ±0,7 s |
+| `https://airtek.my.id/id/login` | 0 | TTFB ±0,35–0,55 s |
+
+Ukuran JS: shared 103 kB; `/pipelines/[id]` 186 kB; `/deals/[id]` 192 kB; `/reports` 244 kB (first load).
+
+Target: TTFB halaman setelah login **< 600 ms**, LCP **< 2,5 s**, INP **< 200 ms**, Lighthouse desktop **≥ 90**, maksimal **1 redirect** dari URL apa pun ke halaman tujuan.
+- Aktifkan **Vercel Speed Insights** & **Web Analytics** (gratis di Hobby) untuk Web Vitals pengguna nyata.
+- Tambah log durasi server (`console.time` sementara atau header `Server-Timing`) untuk `loadStore`, auth, dan render.
+
+### 15.2 Redirect berantai (quick win)
+- `/` dan `/id`: langsung satu redirect ke tujuan akhir (`/id/dashboard` bila login, `/id/login` bila belum) — gabungkan logika next-intl + auth di `middleware.ts` agar tidak `/`→`/id`→`/id/login`.
+- User yang sudah login membuka `/login`/`/register`: redirect langsung ke `/id/dashboard` (bukan `/onboarding` → `/auth/onboarding` → `/dashboard`). Hanya user tanpa membership yang diarahkan ke onboarding.
+- Setelah login sukses: navigasi langsung ke halaman tujuan (`next` param bila ada).
+- `www`→apex dan `http`→`https` sudah 1 lompatan di Vercel; pastikan link/QR/email selalu memakai `https://airtek.my.id/id/...` (lengkap dengan locale) agar 0 redirect. `NEXT_PUBLIC_SITE_URL` sudah apex.
+- Cek: `curl -sL -o /dev/null -w "%{num_redirects} %{time_total}
+" <url>` untuk semua pola URL.
+
+### 15.3 Data: hentikan "muat semua tabel" per request (dampak terbesar)
+- Sekarang `loadStore()` (`lib/store.ts` → `loadSupabaseStore`) mengambil **±22 tabel penuh** untuk setiap halaman dan setiap server action. Makin banyak data (mis. setelah impor Odoo), makin lambat.
+- Ganti bertahap dengan **query per halaman** (`lib/queries/*`), hanya kolom yang dipakai (`select("id,title,value,…")`), filter `organization_id` + filter halaman di database, **pagination server-side** untuk daftar (Deal, Kontak, Perusahaan, Aktivitas).
+- Dashboard & laporan: agregasi di Postgres (view/RPC, mis. `pipeline_summary`, ringkasan per salesperson, forecast per bulan) alih-alih menghitung di JS dari semua deal.
+- Server action: baca hanya baris yang diubah lalu tulis (pertahankan pengecekan role & org scope yang sekarang ada di `commitSupabaseStore`). Hapus pola snapshot-diff setelah semua halaman pindah.
+- Detail deal: satu query dengan relasi yang dibutuhkan (deal + stage + kontak + aktivitas + catatan + riwayat).
+
+### 15.4 Auth per request
+- `middleware.ts` memanggil `supabase.auth.getUser()` (round-trip ke Supabase Auth) di setiap request, lalu `getSession()` di server memanggilnya lagi. Pakai **`getClaims()`** (verifikasi JWT lokal dengan signing key asimetris Supabase) di middleware, dan `getUser()` hanya sekali per request di server (sudah di-`cache`).
+- Lewati middleware untuk aset statis (matcher sudah mengecualikan file bertitik; cek juga `/_vercel`, `/brand`).
+
+### 15.5 Revalidasi & cache
+- `runAction` memanggil `revalidatePath("/", "layout")` setelah setiap aksi → seluruh layout dirender ulang. Ganti dengan path spesifik (mis. hanya `/pipelines/[id]` & `/deals/[id]`) atau `revalidateTag`.
+- Data referensi yang jarang berubah (pipelines, stages, tags, lost reasons, anggota) di-cache dengan `unstable_cache`/`"use cache"` + tag per organisasi, di-invalidate saat diubah.
+- Kurangi `router.refresh()` beruntun di client (gabungkan atau pakai optimistic update yang sudah ada).
+- Pertimbangkan `experimental.staleTimes` agar navigasi bolak-balik antar halaman tidak selalu fetch ulang.
+
+### 15.6 Bundle & render
+- Analisis dengan `@next/bundle-analyzer`.
+- `recharts` (dashboard/laporan) dan `@dnd-kit` (kanban) di-load dinamis (`next/dynamic`, `ssr:false` bila perlu) hanya di halaman yang memakainya; command palette (`cmdk`) di-load saat dibuka.
+- Komponen besar (`pipeline-board.tsx`, `deal-workspace.tsx`, `settings-screen.tsx`) dipecah; bagian non-interaktif tetap Server Component.
+- Streaming: `loading.tsx`/`<Suspense>` per bagian (kartu KPI, grafik, timeline) agar kerangka halaman tampil cepat.
+- Gambar via `next/image` dengan ukuran tepat (logo sudah); font sudah `next/font`.
+- Hindari hydration warning (atribut yang bergantung tema/waktu jangan dirender di server).
+
+### 15.7 Infrastruktur & database
+- Pastikan project Supabase di **Southeast Asia (Singapore)**, sama dengan Vercel `sin1` (lihat `vercel.json`); jika beda region, setiap query bertambah ratusan ms — pertimbangkan pindah project.
+- Index: `organization_id` di setiap tabel bisnis, `deals(organization_id, pipeline_id, stage_id, position)` (ada), `deals(owner_id)`, `activities(assigned_to, due_at)`, `activities(deal_id)` (ada), `notes(deal_id)` (ada), `stage_history(deal_id)` (ada), `audit_logs(entity, entity_id, created_at)` (ada). Cek `EXPLAIN ANALYZE` untuk query terlambat (Supabase → Query Performance).
+- Kebijakan RLS memanggil `is_member()` per baris — pastikan fungsi `stable` dan index `memberships(user_id, organization_id)` ada.
+
+### 15.8 Definition of done
+- Tabel baseline di §15.1 diisi ulang dengan angka sesudah optimasi (dan halaman setelah login: Dashboard, Pipeline, Detail deal, Deal list).
+- Semua target §15.1 tercapai di produksi `airtek.my.id`; tidak ada regresi fungsi (login, undangan, kanban, inline edit, impor).
 
