@@ -201,6 +201,12 @@ Aturan DB:
 - [ ] Perkecil bundle JavaScript (§15.6)
 - [ ] Cek region & index database (§15.7)
 
+### Fase 11 — Integrasi AI (Gemini) — detail di §17 (boleh mulai setelah Fase 9)
+- [ ] Fondasi: wrapper server-only, env, kuota & log pemakaian (§17.2)
+- [ ] Tahap 1: ringkasan deal, catatan/chat → aktivitas, draft follow-up (§17.3 A–C)
+- [ ] Tahap 2: langkah berikutnya & risiko, tanya data dengan bahasa biasa, ringkasan mingguan (§17.3 D–F)
+- [ ] Tahap 3: bantu impor Odoo, ekstraksi PDF penawaran/BOQ, analisis menang/kalah (§17.3 G–I)
+
 ## 6. Konvensi Kode
 - TypeScript strict, **tanpa `any`**. Tipe DB dari `types/database.ts` (regenerate setiap migration: `pnpm db:types`).
 - Server Components default; `"use client"` hanya untuk interaktif (kanban, form, chart).
@@ -640,4 +646,48 @@ Dibandingkan dengan Pipedrive, HubSpot CRM, Zoho CRM, dan Odoo CRM:
 - Tidak ada label klien selain Konsultan/Kontraktor/Owner di seluruh aplikasi (form, filter, impor, seed, i18n).
 - Sales A login → melihat proyek Sales B di kanban & daftar, bisa filter by salesperson/pipeline/tahap/jenis klien, tidak bisa mengedit proyek B, bisa menambah catatan.
 - Dashboard menampilkan target vs realisasi per salesperson.
+
+## 17. Integrasi AI (Google Gemini)
+
+Prinsip: **AI memberi saran, manusia yang memutuskan.** AI tidak pernah menulis ke database tanpa konfirmasi user. Semua fitur memakai Bahasa Indonesia (atau EN sesuai locale user) dan konteks MEP: HVAC, pompa, fire, lift; pihak proyek Owner/Konsultan/Kontraktor.
+
+### 17.1 Pilihan model & biaya
+- SDK resmi `@google/genai` (server-only). Model default **Gemini Flash** versi stabil terbaru (mis. `gemini-2.5-flash`) untuk hampir semua fitur (murah & cepat); **Gemini Pro** hanya untuk analisis berat (ringkasan mingguan, analisis menang/kalah). Cek nama model terbaru di dokumentasi Google AI sebelum implementasi; simpan nama model di env agar mudah diganti.
+- Env: `GEMINI_API_KEY` (server only, jangan `NEXT_PUBLIC_`), `GEMINI_MODEL_FAST`, `GEMINI_MODEL_SMART`, `AI_ENABLED=true|false`.
+- **Privasi:** data klien dikirim ke Google. Untuk produksi gunakan **paid tier (pay-as-you-go)** — pada free tier, Google dapat memakai data untuk peningkatan produk. Free tier boleh untuk uji coba dengan data dummy.
+- Kirim **seminimal mungkin**: hanya field deal/kontak yang dibutuhkan fitur itu, tanpa email/telepon kecuali memang diperlukan (draft pesan).
+
+### 17.2 Fondasi teknis
+- `lib/ai/gemini.ts` (`import "server-only"`): satu fungsi `generate({ feature, prompt, schema?, model })` dengan timeout (±20 s), retry 1×, dan **structured output** (`responseMimeType: "application/json"` + `responseSchema`) untuk fitur yang hasilnya diproses kode. Validasi ulang hasil dengan zod.
+- Prompt terpusat di `lib/ai/prompts.ts` (versi diberi nomor), data konteks dirakit dari query yang sudah menghormati RLS/role — AI hanya melihat data yang boleh dilihat user tersebut (Boss tetap tersembunyi).
+- Pemanggilan lewat **server action** atau route `app/api/ai/[feature]/route.ts` (streaming untuk teks panjang). Cek `AI_ENABLED`, sesi & role sebelum memanggil.
+- Tabel `ai_usage` (organization_id, user_id, feature, model, input_tokens, output_tokens, ms, ok, created_at) — **tanpa** menyimpan isi prompt/jawaban. Kuota harian per user & per organisasi (mis. 100 panggilan/user/hari), pesan ramah bila habis.
+- UI: tombol **✨ AI** konsisten (ikon `Sparkles` lucide), loading skeleton, tombol **Salin**, **Pakai** (mengisi form, belum menyimpan), **Buang**. Label kecil "Dibuat AI — periksa sebelum disimpan".
+- Gagal/timeout → tampilkan pesan, fitur CRM lain tetap jalan.
+
+### 17.3 Fitur (urut prioritas)
+
+**Tahap 1 — paling berguna, paling sederhana**
+- **A. Ringkasan deal** (panel kanan detail deal): 4–6 poin — kondisi terakhir, siapa Owner/Konsultan/Kontraktor, aktivitas & catatan penting, risiko, langkah berikutnya. Input: field deal, 20 timeline terakhir. Tombol "Perbarui ringkasan".
+- **B. Catatan / chat → aksi**: tempel catatan rapat atau percakapan WhatsApp di composer → AI mengembalikan JSON: ringkasan catatan, **aktivitas berikutnya** (jenis, subjek, tanggal), usulan perubahan field (nilai, target closing, tahap, kontak baru). User mencentang yang mau dipakai → disimpan lewat server action biasa (`addNoteAction`, `saveActivityAction`, `updateDealAction`).
+- **C. Draft follow-up**: tombol "Buat draft pesan" (pilih: WhatsApp / email; nada: formal / santai; tujuan: follow-up penawaran, konfirmasi meeting, ucapan terima kasih). Hasil bisa disalin atau dibuka via `wa.me`/`mailto:`. **Tidak mengirim otomatis.**
+
+**Tahap 2 — membantu manajer & direktur**
+- **D. Langkah berikutnya & sinyal risiko**: gabungan aturan (deal basi, target closing lewat, tanpa aktivitas, belum ada konsultan/kontraktor, nilai besar tapi probabilitas rendah) + kalimat saran dari AI. Tampil sebagai badge di kanban & daftar "Butuh perhatian".
+- **E. Tanya data dengan bahasa biasa** di daftar Deal/kanban: "proyek Rani yang closing bulan ini di atas 1 M", "deal pompa di Makassar yang konsultannya PT X" → AI **hanya** mengubah kalimat menjadi JSON filter yang diizinkan (salesperson, pipeline, tahap, status, tag, jenis klien, pihak proyek, kota, rentang tanggal, nilai) → diterapkan ke filter URL yang sudah ada (§16.3). **Tidak ada SQL dari AI.**
+- **F. Ringkasan mingguan** untuk Boss/Administrator: kartu di dashboard + (opsional) email Senin 07.00 via Vercel Cron & Resend — deal baru, pindah tahap, menang/kalah + alasan, deal macet, performa per salesperson vs target. Dihitung dulu dengan query, AI hanya menyusun narasi.
+
+**Tahap 3 — lebih canggih, setelah tahap 1–2 stabil**
+- **G. Bantu impor Odoo** (§14): usul pemetaan kolom, merapikan nama perusahaan (PT/CV, kapitalisasi), menebak **jenis klien** (Konsultan/Kontraktor/Owner) dan mendeteksi kemungkinan duplikat — semua sebagai saran di layar pratinjau.
+- **H. Ekstraksi PDF penawaran / BOQ** (Gemini membaca PDF/gambar): unggah file → AI mengeluarkan daftar item (nama, qty, satuan, harga) → dicocokkan ke katalog produk → user konfirmasi menjadi line item deal. File disimpan sebagai lampiran (§13.4).
+- **I. Analisis menang/kalah** bulanan: pola dari alasan kalah, catatan, durasi tahap, jenis klien → 3–5 insight dan saran perbaikan.
+- *(Nanti, Fase 7 PWA)* **Catatan suara**: rekam di HP → transkrip + ringkasan → jadi catatan/aktivitas (alur seperti B).
+
+### 17.4 Yang tidak dibuat
+- Chatbot umum tanpa batas, AI yang mengirim email/WA otomatis, AI yang mengubah data tanpa konfirmasi, skor prediksi "AI" tanpa data historis yang cukup.
+
+### 17.5 Definition of done
+- Semua fitur bisa dimatikan dengan `AI_ENABLED=false` tanpa error.
+- Uji dengan data demo lokal dulu (`lib/demo/seed.ts`), lalu produksi dengan paid tier.
+- Tiap fitur: role & visibilitas dihormati, hasil divalidasi zod, pemakaian tercatat di `ai_usage`, kuota berjalan, teks dalam ID/EN sesuai locale.
 
