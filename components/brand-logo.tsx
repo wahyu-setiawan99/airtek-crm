@@ -1,10 +1,12 @@
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import logo from "@/public/brand/airtek-logo.png";
+import logoOnDark from "@/public/brand/airtek-logo-ondark.png";
 
 /**
- * Airtek wordmark. The logo's deep indigo disappears on dark surfaces, so there it sits on a
- * white plate: always for `onDark` (sidebar, login hero), and in dark theme for `auto`.
+ * Airtek wordmark, transparent. `auto` follows the light/dark theme; `onDark` is for surfaces
+ * that are always dark (the app sidebar). The on-dark file has white "SOLUSI NUSANTARA" and a
+ * lifted gradient so the deep indigo stays visible.
  */
 export function BrandLogo({
   variant = "auto",
@@ -15,14 +17,14 @@ export function BrandLogo({
   className?: string;
   priority?: boolean;
 }) {
+  const base = "h-8 w-auto shrink-0 self-start object-contain object-left";
+  if (variant === "onDark") {
+    return <Image src={logoOnDark} alt="Airtek Solusi Nusantara" priority={priority} className={cn(base, className)} />;
+  }
   return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 self-start rounded-lg",
-        variant === "onDark" ? "bg-white px-2.5 py-1.5" : "dark:bg-white dark:px-2.5 dark:py-1.5",
-      )}
-    >
-      <Image src={logo} alt="Airtek Solusi Nusantara" priority={priority} className={cn("h-8 w-auto object-contain", className)} />
-    </span>
+    <>
+      <Image src={logo} alt="Airtek Solusi Nusantara" priority={priority} className={cn(base, "dark:hidden", className)} />
+      <Image src={logoOnDark} alt="Airtek Solusi Nusantara" priority={priority} className={cn(base, "hidden dark:block", className)} />
+    </>
   );
 }

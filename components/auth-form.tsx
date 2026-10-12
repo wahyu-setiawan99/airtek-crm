@@ -6,6 +6,7 @@ import { forgotAction, loginAction, registerAction, resendConfirmationAction, re
 import { DEMO_PASSWORD } from "@/lib/constants";
 import { Link, useRouter } from "@/i18n/navigation";
 import { BrandLogo } from "@/components/brand-logo";
+import { ThemeSwitch } from "@/components/theme-switch";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/form";
 
@@ -94,11 +95,11 @@ export function AuthScreen({
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-2">
-      <section className="relative hidden overflow-hidden bg-sidebar px-12 py-14 text-sidebar-foreground lg:flex lg:flex-col lg:justify-between">
-        <BrandLogo variant="onDark" priority className="h-10" />
+      <section className="relative hidden overflow-hidden border-r bg-accent/60 px-12 py-14 text-foreground lg:flex lg:flex-col lg:justify-between dark:border-sidebar-border dark:bg-sidebar dark:text-sidebar-foreground">
+        <BrandLogo priority className="h-14" />
         <div>
           <h1 className="max-w-md text-4xl font-semibold tracking-tight">{t("heroTitle")}</h1>
-          <p className="mt-4 max-w-md text-sm leading-6 text-sidebar-muted">{t("heroBody")}</p>
+          <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground dark:text-sidebar-muted">{t("heroBody")}</p>
           <ul className="mt-8 space-y-3 text-sm">
             {[t("point1"), t("point2"), t("point3")].map((point) => (
               <li key={point} className="flex items-center gap-2">
@@ -108,9 +109,10 @@ export function AuthScreen({
             ))}
           </ul>
         </div>
-        <p className="text-xs text-sidebar-muted">PT. Airtek Solusi Nusantara</p>
+        <p className="text-xs text-muted-foreground dark:text-sidebar-muted">PT. Airtek Solusi Nusantara</p>
       </section>
-      <section className="grid place-items-center px-4 py-10">
+      <section className="relative grid place-items-center px-4 py-16">
+        <ThemeSwitch className="absolute right-4 top-4" />
         <div className="w-full max-w-md">
           <div className="mb-8 lg:hidden">
             <BrandLogo className="h-10" />
