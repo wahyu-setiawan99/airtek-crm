@@ -180,6 +180,7 @@ Aturan DB:
 - [ ] Pengingat aktivitas via email harian (§13.7)
 - [ ] QA: Lighthouse ≥ 90, aksesibilitas, hydration warning (§13.8)
 - [ ] Sidebar bisa diciutkan (mode ikon) / dimunculkan (§13.9)
+- [ ] Impor data dari Odoo CRM (§14)
 
 ### Fase 7 — Mobile PWA (menyusul, JANGAN dikerjakan sebelum Fase 0–6, 8, dan 9 selesai)
 - [ ] Web App Manifest (nama, ikon 192/512, theme color), installable di Android/iOS
@@ -453,3 +454,52 @@ Sudah selesai & live: Supabase (data + auth, RLS read-only, server writes), mult
 - Akun/organisasi demo di produksi (dihapus).
 - Undangan lewat WhatsApp / salin tautan (dihapus — email saja).
 - Opsi tema "Sistem" di UI (otomatis mengikuti perangkat sampai user memilih Terang/Gelap).
+
+## 14. Impor Data dari Odoo
+
+Tujuan: memindahkan data CRM lama dari `pt-airtek-solusi-nusantara.odoo.com` ke Airtek CRM sekali jalan (bisa diulang tanpa duplikat), dikerjakan oleh **Boss/Administrator**.
+
+### 14.1 Sumber data (ekspor dari Odoo, tanpa API)
+Odoo Online paket standar tidak membuka API eksternal, jadi pakai fitur **Export** bawaan Odoo (list view → pilih semua → ⚙ Action → **Export** → format **XLSX** atau **CSV**, centang *"I want to update data (import-compatible export)"* agar kolom `id` / External ID ikut). File yang diekspor:
+
+| File | Model Odoo | Kolom yang diekspor |
+|---|---|---|
+| `companies` | Contacts (`res.partner`, filter *Is a Company*) | id, name, vat, street, city, state_id, phone, email, website, user_id, category_id |
+| `contacts` | Contacts (`res.partner`, individu) | id, name, parent_id (perusahaan), function, email, phone, mobile, street, city, user_id |
+| `opportunities` | CRM → Pipeline (`crm.lead`, termasuk *Won* & *Lost*: hapus filter default, tambah filter *Archived/Lost*) | id, name, team_id, stage_id, expected_revenue, probability, date_deadline, priority, partner_id, contact_name, email_from, phone, user_id, tag_ids, description, lost_reason_id, active, date_closed, create_date |
+| `activities` *(opsional)* | Activities (`mail.activity`) | res_name / res_id, activity_type_id, summary, note, date_deadline, user_id |
+| `products` *(opsional)* | Sales → Products (`product.template`) | id, name, default_code, list_price, uom_id, categ_id |
+
+### 14.2 Halaman impor
+- **Pengaturan → Impor data** (`app/[locale]/(app)/settings/import`), hanya `owner`/`admin`.
+- Wizard 4 langkah: **1. Unggah** (CSV/XLSX per jenis data, urutan: perusahaan → kontak → produk → deal → aktivitas) → **2. Petakan** → **3. Pratinjau & validasi** → **4. Impor + laporan**.
+- Parser: **papaparse** (CSV, menangani koma/kutip/baris baru di dalam sel — `parseCsv` di `lib/csv.ts` saat ini TIDAK aman untuk itu) dan **read-excel-file** (XLSX). Deteksi delimiter `,`/`;` dan encoding UTF-8 (dengan/ tanpa BOM).
+- Pemetaan kolom otomatis berdasarkan nama kolom Odoo (Inggris/Indonesia, mis. `Opportunity`/`Peluang`, `Expected Revenue`/`Pendapatan yang Diharapkan`), bisa diubah manual lewat dropdown; simpan preset pemetaan terakhir.
+
+### 14.3 Aturan pemetaan
+- **Tahap (stage):** daftar stage unik dari file → user memetakan ke stage pipeline Airtek (default by nama: Qualification→Kualifikasi, Needs Analysis→Analisa Kebutuhan, Quotation/Proposition→Penawaran, Negotiation→Negosiasi, Closing→Closing; *Won* → stage won). Odoo `team_id` → pilih pipeline tujuan (Sales/Presales/…).
+- **Salesperson (`user_id`):** daftar nama unik → petakan ke anggota yang sudah ada (Administrator/Sales/Boss). Yang belum ada → opsi "undang via email" (pakai `inviteMemberAction`) atau "tetapkan ke saya".
+- **Status:** `active = False` + `lost_reason_id` → **Lost** (buat lost reason baru bila belum ada); stage *Won* atau `probability = 100` → **Won** (`won_at` = `date_closed`); selain itu **Open**.
+- **Nilai:** `expected_revenue` → `value` (bersihkan "Rp", titik/koma ribuan, desimal). `probability` → `probability_override` hanya jika berbeda dari default stage.
+- **Tanggal:** `date_deadline` → `expected_close_date`; `create_date` → `created_at` (simpan tanggal asli Odoo).
+- **Prioritas:** bintang Odoo 0–3 → `priority` 0–3.
+- **Tag:** `tag_ids` (dipisah koma) → `tags` + `deal_tags`; nama tag Odoo (HVAC, PUMP, TDG, LIFT, …) dicocokkan tanpa beda huruf besar/kecil ke tag/kategori yang ada (PUMP→Pompa, LIFT→Lift), sisanya dibuat baru.
+- **Pelanggan:** `partner_id` "PT NINDYA KARYA, Dwi Sulistyo" → perusahaan `PT NINDYA KARYA` + kontak `Dwi Sulistyo` (pisah di koma pertama); cocokkan dulu ke perusahaan/kontak yang sudah diimpor (by External ID, lalu nama/email).
+- **Deskripsi/catatan:** `description` (HTML) → teks bersih di `deals.description`.
+- **Aktivitas:** dihubungkan ke deal via `res_id`/`res_name`; tipe Odoo (Call, Meeting, Email, To-Do) → `call`/`meeting`/`email`/`task`.
+
+### 14.4 Anti duplikat & bisa diulang
+- Migration baru: kolom `external_ref text` di `companies`, `contacts`, `deals`, `products`, `activities` + unique index `(organization_id, external_ref)`; isi dengan External ID Odoo (mis. `__export__.crm_lead_21_abc123` atau `odoo:crm.lead:21`).
+- Impor ulang file yang sama → **update** baris yang sudah ada, bukan membuat duplikat. Tambahkan field ke tipe di `types/crm.ts` dan ke `TABLES` (`lib/supabase/store.ts`) bila perlu.
+- Tabel `import_batches` (id, organization_id, source, file_names, counts jsonb, created_by, created_at) + kolom `import_batch_id` di baris yang dibuat → tombol **Batalkan impor ini** (hapus baris dari batch tersebut).
+
+### 14.5 Pratinjau, eksekusi, laporan
+- Pratinjau: jumlah baris per jenis, **baru / diperbarui / dilewati / error**, 20 baris contoh hasil pemetaan, daftar error per baris (mis. tanggal tidak valid, stage belum dipetakan).
+- Mode **uji coba (dry run)** default aktif: validasi penuh tanpa menulis.
+- Eksekusi lewat server action dalam batch (±200 baris per panggilan) dengan progress bar; semua tulis lewat `runAction`/`mutate` (cek role, audit log `import`).
+- Laporan akhir bisa diunduh (CSV baris error) untuk diperbaiki lalu diimpor ulang.
+
+### 14.6 Uji
+- Uji di Supabase lokal dulu dengan ekspor nyata dari Odoo (minimal 8 deal di screenshot awal: Gd Barak CPI, ADD Gd Sauraja CPI, Gd. Wisma Negara CPI (Pump), Mobile Fire Pump PTVI, AC Presisi UNAM, Gd. Bunker Wahidin, Lift IAIN Pare-pare, Gd. PA Mamuju) → cocokkan total "Negotiation Rp 18,463M" dan "Closing Rp 21,026M" dengan Odoo.
+- Impor dua kali → jumlah data tidak bertambah. Batalkan batch → data hilang bersih.
+
