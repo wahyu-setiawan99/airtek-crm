@@ -98,12 +98,13 @@ async function registerWithSupabase(data: {
   }
 
   const supabase = await requireSupabase();
+
   const { data: signed, error } = await supabase.auth.signUp({
     email,
     password: data.password,
     options: {
       emailRedirectTo: `${siteUrl()}/auth/callback?next=/id/onboarding`,
-      data: { full_name: data.fullName, invitation_id: invite?.id ?? null },
+      data: { full_name: data.fullName },
     },
   });
   if (error || !signed.user) {

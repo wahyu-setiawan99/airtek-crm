@@ -12,7 +12,6 @@ import {
   LayoutDashboard,
   LogOut,
   Menu as MenuIcon,
-  Monitor,
   Moon,
   Package,
   Plus,
@@ -23,7 +22,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { markNotificationsReadAction, switchOrgAction, updateThemeAction } from "@/lib/actions/crm";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
@@ -64,19 +63,28 @@ export function AppShell({
   const t = useTranslations("nav");
   const tc = useTranslations("common");
   const tcmd = useTranslations("command");
-  const tset = useTranslations("settings");
   const tn = useTranslations("notifications");
   const pathname = usePathname();
   const router = useRouter();
-  const { setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const appliedTheme = useRef<string | null>(null);
   const [open, setOpen] = useState(false);
   const [mobile, setMobile] = useState(false);
   const [more, setMore] = useState(false);
   const unread = shell.notifications.filter((item) => !item.read).length;
 
   useEffect(() => {
+    if (appliedTheme.current === shell.user.theme) return;
+    appliedTheme.current = shell.user.theme;
     setTheme(shell.user.theme);
   }, [setTheme, shell.user.theme]);
+
+  function toggleTheme() {
+    const next = resolvedTheme === "dark" ? "light" : "dark";
+    appliedTheme.current = next;
+    setTheme(next);
+    void updateThemeAction(next);
+  }
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -208,27 +216,16 @@ export function AppShell({
             >
               <Languages className="h-4 w-4" />
             </Link>
-            <Menu>
-              <MenuTrigger className="grid h-9 w-9 place-items-center rounded-md hover:bg-accent" aria-label={tc("theme")}>
-                <SunMedium className="h-4 w-4 dark:hidden" />
-                <Moon className="hidden h-4 w-4 dark:block" />
-              </MenuTrigger>
-              <MenuContent>
-                {([
-                  ["light", tset("themeLight"), SunMedium],
-                  ["dark", tset("themeDark"), Moon],
-                  ["system", tset("themeSystem"), Monitor],
-                ] as const).map(([value, label, Icon]) => (
-                  <MenuItem key={value} onSelect={() => {
-                    setTheme(value);
-                    void updateThemeAction(value);
-                  }}>
-                    <Icon className="h-4 w-4" />
-                    {label}
-                  </MenuItem>
-                ))}
-              </MenuContent>
-            </Menu>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="grid h-9 w-9 place-items-center rounded-md hover:bg-accent"
+              aria-label={tc("theme")}
+              title={tc("theme")}
+            >
+              <Moon className="h-4 w-4 dark:hidden" />
+              <SunMedium className="hidden h-4 w-4 dark:block" />
+            </button>
             <Menu>
               <MenuTrigger className="grid h-9 w-9 place-items-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
                 {shell.user.name.slice(0, 1)}

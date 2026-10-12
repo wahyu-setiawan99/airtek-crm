@@ -169,7 +169,18 @@ Aturan DB:
 - [ ] Bulk action ganti salesperson; ganti pemilik di detail kontak/perusahaan (§11.7)
 - [x] Mode Terang / Gelap / Sistem, tersimpan per user (§11.8)
 
-### Fase 7 — Mobile PWA (menyusul, JANGAN dikerjakan sebelum Fase 0–6 dan Fase 8 selesai)
+### Fase 9 — Sisa pekerjaan & penyempurnaan (KERJAKAN SETELAH Fase 8, SEBELUM Fase 7) — detail di §13
+- [ ] Email undangan custom bergaya Odoo + SMTP Resend gratis (§12)
+- [ ] Kelola undangan: kirim ulang, batalkan, status Menunggu/Diterima/Kedaluwarsa (§13.1)
+- [ ] Filter seragam di Kontak, Perusahaan, Aktivitas, Produk, Laporan (§13.2)
+- [ ] Bulk ganti salesperson + ganti pemilik kontak/perusahaan (§13.3)
+- [ ] Lampiran file via Supabase Storage (§13.4)
+- [ ] Realtime kanban (§13.5)
+- [ ] Custom fields (§13.6)
+- [ ] Pengingat aktivitas via email harian (§13.7)
+- [ ] QA: Lighthouse ≥ 90, aksesibilitas, hydration warning (§13.8)
+
+### Fase 7 — Mobile PWA (menyusul, JANGAN dikerjakan sebelum Fase 0–6, 8, dan 9 selesai)
 - [ ] Web App Manifest (nama, ikon 192/512, theme color), installable di Android/iOS
 - [ ] Service worker (Serwist) — cache aset + data baca terakhir (offline read-only)
 - [ ] Layout mobile ≤ 768px: bottom nav, kanban 1 kolom dengan swipe antar stage, detail deal satu kolom (timeline jadi tab)
@@ -358,6 +369,76 @@ Langkah deploy:
 - Detail kontak & perusahaan menampilkan salesperson pemilik; manager/admin bisa menggantinya.
 
 ### 11.8 Mode Terang / Gelap
-- Ganti toggle 2 state di topbar dengan menu 3 opsi: **Terang**, **Gelap**, **Sistem** (ikon matahari/bulan/monitor); juga tersedia di Pengaturan → Profil.
+- Satu tombol Terang/Gelap di topbar dan halaman login (tanpa opsi "Sistem"). Sebelum user memilih, tema mengikuti perangkat (`profiles.theme = system`).
 - Simpan per user di `profiles.theme` (`light` | `dark` | `system`, default `system`) dan terapkan setelah login. Halaman login/register mengikuti tema sistem.
 - Cek kontras semua komponen (kanban, chart Recharts, dialog, tabel, badge DEMO) di kedua mode pada 1280px dan 1920px.
+
+## 12. Email Undangan Custom (gratis)
+
+Tujuan: email undangan seperti Odoo — penerima klik **Terima undangan**, langsung ke halaman buat kata sandi, lalu masuk. **Hanya lewat email** (tidak ada link undangan via WhatsApp / salin tautan).
+
+**Contoh isi (Bahasa Indonesia):**
+> **Subjek:** {invited_by} dari {organization} mengundang Anda ke Airtek CRM
+>
+> Halo {full_name},
+> *Tautan ini berlaku 7 hari.*
+> **{organization}** menggunakan **Airtek CRM** untuk mengelola pipeline penjualan. Anda diundang oleh **{invited_by}** sebagai **{role}**.
+> Setelah diterima, Anda dapat masuk melalui:
+> • Login: {email}
+> • Tautan: https://airtek.my.id
+> [ Terima undangan ]  ← tombol warna brand
+> Airtek CRM · PT. Airtek Solusi Nusantara
+
+**Cara kerja (sudah tersedia di kode):**
+- `inviteMemberAction` (`lib/actions/crm.ts`) memanggil `admin.auth.admin.inviteUserByEmail(email, { redirectTo: SITE_URL + "/auth/callback?next=/id/accept-invite", data: { full_name, invitation_id, invited_by, organization, role } })`.
+- Link default Supabase membawa sesi di hash URL; `/auth/callback` meneruskan ke `/id/accept-invite` dan `components/accept-invite-form.tsx` memasang sesi dari hash, lalu meminta **nama + kata sandi** → `acceptInviteAction` → membership sesuai role → dashboard.
+- `/auth/callback` juga mendukung `?token_hash=&type=invite` (lebih andal bila template memakai TokenHash).
+
+**Yang harus dikerjakan:**
+- [ ] Template HTML `supabase/templates/invite.html` (ID, tabel/inline CSS agar tampil baik di Gmail/Outlook): logo dari `https://airtek.my.id/brand/airtek-logo.png`, salam, isi seperti contoh di atas, tombol **Terima undangan** warna `#9a1b4b`, footer. Variabel Supabase: `{{ .Data.full_name }}`, `{{ .Data.invited_by }}`, `{{ .Data.organization }}`, `{{ .Data.role }}`, `{{ .Email }}`, `{{ .SiteURL }}`.
+  - Tombol memakai: `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite&next=/id/accept-invite`
+  - Label role tampil sebagai "Administrator"/"Sales" (`role` berisi `admin`/`sales`; gunakan `{{ if eq .Data.role "admin" }}Administrator{{ else }}Sales{{ end }}`).
+- [ ] Template serupa untuk **Konfirmasi email** (`confirmation.html`, link `…/auth/callback?token_hash={{ .TokenHash }}&type=signup&next=/id/onboarding`) dan **Reset kata sandi** (`recovery.html`, `type=recovery&next=/id/reset-password`).
+- [ ] Aktifkan di `supabase/config.toml` untuk lokal (`[auth.email.template.invite] subject=… content_path="./supabase/templates/invite.html"`, dst.) dan uji dengan Mailpit (`http://127.0.0.1:55424`).
+- [ ] Produksi (dikerjakan user, dipandu): Supabase → Authentication → **Email Templates** → tempel subjek + HTML untuk Invite user, Confirm signup, Reset password.
+- [ ] **SMTP gratis — Resend** (3.000 email/bulan, 100/hari): daftar resend.com → Domains → tambah `airtek.my.id` → masukkan record DNS (MX/TXT SPF/DKIM) di Domainesia → buat API key → Supabase → Authentication → **SMTP Settings**: host `smtp.resend.com`, port `465`, user `resend`, password = API key, sender `noreply@airtek.my.id`, nama "Airtek CRM". Naikkan rate limit email di Authentication → Rate Limits.
+- [ ] Halaman `/accept-invite`: tampilkan juga nama organisasi & role dari `user_metadata`; tombol "Kirim ulang undangan" tidak ada di sisi penerima (hanya admin).
+
+## 13. Sisa Pekerjaan (status 12 Okt 2026)
+
+Sudah selesai & live: Supabase (data + auth, RLS read-only, server writes), multi-pipeline Sales/Presales, kanban + list + kalender + forecast, detail deal §7.1, kontak/perusahaan/aktivitas/produk/laporan, dashboard + Performa Sales, filter di Pipeline & Deal, level Boss/Administrator/Sales (Boss tersembunyi), undangan email + halaman buat kata sandi, logo & warna brand, mode terang/gelap (toggle, default mengikuti perangkat), domain `airtek.my.id`.
+
+### 13.1 Kelola undangan
+- Daftar undangan: status **Menunggu / Diterima / Kedaluwarsa**, tombol **Kirim ulang** (panggil ulang `inviteUserByEmail`, perpanjang `expires_at`) dan **Batalkan** (`cancelled_at`, hapus auth user yang belum aktif).
+- Anggota: tombol **Nonaktifkan / Aktifkan kembali** (`memberships.disabled_at`), konfirmasi sebelum aksi.
+- Administrator tidak boleh melihat/mengubah Boss (sudah di server; pastikan UI konsisten).
+
+### 13.2 Filter seragam (§11.6)
+- Pakai `components/filters/filter-bar.tsx` di Kontak, Perusahaan, Aktivitas, Produk (per kategori), Laporan.
+- Tambah filter nilai min–maks, rentang tanggal (target closing/dibuat), prioritas, kota/provinsi, kondisi (terlambat/tanpa aktivitas/basi). Simpan di URL.
+
+### 13.3 Salesperson
+- Bulk action di daftar Deal: pilih beberapa → **Ganti salesperson** (admin/boss), audit + notifikasi.
+- Ganti pemilik (salesperson) di detail Kontak & Perusahaan.
+
+### 13.4 Lampiran
+- Supabase Storage bucket `attachments` (private), policy baca per organisasi, upload lewat server action (signed upload URL). Tab **Lampiran** di detail deal/kontak/perusahaan: drag & drop, preview gambar/PDF, unduh, hapus. Tambahkan tabel `attachments` ke `TABLES` di `lib/supabase/store.ts`.
+
+### 13.5 Realtime
+- Supabase Realtime pada tabel `deals` (filter organization_id) → `router.refresh()` di kanban saat ada perubahan dari user lain.
+
+### 13.6 Custom fields
+- Tabel `custom_fields` + `custom_field_values` (lihat §4), pengaturan di Settings, tampil di tab "Info tambahan" detail deal/kontak/perusahaan.
+
+### 13.7 Pengingat
+- Vercel Cron harian (07.00 WIB) → route `/api/cron/reminders` (proteksi `CRON_SECRET`) → email ringkasan aktivitas hari ini & terlambat per user (via Resend API) + notifikasi in-app.
+
+### 13.8 QA & polish
+- Lighthouse desktop ≥ 90; label aksesibilitas; tidak ada hydration warning di console (jangan render atribut yang bergantung pada tema/waktu di server).
+- Uji alur lengkap di produksi: Boss daftar → undang Administrator → Administrator undang Sales → Sales buat deal → Administrator lihat Performa Sales.
+- Halaman `/register` hanya untuk Boss (email `BOOTSTRAP_ADMIN_EMAIL`); link "Daftar" di halaman login sudah dihapus.
+
+### Tidak dikerjakan (keputusan user)
+- Akun/organisasi demo di produksi (dihapus).
+- Undangan lewat WhatsApp / salin tautan (dihapus — email saja).
+- Opsi tema "Sistem" di UI (otomatis mengikuti perangkat sampai user memilih Terang/Gelap).

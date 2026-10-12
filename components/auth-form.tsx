@@ -198,7 +198,7 @@ export function AuthScreen({
           <p className="mt-6 text-sm text-muted-foreground">
             {mode === "login" ? (
               <>
-                {t("noAccount")} <Link href="/register" className="text-primary">{t("signUp")}</Link>
+                {t("noAccountInvite")}
                 <span className="mx-2">·</span>
                 <Link href="/forgot-password" className="text-primary">{t("forgot")}</Link>
               </>

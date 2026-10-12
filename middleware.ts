@@ -7,7 +7,8 @@ import { supabaseEnabled } from "./lib/env";
 
 const handleI18n = createMiddleware(routing);
 
-const PUBLIC_PATHS = new Set(["/login", "/register", "/forgot-password", "/reset-password"]);
+// accept-invite is public: the invite link's session arrives in the URL hash and is set client-side.
+const PUBLIC_PATHS = new Set(["/login", "/register", "/forgot-password", "/reset-password", "/accept-invite"]);
 /** Signed-in users are sent to the dashboard from these (reset-password stays reachable for recovery links). */
 const GUEST_ONLY = new Set(["/login", "/register", "/forgot-password"]);
 

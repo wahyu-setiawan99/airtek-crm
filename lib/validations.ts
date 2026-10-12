@@ -121,7 +121,7 @@ export const profileSchema = z.object({
   fullName: z.string().trim().min(2).max(80),
   phone: z.string().max(30).nullable(),
   locale: z.enum(["id", "en"]),
-  theme: z.enum(["light", "dark", "system"]),
+  theme: z.enum(["light", "dark", "system"]).optional(),
 });
 
 export const passwordSchema = z.object({

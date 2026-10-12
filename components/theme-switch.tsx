@@ -1,46 +1,29 @@
 "use client";
 
-import { Monitor, Moon, SunMedium } from "lucide-react";
+import { Moon, SunMedium } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
-/** Light / dark / system segmented control for pages without the app topbar (login, register). */
+/**
+ * Light/dark toggle for pages without the app topbar (login, register). Until someone picks,
+ * the theme follows the device setting.
+ */
 export function ThemeSwitch({ className }: { className?: string }) {
   const t = useTranslations("settings");
   const tc = useTranslations("common");
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const options = [
-    ["light", t("themeLight"), SunMedium],
-    ["dark", t("themeDark"), Moon],
-    ["system", t("themeSystem"), Monitor],
-  ] as const;
-
+  const { resolvedTheme, setTheme } = useTheme();
   return (
-    <div role="radiogroup" aria-label={tc("theme")} className={cn("inline-flex rounded-lg border bg-card p-0.5", className)}>
-      {options.map(([value, label, Icon]) => {
-        const active = mounted && (theme ?? "system") === value;
-        return (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            title={label}
-            onClick={() => setTheme(value)}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-              active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
-            )}
-          >
-            <Icon className="h-3.5 w-3.5" />
-            {label}
-          </button>
-        );
-      })}
-    </div>
+    <button
+      type="button"
+      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      aria-label={tc("theme")}
+      className={cn("inline-flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground", className)}
+    >
+      <Moon className="h-3.5 w-3.5 dark:hidden" />
+      <SunMedium className="hidden h-3.5 w-3.5 dark:block" />
+      <span className="dark:hidden">{t("themeDark")}</span>
+      <span className="hidden dark:inline">{t("themeLight")}</span>
+    </button>
   );
 }

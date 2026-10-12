@@ -826,7 +826,7 @@ export async function updateProfileAction(input: unknown) {
     profile.full_name = parsed.data.fullName;
     profile.phone = parsed.data.phone;
     profile.locale = parsed.data.locale;
-    profile.theme = parsed.data.theme;
+    if (parsed.data.theme) profile.theme = parsed.data.theme;
     profile.updated_at = new Date().toISOString();
     return parsed.data.locale;
   });
@@ -937,15 +937,31 @@ export async function inviteMemberAction(input: unknown) {
       created_at: timestamp,
       created_by: session.userId,
     });
-    return { token, emailSent: true, invitationId, fullName: parsed.data.fullName, email: parsed.data.email.toLowerCase() };
+    return {
+      token,
+      emailSent: true,
+      invitationId,
+      fullName: parsed.data.fullName,
+      email: parsed.data.email.toLowerCase(),
+      invitedBy: session.profile.full_name,
+      organization: session.organization.name,
+      role: parsed.data.role,
+    };
   });
   if (!result.ok) return { ok: false as const, error: result.error };
   if (result.data.emailSent && result.data.email && result.data.invitationId && supabaseEnabled) {
     try {
       const admin = createAdminClient();
       await admin.auth.admin.inviteUserByEmail(result.data.email, {
-        redirectTo: `${siteUrl()}/auth/callback?next=/id/onboarding`,
-        data: { full_name: result.data.fullName ?? "", invitation_id: result.data.invitationId },
+        redirectTo: `${siteUrl()}/auth/callback?next=/id/accept-invite`,
+        // Available to the Supabase invite email template as {{ .Data.<key> }} (AGENTS.md §12).
+        data: {
+          full_name: result.data.fullName ?? "",
+          invitation_id: result.data.invitationId,
+          invited_by: result.data.invitedBy ?? "",
+          organization: result.data.organization ?? "",
+          role: result.data.role ?? "",
+        },
       });
     } catch (error) {
       console.error(error);

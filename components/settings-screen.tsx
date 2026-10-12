@@ -96,7 +96,6 @@ export function SettingsScreen({
                 fullName: String(form.get("fullName")),
                 phone: String(form.get("phone")) || null,
                 locale: localeValue,
-                theme: String(form.get("theme")) as "light" | "dark" | "system",
               }).then((result) => done(result, localeValue));
             }}>
               <Field label={tc("name")}><Input name="fullName" required defaultValue={data.profile.fullName} /></Field>
@@ -104,13 +103,6 @@ export function SettingsScreen({
               <Field label={tc("phone")}><Input name="phone" defaultValue={data.profile.phone} /></Field>
               <Field label={t("language")}>
                 <Select name="locale" defaultValue={data.profile.locale}><option value="id">Indonesia</option><option value="en">English</option></Select>
-              </Field>
-              <Field label={tc("theme")}>
-                <Select name="theme" defaultValue={data.profile.theme}>
-                  <option value="light">{t("themeLight")}</option>
-                  <option value="dark">{t("themeDark")}</option>
-                  <option value="system">{t("themeSystem")}</option>
-                </Select>
               </Field>
               <Button type="submit">{tc("save")}</Button>
             </form>
@@ -161,11 +153,12 @@ export function SettingsScreen({
               <form className="grid max-w-lg gap-3" onSubmit={(event) => {
                 event.preventDefault();
                 const form = new FormData(event.currentTarget);
-                void inviteMemberAction({ email: String(form.get("email")), fullName: String(form.get("fullName")), role: String(form.get("role")), teamId: null }).then(async (result) => {
+                const email = String(form.get("email"));
+                const formElement = event.currentTarget;
+                void inviteMemberAction({ email, fullName: String(form.get("fullName")), role: String(form.get("role")), teamId: null }).then((result) => {
                   if (!result.ok) return toast.error(result.error);
-                  const link = `${window.location.origin}/${locale}/register?invite=${result.data}`;
-                  await navigator.clipboard.writeText(link);
-                  toast.success(tc("copied"));
+                  toast.success(t("inviteSent", { email }));
+                  formElement.reset();
                   router.refresh();
                 });
               }}>
