@@ -33,6 +33,7 @@ type SettingsData = {
   canAdmin: boolean;
   canManage: boolean;
   currentUserId: string;
+  isOwner: boolean;
   members: { userId: string; name: string; email: string; role: Role; disabled: boolean }[];
   invitations: { id: string; email: string; role: Role; expiresAt: string; status: "pending" | "accepted" | "expired" }[];
   customFields: { id: string; entity: "deal" | "contact" | "company"; label: string; field_type: "text" | "number" | "date" | "select"; options: string | null }[];
@@ -142,6 +143,7 @@ export function SettingsScreen({
             invitations={data.invitations}
             canAdmin={data.canAdmin}
             currentUserId={data.currentUserId}
+            isOwner={data.isOwner}
             locale={locale}
           />
         ) : null}

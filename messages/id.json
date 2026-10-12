@@ -447,6 +447,7 @@
     "invitesHint": "Orang di daftar ini belum masuk ke Airtek CRM. Mereka baru menjadi anggota setelah membuka email undangan dan membuat kata sandi.",
     "invitesEmpty": "Tidak ada undangan yang menunggu konfirmasi.",
     "levelsTitle": "Tingkat akses",
+    "levelRank": "Tingkat {n}",
     "roleBossBody": "Akses penuh ke organisasi. Akun Boss tidak dapat diubah atau dihapus.",
     "roleAdminBody": "Mengundang anggota, mengatur pipeline, dan melihat seluruh data penjualan.",
     "roleSalesBody": "Mengelola peluang dan aktivitasnya sendiri, serta melihat proyek rekan satu tim.",

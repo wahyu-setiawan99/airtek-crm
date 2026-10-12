@@ -449,6 +449,7 @@
     "invitesHint": "People on this list have not joined Airtek CRM yet. They become members after they open the invitation and create a password.",
     "invitesEmpty": "No invitations are waiting for confirmation.",
     "levelsTitle": "Access levels",
+    "levelRank": "Level {n}",
     "roleBossBody": "Full access to the organization. The Boss account cannot be changed or deleted.",
     "roleAdminBody": "Invites members, manages pipelines, and can see every sales record.",
     "roleSalesBody": "Manages their own opportunities and activities, and can view teammates' projects.",

@@ -31,12 +31,14 @@ export function MembersPanel({
   invitations,
   canAdmin,
   currentUserId,
+  isOwner,
   locale,
 }: {
   members: Member[];
   invitations: Invitation[];
   canAdmin: boolean;
   currentUserId: string;
+  isOwner: boolean;
   locale: AppLocale;
 }) {
   const t = useTranslations("settings");
@@ -45,8 +47,10 @@ export function MembersPanel({
   const [removing, setRemoving] = useState<Member | null>(null);
   const [busy, setBusy] = useState(false);
   const waiting = invitations.filter((item) => item.status !== "accepted");
+  const visibleMembers = isOwner ? members : members.filter((member) => member.role !== "owner");
+  const levels = isOwner ? LEVELS : LEVELS.filter((level) => level.role !== "owner");
   const grouped = ROLE_ORDER
-    .map((role) => ({ role, people: members.filter((member) => member.role === role) }))
+    .map((role) => ({ role, people: visibleMembers.filter((member) => member.role === role) }))
     .filter((group) => group.people.length > 0);
 
   function done(result: { ok: boolean; error?: string }) {
@@ -61,8 +65,8 @@ export function MembersPanel({
     <div className="grid gap-6">
       <section className="grid gap-3">
         <h2 className="text-sm font-semibold">{t("levelsTitle")}</h2>
-        <div className="grid gap-3 lg:grid-cols-3">
-          {LEVELS.map((level) => {
+        <div className={cn("grid gap-3", levels.length > 2 ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
+          {levels.map((level, index) => {
             const Icon = level.icon;
             return (
               <article key={level.role} className="rounded-lg border bg-card p-4">
@@ -71,7 +75,7 @@ export function MembersPanel({
                     <Icon className="h-4 w-4" />
                   </span>
                   <div>
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t(level.level)}</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("levelRank", { n: index + 1 })}</p>
                     <p className="text-sm font-semibold">{tc(`roles.${level.role}`)}</p>
                   </div>
                 </div>
