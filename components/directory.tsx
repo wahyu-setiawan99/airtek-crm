@@ -312,7 +312,7 @@ export function ActivitiesScreen({
   );
 }
 
-export function ProductsScreen({ products, canCreate }: { products: Product[]; canCreate: boolean }) {
+export function ProductsScreen({ products, tags, canCreate }: { products: Product[]; tags: { id: string; name: string; color: string }[]; canCreate: boolean }) {
   const t = useTranslations("products");
   const tc = useTranslations("common");
   const router = useRouter();
@@ -329,7 +329,7 @@ export function ProductsScreen({ products, canCreate }: { products: Product[]; c
                 <tr key={product.id} className="border-t">
                   <td className="p-3 font-medium">{product.name}</td>
                   <td className="p-3">{product.sku}</td>
-                  <td className="p-3">{product.category}</td>
+                  <td className="p-3">{tags.find((tag) => tag.id === product.tag_id)?.name ?? "—"}</td>
                   <td className="money p-3">{formatRupiah(product.unit_price)}</td>
                   <td className="p-3">
                     {canCreate ? <button className="text-primary" onClick={() => { setEditing(product); setOpen(true); }}>{tc("edit")}</button> : null}
@@ -350,7 +350,7 @@ export function ProductsScreen({ products, canCreate }: { products: Product[]; c
             sku: String(form.get("sku") ?? "") || null,
             unit: String(form.get("unit") ?? "unit"),
             unitPrice: Number(form.get("unitPrice") ?? 0),
-            category: String(form.get("category") ?? "") || null,
+            tagId: String(form.get("tagId") ?? ""),
           }).then((result) => {
             if (!result.ok) toast.error(result.error);
             else { setOpen(false); router.refresh(); }
@@ -360,7 +360,11 @@ export function ProductsScreen({ products, canCreate }: { products: Product[]; c
           <Field label={t("sku")}><Input name="sku" defaultValue={editing?.sku ?? ""} /></Field>
           <Field label={t("unit")}><Input name="unit" required defaultValue={editing?.unit ?? "unit"} /></Field>
           <Field label={t("unitPrice")}><Input name="unitPrice" type="number" min={0} required defaultValue={editing?.unit_price ?? 0} /></Field>
-          <Field label={t("category")}><Input name="category" defaultValue={editing?.category ?? ""} /></Field>
+          <Field label={t("category")}>
+            <Select name="tagId" required defaultValue={editing?.tag_id ?? tags[0]?.id}>
+              {tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
+            </Select>
+          </Field>
           <div className="flex justify-between">
             {editing ? <Button type="button" variant="destructive" onClick={() => void deleteProductAction(editing.id).then(() => { setOpen(false); router.refresh(); })}>{tc("delete")}</Button> : <span />}
             <Button type="submit">{tc("save")}</Button>

@@ -1,4 +1,5 @@
-export type Role = "owner" | "admin" | "manager" | "sales" | "viewer";
+export type Role = "owner" | "admin" | "manager" | "sales" | "presales" | "viewer";
+export type ThemePreference = "light" | "dark" | "system";
 export type StageType = "open" | "won" | "lost";
 export type DealStatus = "open" | "won" | "lost";
 export type ActivityType = "call" | "meeting" | "email" | "task" | "visit" | "whatsapp";
@@ -16,6 +17,8 @@ export type Organization = Stamp & {
   logo_url: string | null;
   currency: string;
   timezone: string;
+  /** Presentation org. Real customer data stays in a separate organization. */
+  demo: boolean;
 };
 
 export type Profile = {
@@ -29,6 +32,10 @@ export type Profile = {
   password: string;
   reset_token: string | null;
   reset_expires: string | null;
+  /** Demo-store only. Supabase Auth owns confirmation. */
+  email_confirmed: boolean;
+  confirm_token: string | null;
+  theme: ThemePreference;
   created_at: string;
   updated_at: string;
 };
@@ -46,16 +53,20 @@ export type Membership = Stamp & {
   user_id: string;
   role: Role;
   team_id: string | null;
+  disabled_at: string | null;
 };
 
 export type Invitation = {
   id: string;
   organization_id: string;
   email: string;
+  full_name: string | null;
   role: Role;
+  team_id: string | null;
   token: string;
   expires_at: string;
   accepted_at: string | null;
+  cancelled_at: string | null;
   created_at: string;
   created_by: string;
 };
@@ -192,7 +203,7 @@ export type Product = Stamp & {
   sku: string | null;
   unit: string;
   unit_price: number;
-  category: string | null;
+  tag_id: string | null;
 };
 
 export type DealProduct = {

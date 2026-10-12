@@ -25,6 +25,7 @@ import { formatCompact, formatDate, formatMonth, jakartaParts } from "@/lib/form
 import { cn, initials } from "@/lib/utils";
 import type { BoardDeal, BoardStage, PipelineData } from "@/types/view";
 import { DealDialog } from "@/components/deal-dialog";
+import { FilterBar } from "@/components/filters/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select } from "@/components/ui/form";
@@ -168,26 +169,19 @@ export function PipelineBoard({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 rounded-lg border bg-card p-3 md:flex-row md:items-center">
-        <Input
-          value={filters.q}
-          placeholder={t("searchDeals")}
-          className="md:max-w-xs"
-          onChange={(event) => pushFilters({ q: event.target.value })}
+      <div className="rounded-lg border bg-card p-3">
+        <FilterBar
+          values={filters}
+          owners={data.owners}
+          tags={data.tags}
+          onChange={(next) => pushFilters({
+            q: next.q ?? "",
+            owner: next.owner ?? "",
+            tag: next.tag ?? "",
+            mine: Boolean(next.mine),
+          })}
         />
-        <Select value={filters.owner} onChange={(event) => pushFilters({ owner: event.target.value })} aria-label={tc("owner")}>
-          <option value="">{t("allOwners")}</option>
-          {data.owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
-        </Select>
-        <Select value={filters.tag} onChange={(event) => pushFilters({ tag: event.target.value })} aria-label={tc("tags")}>
-          <option value="">{t("allTags")}</option>
-          {data.tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
-        </Select>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={filters.mine} onChange={(event) => pushFilters({ mine: event.target.checked })} />
-          {tc("myDeals")}
-        </label>
-        <div className="ml-auto hidden items-center gap-3 text-xs text-muted-foreground md:flex">
+        <div className="mt-2 hidden items-center gap-3 text-xs text-muted-foreground md:flex">
           <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-success" />{t("legendScheduled")}</span>
           <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-destructive" />{t("legendOverdue")}</span>
           <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-warning" />{t("legendRotting")}</span>
@@ -468,7 +462,10 @@ function DealCard({
           </div>
           <div className="mt-2 flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground">{deal.expectedCloseDate ? formatDate(deal.expectedCloseDate, locale) : t("noClose")}</span>
-            <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary" title={deal.ownerName}>{initials(deal.ownerName)}</span>
+            <span className="inline-flex items-center gap-1" title={deal.ownerName}>
+              <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">{initials(deal.ownerName)}</span>
+              <span className="text-[11px] text-muted-foreground">{deal.ownerName.split(" ")[0]}</span>
+            </span>
           </div>
           {deal.canEdit && onEdit ? (
             <div className="mt-2 flex gap-1">

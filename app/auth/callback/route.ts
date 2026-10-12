@@ -5,16 +5,19 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
+  const tokenHash = url.searchParams.get("token_hash");
+  const type = url.searchParams.get("type");
   const next = url.searchParams.get("next");
-  // Only same-site relative paths.
-  const destination = next && next.startsWith("/") && !next.startsWith("//") ? next : "/id/dashboard";
+  const destination = next && next.startsWith("/") && !next.startsWith("//") ? next : "/id/onboarding";
+  const supabase = await createClient();
 
   if (code) {
-    const supabase = await createClient();
     const result = await supabase?.auth.exchangeCodeForSession(code);
-    if (!supabase || result?.error) {
-      return NextResponse.redirect(new URL("/id/login", request.url));
-    }
+    if (!supabase || result?.error) return NextResponse.redirect(new URL("/id/login", request.url));
+  } else if (tokenHash && type) {
+    const otpType = type === "signup" || type === "invite" || type === "recovery" || type === "email" ? type : "email";
+    const result = await supabase?.auth.verifyOtp({ token_hash: tokenHash, type: otpType });
+    if (!supabase || result?.error) return NextResponse.redirect(new URL("/id/login", request.url));
   }
   return NextResponse.redirect(new URL(destination, request.url));
 }

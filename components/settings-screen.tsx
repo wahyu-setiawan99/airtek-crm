@@ -8,6 +8,7 @@ import {
   deleteReasonAction,
   deleteStageAction,
   deleteTagAction,
+  duplicatePipelineAction,
   inviteMemberAction,
   moveStageAction,
   removeMemberAction,
@@ -28,7 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/form";
 
 type SettingsData = {
-  profile: { fullName: string; email: string; phone: string; locale: AppLocale };
+  profile: { fullName: string; email: string; phone: string; locale: AppLocale; theme: "light" | "dark" | "system" };
   organization: { name: string };
   canAdmin: boolean;
   canManage: boolean;
@@ -95,6 +96,7 @@ export function SettingsScreen({
                 fullName: String(form.get("fullName")),
                 phone: String(form.get("phone")) || null,
                 locale: localeValue,
+                theme: String(form.get("theme")) as "light" | "dark" | "system",
               }).then((result) => done(result, localeValue));
             }}>
               <Field label={tc("name")}><Input name="fullName" required defaultValue={data.profile.fullName} /></Field>
@@ -102,6 +104,13 @@ export function SettingsScreen({
               <Field label={tc("phone")}><Input name="phone" defaultValue={data.profile.phone} /></Field>
               <Field label={t("language")}>
                 <Select name="locale" defaultValue={data.profile.locale}><option value="id">Indonesia</option><option value="en">English</option></Select>
+              </Field>
+              <Field label={tc("theme")}>
+                <Select name="theme" defaultValue={data.profile.theme}>
+                  <option value="light">{t("themeLight")}</option>
+                  <option value="dark">{t("themeDark")}</option>
+                  <option value="system">{t("themeSystem")}</option>
+                </Select>
               </Field>
               <Button type="submit">{tc("save")}</Button>
             </form>
@@ -142,7 +151,7 @@ export function SettingsScreen({
                     <p className="text-xs text-muted-foreground">{member.email}</p>
                   </div>
                   <Select defaultValue={member.role} disabled={!data.canAdmin} aria-label={tc("role")} onChange={(event) => void setMemberRoleAction(member.userId, event.target.value as Role).then((result) => done(result))}>
-                    {(["owner", "admin", "manager", "sales", "viewer"] as const).map((role) => <option key={role} value={role}>{tc(`roles.${role}`)}</option>)}
+                    {(["owner", "admin", "manager", "sales", "presales", "viewer"] as const).map((role) => <option key={role} value={role}>{tc(`roles.${role}`)}</option>)}
                   </Select>
                   {data.canAdmin ? <Button size="sm" variant="outline" onClick={() => void removeMemberAction(member.userId).then((result) => done(result))}>{t("remove")}</Button> : null}
                 </li>
@@ -152,7 +161,7 @@ export function SettingsScreen({
               <form className="grid max-w-lg gap-3" onSubmit={(event) => {
                 event.preventDefault();
                 const form = new FormData(event.currentTarget);
-                void inviteMemberAction({ email: String(form.get("email")), role: String(form.get("role")) }).then(async (result) => {
+                void inviteMemberAction({ email: String(form.get("email")), fullName: String(form.get("fullName")), role: String(form.get("role")), teamId: null }).then(async (result) => {
                   if (!result.ok) return toast.error(result.error);
                   const link = `${window.location.origin}/${locale}/register?invite=${result.data}`;
                   await navigator.clipboard.writeText(link);
@@ -161,9 +170,10 @@ export function SettingsScreen({
                 });
               }}>
                 <h2 className="text-sm font-semibold">{t("invite")}</h2>
+                <Field label={tc("name")}><Input name="fullName" required /></Field>
                 <Field label={tc("email")}><Input name="email" type="email" required /></Field>
                 <Field label={tc("role")}>
-                  <Select name="role" defaultValue="sales">{(["admin", "manager", "sales", "viewer"] as const).map((role) => <option key={role} value={role}>{tc(`roles.${role}`)}</option>)}</Select>
+                  <Select name="role" defaultValue="sales">{(["admin", "manager", "sales", "presales", "viewer"] as const).map((role) => <option key={role} value={role}>{tc(`roles.${role}`)}</option>)}</Select>
                 </Field>
                 <Button type="submit">{t("copyInvite")}</Button>
               </form>
@@ -185,6 +195,7 @@ export function SettingsScreen({
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="font-semibold">{pipeline.name}</h2>
                   <Button size="sm" variant="outline" onClick={() => void archivePipelineAction(pipeline.id).then((result) => done(result))}>{t("archive")}</Button>
+                  <Button size="sm" variant="outline" onClick={() => void duplicatePipelineAction(pipeline.id).then((result) => done(result))}>{t("duplicatePipeline")}</Button>
                 </div>
                 <ul className="mt-3 space-y-2">
                   {pipeline.stages.map((stage) => (

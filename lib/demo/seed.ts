@@ -3,7 +3,7 @@ import { subtotal } from "@/lib/domain";
 import { jakartaDate, jakartaParts } from "@/lib/format";
 import type { Stage, StageType, Store } from "@/types/crm";
 
-export const STORE_VERSION = 2;
+export const STORE_VERSION = 3;
 
 const id = {
   org: "10000000-0000-4000-8000-000000000001",
@@ -33,6 +33,7 @@ const id = {
   tagPump: "80000000-0000-4000-8000-000000000002",
   tagTdg: "80000000-0000-4000-8000-000000000003",
   tagLift: "80000000-0000-4000-8000-000000000004",
+  tagAc: "80000000-0000-4000-8000-000000000005",
   reasonPrice: "81000000-0000-4000-8000-000000000001",
   reasonCompetitor: "81000000-0000-4000-8000-000000000002",
   reasonBudget: "81000000-0000-4000-8000-000000000003",
@@ -144,32 +145,35 @@ export function createSeed(): Store {
     version: STORE_VERSION,
     seeded_on: seededOn,
     organizations: [
-      { ...stamp, id: id.org, name: "PT. Airtek Solusi Nusantara", logo_url: null, currency: "IDR", timezone: "Asia/Jakarta" },
-      { ...stamp, id: id.org2, name: "PT. Angin Baru Internasional", logo_url: null, currency: "IDR", timezone: "Asia/Jakarta", created_by: id.adi },
+      { ...stamp, id: id.org, name: "PT. Airtek Solusi Nusantara (DEMO)", logo_url: null, currency: "IDR", timezone: "Asia/Jakarta", demo: true },
+      { ...stamp, id: id.org2, name: "PT. Angin Baru Internasional", logo_url: null, currency: "IDR", timezone: "Asia/Jakarta", demo: false, created_by: id.adi },
     ],
     profiles: [
-      { id: id.adi, full_name: "Adi Pratama", avatar_url: null, phone: "081234560001", locale: "id", email: "adi@airtek.co.id", password: DEMO_PASSWORD, reset_token: null, reset_expires: null, created_at: stamp.created_at, updated_at: stamp.updated_at },
-      { id: id.sari, full_name: "Sari Wulandari", avatar_url: null, phone: "081234560002", locale: "id", email: "sari@airtek.co.id", password: DEMO_PASSWORD, reset_token: null, reset_expires: null, created_at: stamp.created_at, updated_at: stamp.updated_at },
-      { id: id.budi, full_name: "Budi Hartono", avatar_url: null, phone: "081234560003", locale: "id", email: "budi@airtek.co.id", password: DEMO_PASSWORD, reset_token: null, reset_expires: null, created_at: stamp.created_at, updated_at: stamp.updated_at },
-      { id: id.rina, full_name: "Rina Kusuma", avatar_url: null, phone: "081234560004", locale: "id", email: "rina@airtek.co.id", password: DEMO_PASSWORD, reset_token: null, reset_expires: null, created_at: stamp.created_at, updated_at: stamp.updated_at },
+      { id: id.adi, full_name: "Adi Pratama", avatar_url: null, phone: "081234560001", locale: "id", email: "adi@airtek.co.id", password: DEMO_PASSWORD, reset_token: null, reset_expires: null, email_confirmed: true, confirm_token: null, theme: "system", created_at: stamp.created_at, updated_at: stamp.updated_at },
+      { id: id.sari, full_name: "Sari Wulandari", avatar_url: null, phone: "081234560002", locale: "id", email: "sari@airtek.co.id", password: DEMO_PASSWORD, reset_token: null, reset_expires: null, email_confirmed: true, confirm_token: null, theme: "system", created_at: stamp.created_at, updated_at: stamp.updated_at },
+      { id: id.budi, full_name: "Budi Hartono", avatar_url: null, phone: "081234560003", locale: "id", email: "budi@airtek.co.id", password: DEMO_PASSWORD, reset_token: null, reset_expires: null, email_confirmed: true, confirm_token: null, theme: "system", created_at: stamp.created_at, updated_at: stamp.updated_at },
+      { id: id.rina, full_name: "Rina Kusuma", avatar_url: null, phone: "081234560004", locale: "id", email: "rina@airtek.co.id", password: DEMO_PASSWORD, reset_token: null, reset_expires: null, email_confirmed: true, confirm_token: null, theme: "system", created_at: stamp.created_at, updated_at: stamp.updated_at },
     ],
     teams: [{ ...stamp, id: id.team, organization_id: id.org, name: "Tim Jakarta", leader_id: id.adi }],
     memberships: [
-      { ...stamp, id: "31000000-0000-4000-8000-000000000001", organization_id: id.org, user_id: id.adi, role: "owner", team_id: id.team },
-      { ...stamp, id: "31000000-0000-4000-8000-000000000002", organization_id: id.org, user_id: id.sari, role: "sales", team_id: id.team },
-      { ...stamp, id: "31000000-0000-4000-8000-000000000003", organization_id: id.org, user_id: id.budi, role: "manager", team_id: id.team },
-      { ...stamp, id: "31000000-0000-4000-8000-000000000004", organization_id: id.org, user_id: id.rina, role: "viewer", team_id: null },
-      { ...stamp, id: "31000000-0000-4000-8000-000000000005", organization_id: id.org2, user_id: id.adi, role: "owner", team_id: null },
+      { ...stamp, id: "31000000-0000-4000-8000-000000000001", organization_id: id.org, user_id: id.adi, role: "owner", team_id: id.team, disabled_at: null },
+      { ...stamp, id: "31000000-0000-4000-8000-000000000002", organization_id: id.org, user_id: id.sari, role: "sales", team_id: id.team, disabled_at: null },
+      { ...stamp, id: "31000000-0000-4000-8000-000000000003", organization_id: id.org, user_id: id.budi, role: "manager", team_id: id.team, disabled_at: null },
+      { ...stamp, id: "31000000-0000-4000-8000-000000000004", organization_id: id.org, user_id: id.rina, role: "viewer", team_id: null, disabled_at: null },
+      { ...stamp, id: "31000000-0000-4000-8000-000000000005", organization_id: id.org2, user_id: id.adi, role: "owner", team_id: null, disabled_at: null },
     ],
     invitations: [
       {
         id: "32000000-0000-4000-8000-000000000001",
         organization_id: id.org,
         email: "baru@airtek.co.id",
+        full_name: "Calon Sales",
         role: "sales",
+        team_id: null,
         token: "invite-demo-token",
         expires_at: jakartaDate(7, 18),
         accepted_at: null,
+        cancelled_at: null,
         created_at: jakartaDate(-1, 10),
         created_by: id.adi,
       },
@@ -199,9 +203,10 @@ export function createSeed(): Store {
     ],
     tags: [
       { ...stamp, id: id.tagHvac, organization_id: id.org, name: "HVAC", color: "#0f766e" },
-      { ...stamp, id: id.tagPump, organization_id: id.org, name: "PUMP", color: "#0369a1" },
+      { ...stamp, id: id.tagPump, organization_id: id.org, name: "Pompa", color: "#0369a1" },
       { ...stamp, id: id.tagTdg, organization_id: id.org, name: "TDG", color: "#b45309" },
-      { ...stamp, id: id.tagLift, organization_id: id.org, name: "LIFT", color: "#6d28d9" },
+      { ...stamp, id: id.tagLift, organization_id: id.org, name: "Lift", color: "#6d28d9" },
+      { ...stamp, id: id.tagAc, organization_id: id.org, name: "AC", color: "#0e7490" },
     ],
     lost_reasons: [
       { ...stamp, id: id.reasonPrice, organization_id: id.org, name: "Harga" },
@@ -250,13 +255,13 @@ export function createSeed(): Store {
       { deal_id: "70000000-0000-4000-8000-000000000015", tag_id: id.tagHvac },
     ],
     products: [
-      { ...stamp, id: "82000000-0000-4000-8000-000000000001", organization_id: id.org, name: "AHU 5000 CMH", sku: "AHU-5000", unit: "unit", unit_price: 185_000_000, category: "HVAC" },
-      { ...stamp, id: "82000000-0000-4000-8000-000000000002", organization_id: id.org, name: "Chiller 200 TR", sku: "CH-200", unit: "unit", unit_price: 890_000_000, category: "HVAC" },
-      { ...stamp, id: "82000000-0000-4000-8000-000000000003", organization_id: id.org, name: "Pompa Hydrant 500 GPM", sku: "PH-500", unit: "unit", unit_price: 125_000_000, category: "PUMP" },
-      { ...stamp, id: "82000000-0000-4000-8000-000000000004", organization_id: id.org, name: "Cooling Tower 200 TR", sku: "CT-200", unit: "unit", unit_price: 210_000_000, category: "HVAC" },
-      { ...stamp, id: "82000000-0000-4000-8000-000000000005", organization_id: id.org, name: "Lift Penumpang 8 orang", sku: "LF-8", unit: "unit", unit_price: 450_000_000, category: "LIFT" },
-      { ...stamp, id: "82000000-0000-4000-8000-000000000006", organization_id: id.org, name: "Exhaust Fan TDG", sku: "EX-TDG", unit: "unit", unit_price: 35_000_000, category: "TDG" },
-      { ...stamp, id: "82000000-0000-4000-8000-000000000007", organization_id: id.org, name: "Jasa Instalasi", sku: "SVC-INST", unit: "lot", unit_price: 75_000_000, category: "Jasa" },
+      { ...stamp, id: "82000000-0000-4000-8000-000000000001", organization_id: id.org, name: "AC Split 2 PK", sku: "AC-2PK", unit: "unit", unit_price: 8_500_000, tag_id: id.tagAc },
+      { ...stamp, id: "82000000-0000-4000-8000-000000000002", organization_id: id.org, name: "Chiller 200 TR", sku: "CH-200", unit: "unit", unit_price: 890_000_000, tag_id: id.tagAc },
+      { ...stamp, id: "82000000-0000-4000-8000-000000000003", organization_id: id.org, name: "Fire Pump Electric", sku: "PH-500", unit: "unit", unit_price: 125_000_000, tag_id: id.tagPump },
+      { ...stamp, id: "82000000-0000-4000-8000-000000000004", organization_id: id.org, name: "AC Cassette", sku: "AC-CAS", unit: "unit", unit_price: 18_000_000, tag_id: id.tagAc },
+      { ...stamp, id: "82000000-0000-4000-8000-000000000005", organization_id: id.org, name: "Passenger Lift 8 orang", sku: "LF-8", unit: "unit", unit_price: 450_000_000, tag_id: id.tagLift },
+      { ...stamp, id: "82000000-0000-4000-8000-000000000006", organization_id: id.org, name: "VRF Outdoor", sku: "VRF-OD", unit: "unit", unit_price: 210_000_000, tag_id: id.tagAc },
+      { ...stamp, id: "82000000-0000-4000-8000-000000000007", organization_id: id.org, name: "Jasa Instalasi", sku: "SVC-INST", unit: "lot", unit_price: 75_000_000, tag_id: id.tagHvac },
     ],
     deal_products: [
       line("83000000-0000-4000-8000-000000000001", "70000000-0000-4000-8000-000000000002", "82000000-0000-4000-8000-000000000005", 2, 450_000_000, 0),

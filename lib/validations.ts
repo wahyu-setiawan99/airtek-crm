@@ -9,7 +9,7 @@ export const registerSchema = z.object({
   fullName: z.string().trim().min(2).max(80),
   email: z.email(),
   password: z.string().min(8).max(100),
-  organizationName: z.string().trim().min(2).max(120),
+  organizationName: z.string().trim().max(120).optional(),
   inviteToken: z.string().nullable(),
 });
 
@@ -106,7 +106,7 @@ export const productSchema = z.object({
   sku: z.string().max(40).nullable(),
   unit: z.string().trim().min(1).max(20),
   unitPrice: z.number().nonnegative(),
-  category: z.string().max(40).nullable(),
+  tagId: z.string().min(1),
 });
 
 export const lineSchema = z.object({
@@ -121,6 +121,7 @@ export const profileSchema = z.object({
   fullName: z.string().trim().min(2).max(80),
   phone: z.string().max(30).nullable(),
   locale: z.enum(["id", "en"]),
+  theme: z.enum(["light", "dark", "system"]),
 });
 
 export const passwordSchema = z.object({
@@ -134,7 +135,9 @@ export const organizationSchema = z.object({
 
 export const inviteSchema = z.object({
   email: z.email(),
-  role: z.enum(["admin", "manager", "sales", "viewer"]),
+  fullName: z.string().trim().min(2).max(80),
+  role: z.enum(["admin", "manager", "sales", "presales", "viewer"]),
+  teamId: z.string().nullable(),
 });
 
 export const pipelineSchema = z.object({

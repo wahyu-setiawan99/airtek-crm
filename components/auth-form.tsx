@@ -3,7 +3,7 @@
 import { Wind } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { forgotAction, loginAction, registerAction, resetAction } from "@/lib/actions/auth";
+import { forgotAction, loginAction, registerAction, resendConfirmationAction, resetAction } from "@/lib/actions/auth";
 import { DEMO_PASSWORD } from "@/lib/constants";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,8 @@ export function AuthScreen({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [resetLink, setResetLink] = useState<string | null>(null);
+  const [confirmPath, setConfirmPath] = useState<string | null>(null);
+  const [awaitingEmail, setAwaitingEmail] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [sent, setSent] = useState(false);
 
@@ -41,7 +43,8 @@ export function AuthScreen({
       const result = await loginAction({ email, password });
       setPending(false);
       if (!result.ok) return setError(result.error);
-      router.push("/dashboard");
+      const next = result.data && typeof result.data === "object" && "next" in result.data ? "/onboarding" : "/dashboard";
+      router.push(next);
       router.refresh();
       return;
     }
@@ -50,12 +53,16 @@ export function AuthScreen({
         fullName: String(formData.get("fullName") ?? ""),
         email,
         password,
-        organizationName: String(formData.get("organizationName") ?? "Organisasi baru"),
         inviteToken,
       });
       setPending(false);
       if (!result.ok) return setError(result.error);
-      router.push("/dashboard");
+      if (result.data && typeof result.data === "object" && "status" in result.data && result.data.status === "pending") {
+        setAwaitingEmail(email);
+        if ("demoConfirmPath" in result.data && result.data.demoConfirmPath) setConfirmPath(result.data.demoConfirmPath);
+        return;
+      }
+      router.push("/onboarding");
       router.refresh();
       return;
     }
@@ -78,7 +85,7 @@ export function AuthScreen({
     const result = await loginAction({ email, password: DEMO_PASSWORD });
     setPending(false);
     if (!result.ok) return setError(result.error);
-    router.push("/dashboard");
+    router.push("/onboarding");
     router.refresh();
   }
 
@@ -119,6 +126,25 @@ export function AuthScreen({
           <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
           {inviteToken ? <p className="mt-3 text-sm text-primary">{t("inviteJoin")}</p> : null}
+          {mode === "register" && !inviteToken ? <p className="mt-3 text-sm text-muted-foreground">{t("inviteOnly")}</p> : null}
+          {awaitingEmail ? (
+            <div className="mt-6 grid gap-3">
+              <p className="text-sm">{t("checkEmail")}</p>
+              {confirmPath ? (
+                <p className="text-sm">
+                  {t("confirmDemo")}{" "}
+                  <a className="text-primary underline" href={confirmPath}>{confirmPath}</a>
+                </p>
+              ) : null}
+              <Button type="button" variant="outline" disabled={pending} onClick={() => {
+                setPending(true);
+                void resendConfirmationAction(awaitingEmail).then((result) => {
+                  setPending(false);
+                  if (!result.ok) setError(result.error);
+                });
+              }}>{t("resend")}</Button>
+            </div>
+          ) : (
           <form action={onSubmit} className="mt-6 grid gap-4">
             {mode === "register" ? (
               <Field label={t("fullName")}>
@@ -132,11 +158,6 @@ export function AuthScreen({
             ) : (
               <input type="hidden" name="token" value={inviteToken ?? ""} />
             )}
-            {mode === "register" && !inviteToken ? (
-              <Field label={t("organizationName")}>
-                <Input name="organizationName" required />
-              </Field>
-            ) : null}
             {mode !== "forgot" ? (
               <Field label={mode === "reset" ? t("newPassword") : t("password")}>
                 <Input name="password" type="password" required minLength={8} autoComplete={mode === "login" ? "current-password" : "new-password"} />
@@ -156,7 +177,18 @@ export function AuthScreen({
             <Button type="submit" disabled={pending}>
               {mode === "login" ? t("signIn") : mode === "register" ? t("signUp") : mode === "forgot" ? t("sendLink") : t("updatePassword")}
             </Button>
+            {error === t("emailNotConfirmed") ? (
+              <Button type="button" variant="outline" disabled={pending} onClick={() => {
+                const email = (document.querySelector('input[name="email"]') as HTMLInputElement | null)?.value ?? "";
+                setPending(true);
+                void resendConfirmationAction(email).then((result) => {
+                  setPending(false);
+                  if (!result.ok) setError(result.error);
+                });
+              }}>{t("resend")}</Button>
+            ) : null}
           </form>
+          )}
           {mode === "login" && demo ? (
             <div className="mt-6">
               <p className="text-xs text-muted-foreground">{t("demoHint")}</p>

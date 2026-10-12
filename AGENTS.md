@@ -110,7 +110,7 @@ Aturan DB:
 
 ### Fase 1 — Auth & Akun
 - [x] Login, register, lupa/reset password (Supabase Auth) — [ ] magic link, (opsional) Google OAuth
-- [ ] Register terbuka saat ini akan DIGANTI: hanya main administrator + sistem undangan + konfirmasi email (§11.1–11.2)
+- [x] Register terbuka saat ini akan DIGANTI: hanya main administrator + sistem undangan + konfirmasi email (§11.1–11.2)
 - [x] Middleware proteksi route `(app)`; redirect ke `/login`
 - [x] Onboarding: setelah register pertama → buat organization + pipeline default (Qualification, Needs Analysis, Quotation, Negotiation, Closing, Won, Lost)
 - [x] Halaman profil (nama, foto, telepon, bahasa, ganti password)
@@ -156,15 +156,16 @@ Aturan DB:
 - [ ] Lighthouse desktop ≥ 90, aksesibilitas (label, fokus, kontras)
 
 ### Fase 8 — Akses, demo & konfigurasi bisnis (KERJAKAN SEBELUM Fase 7) — spesifikasi di §11
-- [ ] Main administrator dari env `BOOTSTRAP_ADMIN_EMAIL` (§11.1)
-- [ ] Wajib konfirmasi email, pendaftaran publik ditutup (§11.1)
-- [ ] Undangan oleh administrator + pilih role, termasuk role baru `presales` (§11.2)
-- [ ] Organisasi demo + akun dummy untuk presentasi ke direksi (§11.3)
-- [ ] Kategori produk berbasis tag: Lift, Pompa, AC + custom (§11.4)
-- [ ] Pipeline default Sales & Presales + custom (§11.5)
+- [x] Main administrator dari env `BOOTSTRAP_ADMIN_EMAIL` (§11.1)
+- [x] Wajib konfirmasi email, pendaftaran publik ditutup (§11.1)
+- [x] Undangan oleh administrator + pilih role, termasuk role baru `presales` (§11.2)
+- [x] Script `pnpm seed:demo` + akun dummy (§11.3) — `scripts/seed-demo.ts`, isi dari `lib/demo/seed.ts`
+- [ ] Isi data demo disesuaikan §11.3: pipeline Sales/Presales, tag Lift/Pompa/AC, ±35 deal (sekarang masih pipeline lama "Proyek HVAC", 15 deal), akun `presales.demo`
+- [x] Kategori produk berbasis tag: Lift, Pompa, AC + custom (§11.4)
+- [x] Pipeline default Sales & Presales + custom (§11.5)
 - [ ] Filter bar seragam di semua daftar (§11.6)
 - [ ] "Salesnya siapa" terlihat & bisa difilter di mana-mana (§11.7)
-- [ ] Mode Terang / Gelap / Sistem, tersimpan per user (§11.8)
+- [x] Mode Terang / Gelap / Sistem, tersimpan per user (§11.8)
 
 ### Fase 7 — Mobile PWA (menyusul, JANGAN dikerjakan sebelum Fase 0–6 dan Fase 8 selesai)
 - [ ] Web App Manifest (nama, ikon 192/512, theme color), installable di Android/iOS

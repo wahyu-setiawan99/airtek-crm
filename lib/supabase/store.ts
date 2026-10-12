@@ -27,7 +27,7 @@ type TableSpec = {
 /** Write order respects foreign keys; deletes run in reverse. */
 const TABLES: [TableName, TableSpec][] = [
   ["organizations", { key: ["id"], org: "id" }],
-  ["profiles", { key: ["id"], strip: ["password", "reset_token", "reset_expires"] }],
+  ["profiles", { key: ["id"], strip: ["password", "reset_token", "reset_expires", "email_confirmed", "confirm_token"] }],
   ["teams", { key: ["id"], org: "organization_id" }],
   ["memberships", { key: ["id"], org: "organization_id" }],
   ["invitations", { key: ["id"], org: "organization_id", newestFirst: true }],
@@ -82,8 +82,21 @@ export async function loadSupabaseStore(client: SupabaseClient): Promise<Store> 
         row.password = "";
         row.reset_token = null;
         row.reset_expires = null;
+        row.email_confirmed = true;
+        row.confirm_token = null;
+        row.theme = row.theme ?? "system";
       });
     }
+    if (table === "organizations") rows.forEach((row) => { row.demo = Boolean(row.demo); });
+    if (table === "memberships") rows.forEach((row) => { row.disabled_at = row.disabled_at ?? null; });
+    if (table === "invitations") {
+      rows.forEach((row) => {
+        row.full_name = row.full_name ?? null;
+        row.team_id = row.team_id ?? null;
+        row.cancelled_at = row.cancelled_at ?? null;
+      });
+    }
+    if (table === "products") rows.forEach((row) => { row.tag_id = row.tag_id ?? null; });
     (store as Record<TableName, Row[]>)[table] = rows;
   });
   return store;

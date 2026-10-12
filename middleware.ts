@@ -56,7 +56,7 @@ export default async function middleware(request: NextRequest) {
   const rest = pathname.replace(/^\/(id|en)/, "") || "/";
 
   if (rest === "/") {
-    const dest = signedIn ? "dashboard" : "login";
+    const dest = signedIn ? "onboarding" : "login";
     return withCookies(NextResponse.redirect(new URL(`/${locale}/${dest}`, request.url)), pending);
   }
 
@@ -65,7 +65,7 @@ export default async function middleware(request: NextRequest) {
   }
 
   if (signedIn && GUEST_ONLY.has(rest)) {
-    return withCookies(NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url)), pending);
+    return withCookies(NextResponse.redirect(new URL(`/${locale}/onboarding`, request.url)), pending);
   }
 
   return withCookies(handleI18n(request), pending);

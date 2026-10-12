@@ -4,7 +4,7 @@ import { getSession, sessionScope, type Session } from "@/lib/session";
 import { mutate } from "@/lib/store";
 import type { Store } from "@/types/crm";
 
-export type ActionResult<T = null> = { ok: true; data: T } | { ok: false; error: string };
+export type ActionResult<T = null> = { ok: true; data: T } | { ok: false; error: string; code?: string };
 
 export class ActionError extends Error {}
 

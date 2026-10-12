@@ -12,6 +12,7 @@ export default async function ProductsPage({ params }: { params: Promise<{ local
   return (
     <ProductsScreen
       products={store.products.filter((item) => item.organization_id === session.organizationId)}
+      tags={store.tags.filter((item) => item.organization_id === session.organizationId)}
       canCreate={canWrite(session.role)}
     />
   );

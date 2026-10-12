@@ -51,8 +51,8 @@ export type PipelineData = {
 export type ShellData = {
   /** Running on the local JSON store instead of Supabase. */
   demo?: boolean;
-  user: { id: string; name: string; email: string; role: Role };
-  organization: Option;
+  user: { id: string; name: string; email: string; role: Role; theme: "light" | "dark" | "system" };
+  organization: Option & { demo: boolean };
   organizations: Option[];
   pipelineId: string | null;
   notifications: { id: string; type: "deal_assigned" | "activity_due" | "mention"; title: string; href: string; read: boolean; createdAt: string }[];

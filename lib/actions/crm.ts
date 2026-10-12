@@ -6,9 +6,10 @@ import { revalidatePath } from "next/cache";
 import { ActionError, runAction, touch } from "@/lib/action";
 import { cookieOptions, ORG_COOKIE } from "@/lib/constants";
 import { subtotal } from "@/lib/domain";
+import { addMembership, duplicatePipeline } from "@/lib/demo/onboarding";
 import { resetStore, createId } from "@/lib/demo/store";
-import { supabaseEnabled } from "@/lib/env";
-import { createStatelessClient } from "@/lib/supabase/admin";
+import { siteUrl, supabaseEnabled } from "@/lib/env";
+import { createAdminClient, createStatelessClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { canAdmin, canEditOwned, canManage, canWrite } from "@/lib/permissions";
 import { getSession } from "@/lib/session";
@@ -740,6 +741,10 @@ export async function saveLineAction(input: unknown) {
       discount_pct: parsed.data.discountPct,
       subtotal: subtotal(parsed.data.qty, parsed.data.unitPrice, parsed.data.discountPct),
     });
+    const product = store.products.find((item) => item.id === parsed.data.productId);
+    if (product?.tag_id && !store.deal_tags.some((item) => item.deal_id === parsed.data.dealId && item.tag_id === product.tag_id)) {
+      store.deal_tags.push({ deal_id: parsed.data.dealId, tag_id: product.tag_id });
+    }
     return null;
   });
 }
@@ -779,7 +784,7 @@ export async function saveProductAction(input: unknown) {
         sku: parsed.data.sku,
         unit: parsed.data.unit,
         unit_price: parsed.data.unitPrice,
-        category: parsed.data.category,
+        tag_id: parsed.data.tagId,
       });
       touch(product);
       return product.id;
@@ -792,7 +797,7 @@ export async function saveProductAction(input: unknown) {
       sku: parsed.data.sku,
       unit: parsed.data.unit,
       unit_price: parsed.data.unitPrice,
-      category: parsed.data.category,
+      tag_id: parsed.data.tagId,
       created_at: timestamp,
       updated_at: timestamp,
       created_by: session.userId,
@@ -821,8 +826,19 @@ export async function updateProfileAction(input: unknown) {
     profile.full_name = parsed.data.fullName;
     profile.phone = parsed.data.phone;
     profile.locale = parsed.data.locale;
+    profile.theme = parsed.data.theme;
     profile.updated_at = new Date().toISOString();
     return parsed.data.locale;
+  });
+}
+
+export async function updateThemeAction(theme: "light" | "dark" | "system") {
+  return runAction(({ session, store }) => {
+    const profile = store.profiles.find((item) => item.id === session.userId);
+    if (!profile) throw new ActionError("Missing");
+    profile.theme = theme;
+    profile.updated_at = new Date().toISOString();
+    return null;
   });
 }
 
@@ -869,27 +885,76 @@ export async function updateOrganizationAction(input: unknown) {
 
 export async function inviteMemberAction(input: unknown) {
   const t = await getTranslations("common");
-  return runAction(({ session, store }) => {
+  const result = await runAction(({ session, store }) => {
     if (!canAdmin(session.role)) throw new ActionError(t("forbidden"));
     const parsed = inviteSchema.safeParse(input);
     if (!parsed.success) throw new ActionError(t("error"));
     const token = createId();
+    const existing = store.profiles.find((item) => item.email.toLowerCase() === parsed.data.email.toLowerCase());
+    if (existing && store.memberships.some((item) => item.user_id === existing.id && item.organization_id === session.organizationId && !item.disabled_at)) {
+      throw new ActionError(t("error"));
+    }
+    const invitationId = createId();
+    const timestamp = new Date().toISOString();
+    if (existing) {
+      addMembership(store, session.organizationId, existing.id, parsed.data.role, session.userId, parsed.data.teamId);
+      store.notifications.unshift({
+        id: createId(),
+        organization_id: session.organizationId,
+        user_id: existing.id,
+        type: "deal_assigned",
+        payload: { title: session.organization.name, href: "/dashboard" },
+        read_at: null,
+        created_at: timestamp,
+      });
+      store.invitations.unshift({
+        id: invitationId,
+        organization_id: session.organizationId,
+        email: parsed.data.email.toLowerCase(),
+        full_name: parsed.data.fullName,
+        role: parsed.data.role,
+        team_id: parsed.data.teamId,
+        token,
+        expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+        accepted_at: timestamp,
+        cancelled_at: null,
+        created_at: timestamp,
+        created_by: session.userId,
+      });
+      return { token, emailSent: false };
+    }
     store.invitations.unshift({
-      id: createId(),
+      id: invitationId,
       organization_id: session.organizationId,
       email: parsed.data.email.toLowerCase(),
+      full_name: parsed.data.fullName,
       role: parsed.data.role,
+      team_id: parsed.data.teamId,
       token,
       expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
       accepted_at: null,
-      created_at: new Date().toISOString(),
+      cancelled_at: null,
+      created_at: timestamp,
       created_by: session.userId,
     });
-    return token;
+    return { token, emailSent: true, invitationId, fullName: parsed.data.fullName, email: parsed.data.email.toLowerCase() };
   });
+  if (!result.ok) return { ok: false as const, error: result.error };
+  if (result.data.emailSent && result.data.email && result.data.invitationId && supabaseEnabled) {
+    try {
+      const admin = createAdminClient();
+      await admin.auth.admin.inviteUserByEmail(result.data.email, {
+        redirectTo: `${siteUrl()}/auth/callback?next=/id/onboarding`,
+        data: { full_name: result.data.fullName ?? "", invitation_id: result.data.invitationId },
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  return { ok: true as const, data: result.data.token };
 }
 
-export async function setMemberRoleAction(userId: string, role: "owner" | "admin" | "manager" | "sales" | "viewer") {
+export async function setMemberRoleAction(userId: string, role: "owner" | "admin" | "manager" | "sales" | "presales" | "viewer") {
   const t = await getTranslations("common");
   return runAction(({ session, store }) => {
     if (!canAdmin(session.role)) throw new ActionError(t("forbidden"));
@@ -911,10 +976,11 @@ export async function removeMemberAction(userId: string) {
     const membership = store.memberships.find((item) => item.user_id === userId && item.organization_id === session.organizationId);
     if (!membership) throw new ActionError(t("error"));
     if (membership.role === "owner") {
-      const owners = store.memberships.filter((item) => item.organization_id === session.organizationId && item.role === "owner");
+      const owners = store.memberships.filter((item) => item.organization_id === session.organizationId && item.role === "owner" && !item.disabled_at);
       if (owners.length === 1) throw new ActionError(t("forbidden"));
     }
-    store.memberships = store.memberships.filter((item) => item.id !== membership.id);
+    membership.disabled_at = new Date().toISOString();
+    touch(membership);
     return null;
   });
 }
@@ -973,6 +1039,43 @@ export async function archivePipelineAction(pipelineId: string) {
       if (next) next.is_default = true;
     }
     return null;
+  });
+}
+
+export async function duplicatePipelineAction(pipelineId: string) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (!canManage(session.role)) throw new ActionError(t("forbidden"));
+    const copyId = duplicatePipeline(store, pipelineId, session.userId);
+    if (!copyId) throw new ActionError(t("error"));
+    return copyId;
+  });
+}
+
+export async function sendToSalesAction(dealId: string, ownerId: string | null) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    const deal = assertDeal(store, session, dealId);
+    const sales = store.pipelines.find((item) => item.organization_id === session.organizationId && item.name === "Sales" && !item.archived);
+    const stage = store.stages
+      .filter((item) => item.pipeline_id === sales?.id && item.type === "open")
+      .sort((a, b) => a.position - b.position)[0];
+    if (!sales || !stage) throw new ActionError(t("error"));
+    const previous = deal.stage_id;
+    deal.pipeline_id = sales.id;
+    deal.stage_id = stage.id;
+    deal.status = "open";
+    if (ownerId && canManage(session.role)) deal.owner_id = ownerId;
+    touch(deal);
+    store.stage_history.push({
+      id: createId(),
+      deal_id: deal.id,
+      from_stage_id: previous,
+      to_stage_id: stage.id,
+      changed_by: session.userId,
+      changed_at: new Date().toISOString(),
+    });
+    return sales.id;
   });
 }
 
@@ -1077,8 +1180,11 @@ export async function deleteTagAction(tagId: string) {
   const t = await getTranslations("common");
   return runAction(({ session, store }) => {
     if (!canManage(session.role)) throw new ActionError(t("forbidden"));
+    if (store.products.some((item) => item.tag_id === tagId && item.organization_id === session.organizationId)) {
+      throw new ActionError(t("forbidden"));
+    }
+    if (store.deal_tags.some((item) => item.tag_id === tagId)) throw new ActionError(t("forbidden"));
     store.tags = store.tags.filter((item) => !(item.id === tagId && item.organization_id === session.organizationId));
-    store.deal_tags = store.deal_tags.filter((item) => item.tag_id !== tagId);
     return null;
   });
 }

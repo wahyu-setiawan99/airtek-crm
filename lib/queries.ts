@@ -71,19 +71,23 @@ export function buildShell(store: Store, session: Session): ShellData {
     .filter((item) => item.organization_id === orgId && !item.archived)
     .sort((a, b) => a.position - b.position);
   const defaultPipeline = pipelines.find((item) => item.is_default) ?? pipelines[0];
+  const homePipeline = session.role === "presales"
+    ? pipelines.find((item) => item.name === "Presales") ?? defaultPipeline
+    : defaultPipeline;
   return {
     user: {
       id: session.userId,
       name: session.profile.full_name,
       email: session.profile.email,
       role: session.role,
+      theme: session.profile.theme ?? "system",
     },
-    organization: { id: session.organization.id, name: session.organization.name },
+    organization: { id: session.organization.id, name: session.organization.name, demo: session.organization.demo },
     organizations: session.memberships
       .map((item) => store.organizations.find((org) => org.id === item.organization_id))
       .filter((org): org is NonNullable<typeof org> => Boolean(org))
       .map((org) => ({ id: org.id, name: org.name })),
-    pipelineId: defaultPipeline?.id ?? null,
+    pipelineId: homePipeline?.id ?? null,
     notifications: store.notifications
       .filter((item) => item.user_id === session.userId && item.organization_id === orgId)
       .sort((a, b) => b.created_at.localeCompare(a.created_at))
@@ -564,6 +568,7 @@ export function buildSettings(store: Store, session: Session) {
       email: session.profile.email,
       phone: session.profile.phone ?? "",
       locale: session.profile.locale,
+      theme: session.profile.theme ?? "system",
     },
     organization: session.organization,
     canAdmin: session.role === "owner" || session.role === "admin",

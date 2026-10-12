@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import { getLocale } from "next-intl/server";
-import { redirect as nextRedirect } from "next/navigation";
 import { cache } from "react";
 import { redirect } from "@/i18n/navigation";
 import { ORG_COOKIE, SESSION_COOKIE } from "@/lib/constants";
@@ -39,7 +38,7 @@ export const getSession = cache(async (): Promise<Session | null> => {
   const profile = store.profiles.find((item) => item.id === userId);
   if (!profile) return null;
 
-  const memberships = store.memberships.filter((item) => item.user_id === userId);
+  const memberships = store.memberships.filter((item) => item.user_id === userId && !item.disabled_at);
   if (memberships.length === 0) return null;
 
   const requested = jar.get(ORG_COOKIE)?.value;
@@ -70,7 +69,8 @@ export async function requireSession(): Promise<Session> {
   const session = await getSession();
   if (!session) {
     if (await getUserId()) {
-      nextRedirect("/auth/sign-out");
+      const locale = await getLocale();
+      redirect({ href: "/onboarding", locale });
     }
     const locale = await getLocale();
     redirect({ href: "/login", locale });

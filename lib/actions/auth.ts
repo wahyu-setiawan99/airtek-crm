@@ -7,10 +7,10 @@ import { ActionError, type ActionResult } from "@/lib/action";
 import { cookieOptions, ORG_COOKIE, SESSION_COOKIE } from "@/lib/constants";
 import { addMembership, provisionOrganization } from "@/lib/demo/onboarding";
 import { createId, mutateStore, readStore } from "@/lib/demo/store";
-import { siteUrl, supabaseEnabled } from "@/lib/env";
+import { isBootstrapAdmin, siteUrl, supabaseEnabled } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { commitSupabaseStore, emptyStore } from "@/lib/supabase/store";
+import { mutate } from "@/lib/store";
 import { forgotSchema, loginSchema, registerSchema, resetSchema } from "@/lib/validations";
 import type { Invitation } from "@/types/crm";
 
@@ -25,7 +25,7 @@ async function setOrg(organizationId: string) {
   jar.set(ORG_COOKIE, organizationId, cookieOptions);
 }
 
-export async function loginAction(input: unknown): Promise<ActionResult> {
+export async function loginAction(input: unknown): Promise<ActionResult<{ next: "onboarding" } | null>> {
   const t = await getTranslations("auth");
   const parsed = loginSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: t("invalidInput") };
@@ -36,17 +36,22 @@ export async function loginAction(input: unknown): Promise<ActionResult> {
       email: parsed.data.email.toLowerCase(),
       password: parsed.data.password,
     });
-    if (error || !data.user) return { ok: false, error: t("invalidCredentials") };
+    if (error || !data.user) {
+      const unconfirmed = error?.code === "email_not_confirmed" || /not confirmed/i.test(error?.message ?? "");
+      if (unconfirmed) return { ok: false, error: t("emailNotConfirmed"), code: "unconfirmed" as const };
+      return { ok: false, error: t("invalidCredentials") };
+    }
     const { data: memberships } = await supabase
       .from("memberships")
-      .select("organization_id")
+      .select("organization_id, disabled_at")
       .eq("user_id", data.user.id)
       .order("created_at")
-      .limit(1);
-    const organizationId = memberships?.[0]?.organization_id as string | undefined;
+      .limit(5);
+    const organizationId = memberships?.find((row) => !row.disabled_at)?.organization_id as string | undefined;
     if (!organizationId) {
-      await supabase.auth.signOut();
-      return { ok: false, error: t("invalidCredentials") };
+      await setOrg("");
+      revalidatePath("/", "layout");
+      return { ok: true, data: { next: "onboarding" as const } };
     }
     await setOrg(organizationId);
     revalidatePath("/", "layout");
@@ -58,11 +63,14 @@ export async function loginAction(input: unknown): Promise<ActionResult> {
   if (!profile || profile.password !== parsed.data.password) {
     return { ok: false, error: t("invalidCredentials") };
   }
-  const membership = store.memberships.find((item) => item.user_id === profile.id);
-  if (!membership) return { ok: false, error: t("invalidCredentials") };
-
+  if (!profile.email_confirmed) return { ok: false, error: t("emailNotConfirmed"), code: "unconfirmed" as const };
   const jar = await cookies();
   jar.set(SESSION_COOKIE, profile.id, cookieOptions);
+  const membership = store.memberships.find((item) => item.user_id === profile.id && !item.disabled_at);
+  if (!membership) {
+    revalidatePath("/", "layout");
+    return { ok: true, data: { next: "onboarding" as const } };
+  }
   await setOrg(membership.organization_id);
   revalidatePath("/", "layout");
   return { ok: true, data: null };
@@ -72,73 +80,127 @@ async function registerWithSupabase(data: {
   fullName: string;
   email: string;
   password: string;
-  organizationName: string;
   inviteToken?: string | null;
-}): Promise<ActionResult> {
+}): Promise<ActionResult<{ status: "pending" | "ready" }>> {
   const t = await getTranslations("auth");
-  const admin = createAdminClient();
   const email = data.email.toLowerCase();
+  const admin = createAdminClient();
 
   let invite: Invitation | null = null;
   if (data.inviteToken) {
-    const { data: row } = await admin
-      .from("invitations")
-      .select("*")
-      .eq("token", data.inviteToken)
-      .is("accepted_at", null)
-      .maybeSingle();
+    const { data: row } = await admin.from("invitations").select("*").eq("token", data.inviteToken).is("accepted_at", null).maybeSingle();
     invite = (row as Invitation | null) ?? null;
-    if (!invite || invite.email.toLowerCase() !== email || new Date(invite.expires_at) < new Date()) {
+    if (!invite || invite.cancelled_at || invite.email.toLowerCase() !== email || new Date(invite.expires_at) < new Date()) {
       return { ok: false, error: t("invalidToken") };
     }
+  } else if (!isBootstrapAdmin(email)) {
+    return { ok: false, error: t("inviteOnly") };
   }
 
-  const { data: created, error } = await admin.auth.admin.createUser({
+  const supabase = await requireSupabase();
+  const { data: signed, error } = await supabase.auth.signUp({
     email,
     password: data.password,
-    email_confirm: true,
-    user_metadata: { full_name: data.fullName },
+    options: {
+      emailRedirectTo: `${siteUrl()}/auth/callback?next=/id/onboarding`,
+      data: { full_name: data.fullName, invitation_id: invite?.id ?? null },
+    },
   });
-  if (error || !created.user) {
+  if (error || !signed.user) {
     const taken = error?.code === "email_exists" || /already/i.test(error?.message ?? "");
     return { ok: false, error: taken ? t("emailTaken") : t("invalidInput") };
   }
-  const userId = created.user.id;
+  return { ok: true, data: { status: signed.session ? "ready" : "pending" } };
+}
 
-  try {
-    const before = emptyStore();
-    if (invite) before.invitations = [invite];
-    const after = structuredClone(before);
-    let organizationId: string;
-    if (invite) {
-      const accepted = after.invitations[0];
-      if (!accepted) throw new Error("invitation missing");
-      addMembership(after, accepted.organization_id, userId, accepted.role, accepted.created_by);
-      accepted.accepted_at = new Date().toISOString();
-      organizationId = accepted.organization_id;
-    } else {
-      organizationId = provisionOrganization(after, userId, data.organizationName);
-    }
-    await commitSupabaseStore(before, after, {
-      organizations: invite ? [invite.organization_id] : [],
-      profiles: [userId],
-    });
+const RESEND_COOKIE = "airtek_resend_at";
 
+export async function resendConfirmationAction(email: string): Promise<ActionResult> {
+  const t = await getTranslations("auth");
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return { ok: false, error: t("invalidInput") };
+  const jar = await cookies();
+  const last = Number(jar.get(RESEND_COOKIE)?.value ?? 0);
+  if (Date.now() - last < 60_000) return { ok: false, error: t("resendWait") };
+  if (supabaseEnabled) {
     const supabase = await requireSupabase();
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: data.password });
-    if (signInError) throw signInError;
-    await setOrg(organizationId);
-  } catch (failure) {
-    console.error(failure);
-    await admin.auth.admin.deleteUser(userId);
-    return { ok: false, error: t("invalidInput") };
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: normalized,
+      options: { emailRedirectTo: `${siteUrl()}/auth/callback?next=/id/onboarding` },
+    });
+    if (error) return { ok: false, error: t("invalidInput") };
   }
-
-  revalidatePath("/", "layout");
+  jar.set(RESEND_COOKIE, String(Date.now()), { ...cookieOptions, httpOnly: true, maxAge: 60 });
   return { ok: true, data: null };
 }
 
-export async function registerAction(input: unknown): Promise<ActionResult> {
+export async function completeOnboardingAction(): Promise<ActionResult> {
+  const t = await getTranslations("auth");
+  const userId = supabaseEnabled ? (await (await requireSupabase()).auth.getUser()).data.user?.id : (await cookies()).get(SESSION_COOKIE)?.value;
+  if (!userId) return { ok: false, error: t("invalidInput") };
+
+  let email = "";
+  let invitationId: string | null = null;
+  let preloadedInvite: Invitation | null = null;
+  if (supabaseEnabled) {
+    const supabase = await requireSupabase();
+    const { data } = await supabase.auth.getUser();
+    email = data.user?.email?.toLowerCase() ?? "";
+    invitationId = typeof data.user?.user_metadata?.invitation_id === "string" ? data.user.user_metadata.invitation_id : null;
+    if (invitationId) {
+      const admin = createAdminClient();
+      const { data: row } = await admin.from("invitations").select("*").eq("id", invitationId).maybeSingle();
+      preloadedInvite = (row as Invitation | null) ?? null;
+    }
+  }
+
+  try {
+    const organizationId = await mutate((store) => {
+      const profile = store.profiles.find((item) => item.id === userId);
+      if (!supabaseEnabled) email = profile?.email.toLowerCase() ?? "";
+      if (preloadedInvite && !store.invitations.some((item) => item.id === preloadedInvite?.id)) {
+        store.invitations.push(preloadedInvite);
+      }
+      const existing = store.memberships.find((item) => item.user_id === userId && !item.disabled_at);
+      if (existing) return existing.organization_id;
+      const invite = store.invitations.find((item) => {
+        if (item.accepted_at || item.cancelled_at || item.email.toLowerCase() !== email) return false;
+        if (new Date(item.expires_at) < new Date()) return false;
+        return invitationId ? item.id === invitationId : true;
+      });
+      if (invite) {
+        addMembership(store, invite.organization_id, userId, invite.role, invite.created_by, invite.team_id);
+        invite.accepted_at = new Date().toISOString();
+        return invite.organization_id;
+      }
+      if (!isBootstrapAdmin(email)) throw new ActionError(t("inviteOnly"));
+      return provisionOrganization(store, userId, "PT. Airtek Solusi Nusantara");
+    }, { organizations: preloadedInvite ? [preloadedInvite.organization_id] : [], profiles: [userId] });
+
+    if (!organizationId) return { ok: false, error: t("inviteOnly") };
+    await setOrg(organizationId);
+    revalidatePath("/", "layout");
+    return { ok: true, data: null };
+  } catch (error) {
+    if (error instanceof ActionError) return { ok: false, error: error.message };
+    console.error(error);
+    return { ok: false, error: t("invalidInput") };
+  }
+}
+
+export async function acceptInviteAction(input: { fullName: string; password: string }): Promise<ActionResult> {
+  const t = await getTranslations("auth");
+  if (input.password.length < 8 || input.fullName.trim().length < 2) return { ok: false, error: t("invalidInput") };
+  if (supabaseEnabled) {
+    const supabase = await requireSupabase();
+    const { error } = await supabase.auth.updateUser({ password: input.password, data: { full_name: input.fullName } });
+    if (error) return { ok: false, error: t("invalidInput") };
+  }
+  return completeOnboardingAction();
+}
+
+export async function registerAction(input: unknown): Promise<ActionResult<{ status: "pending" | "ready"; demoConfirmPath?: string } | null>> {
   const t = await getTranslations("auth");
   const parsed = registerSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: t("invalidInput") };
@@ -151,15 +213,17 @@ export async function registerAction(input: unknown): Promise<ActionResult> {
       if (store.profiles.some((item) => item.email.toLowerCase() === email)) {
         throw new ActionError(t("emailTaken"));
       }
-      const timestamp = new Date().toISOString();
-      const userId = createId();
       const invite = parsed.data.inviteToken
-        ? store.invitations.find((item) => item.token === parsed.data.inviteToken && !item.accepted_at)
+        ? store.invitations.find((item) => item.token === parsed.data.inviteToken && !item.accepted_at && !item.cancelled_at)
         : undefined;
       if (parsed.data.inviteToken && (!invite || invite.email.toLowerCase() !== email || new Date(invite.expires_at) < new Date())) {
         throw new ActionError(t("invalidToken"));
       }
+      if (!invite && !isBootstrapAdmin(email)) throw new ActionError(t("inviteOnly"));
 
+      const timestamp = new Date().toISOString();
+      const userId = createId();
+      const confirmToken = createId();
       store.profiles.push({
         id: userId,
         full_name: parsed.data.fullName,
@@ -170,25 +234,15 @@ export async function registerAction(input: unknown): Promise<ActionResult> {
         password: parsed.data.password,
         reset_token: null,
         reset_expires: null,
+        email_confirmed: false,
+        confirm_token: confirmToken,
+        theme: "system",
         created_at: timestamp,
         updated_at: timestamp,
       });
-
-      const organizationId = invite
-        ? invite.organization_id
-        : provisionOrganization(store, userId, parsed.data.organizationName);
-      if (invite) {
-        addMembership(store, invite.organization_id, userId, invite.role, invite.created_by);
-        invite.accepted_at = timestamp;
-      }
-      return { userId, organizationId };
+      return { confirmToken };
     });
-
-    const jar = await cookies();
-    jar.set(SESSION_COOKIE, result.userId, cookieOptions);
-    await setOrg(result.organizationId);
-    revalidatePath("/", "layout");
-    return { ok: true, data: null };
+    return { ok: true, data: { status: "pending" as const, demoConfirmPath: `/auth/confirm-demo?token=${result.confirmToken}` } };
   } catch (error) {
     if (error instanceof ActionError) return { ok: false, error: error.message };
     return { ok: false, error: t("invalidInput") };
