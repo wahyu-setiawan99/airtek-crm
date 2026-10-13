@@ -378,7 +378,7 @@ Langkah deploy:
   - Provisioning organisasi dipindah ke **setelah konfirmasi** (halaman `/onboarding`): jika user belum punya membership DAN email = `BOOTSTRAP_ADMIN_EMAIL` → buat organisasi "PT. Airtek Solusi Nusantara" dengan role `owner` + pipeline (§11.5) dan tag (§11.4) default. Jika bukan bootstrap dan tidak punya undangan → logout + pesan.
   - Login dengan email yang belum dikonfirmasi → pesan "Email belum dikonfirmasi" + tombol kirim ulang.
 - **SMTP custom wajib** (SMTP bawaan Supabase hanya beberapa email/jam): Resend dengan domain `airtek.my.id`, pengirim `noreply@airtek.my.id` (tambahkan record SPF/DKIM dari Resend di DNS). Isi di Supabase → Authentication → SMTP Settings.
-- Template email Supabase (Konfirmasi, Undangan, Reset password) dalam Bahasa Indonesia dengan nama "Airtek CRM".
+- Template email Supabase (Konfirmasi, Undangan, Reset password) dalam **English** dengan nama "Airtek CRM" (keputusan user 13 Okt 2026).
 
 ### 11.2 Undangan oleh administrator
 - **Level yang dipakai (keputusan user 12 Okt 2026):**
@@ -445,16 +445,16 @@ Langkah deploy:
 
 Tujuan: email undangan seperti Odoo — penerima klik **Terima undangan**, langsung ke halaman buat kata sandi, lalu masuk. **Hanya lewat email** (tidak ada link undangan via WhatsApp / salin tautan).
 
-**Contoh isi (Bahasa Indonesia):**
-> **Subjek:** {invited_by} dari {organization} mengundang Anda ke Airtek CRM
+**Contoh isi (English — keputusan user 13 Okt 2026):**
+> **Subject:** You are invited to Airtek CRM
 >
-> Halo {full_name},
-> *Tautan ini berlaku 7 hari.*
-> **{organization}** menggunakan **Airtek CRM** untuk mengelola pipeline penjualan. Anda diundang oleh **{invited_by}** sebagai **{role}**.
-> Setelah diterima, Anda dapat masuk melalui:
+> Hello {full_name},
+> *This link is valid for 7 days.*
+> **{organization}** uses **Airtek CRM** to manage its sales pipeline. **{invited_by}** invited you as **{role}**.
+> After you accept, sign in with:
 > • Login: {email}
-> • Tautan: https://airtek.my.id
-> [ Terima undangan ]  ← tombol warna brand
+> • Link: https://airtek.my.id
+> [ Accept invitation ]  ← brand-colored button
 > Airtek CRM · PT. Airtek Solusi Nusantara
 
 **Cara kerja (sudah tersedia di kode):**
@@ -463,7 +463,7 @@ Tujuan: email undangan seperti Odoo — penerima klik **Terima undangan**, langs
 - `/auth/callback` juga mendukung `?token_hash=&type=invite` (lebih andal bila template memakai TokenHash).
 
 **Yang harus dikerjakan:**
-- [x] Template HTML `supabase/templates/invite.html` (ID, tabel/inline CSS agar tampil baik di Gmail/Outlook): logo dari `https://airtek.my.id/brand/airtek-logo.png`, salam, isi seperti contoh di atas, tombol **Terima undangan** warna `#9a1b4b`, footer. Variabel Supabase: `{{ .Data.full_name }}`, `{{ .Data.invited_by }}`, `{{ .Data.organization }}`, `{{ .Data.role }}`, `{{ .Email }}`, `{{ .SiteURL }}`.
+- [x] Template HTML `supabase/templates/invite.html` (English, tabel/inline CSS agar tampil baik di Gmail/Outlook): logo dari `https://airtek.my.id/brand/airtek-logo.png`, salam, isi seperti contoh di atas, tombol **Accept invitation** warna `#9a1b4b`, footer. Variabel Supabase: `{{ .Data.full_name }}`, `{{ .Data.invited_by }}`, `{{ .Data.organization }}`, `{{ .Data.role }}`, `{{ .Email }}`, `{{ .SiteURL }}`.
   - Tombol memakai: `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite&next=/id/accept-invite`
   - Label role tampil sebagai "Administrator"/"Sales" (`role` berisi `admin`/`sales`; gunakan `{{ if eq .Data.role "admin" }}Administrator{{ else }}Sales{{ end }}`).
 - [x] Template serupa untuk **Konfirmasi email** (`confirmation.html`, link `…/auth/callback?token_hash={{ .TokenHash }}&type=signup&next=/id/onboarding`) dan **Reset kata sandi** (`recovery.html`, `type=recovery&next=/id/reset-password`).
@@ -846,7 +846,7 @@ Keputusan user (13 Okt 2026): **website cepat, minim redirect, ringan.** (1) Tid
 - `i18n/request.ts` menentukan bahasa per request dengan urutan: **`profiles.locale`** (user login) → cookie **`NEXT_LOCALE`** → default **`en`**. Tidak ada deteksi `Accept-Language` (user minta default English).
 - Ganti `Link`/`redirect`/`useRouter`/`usePathname` dari `@/i18n/navigation` dengan versi `next/link` & `next/navigation`; hapus `i18n/routing.ts` & `createMiddleware` next-intl.
 - **Pengaturan → Profil → Bahasa** (English / Bahasa Indonesia): server action menyimpan `profiles.locale` **dan** cookie `NEXT_LOCALE` (1 tahun), lalu `router.refresh()` — tanpa navigasi ke URL lain.
-- Halaman login/register/landing: tombol bahasa kecil (EN | ID) yang hanya mengubah cookie `NEXT_LOCALE` + refresh (pengganti tombol bahasa sign-in dari commit `8a0c7ca`).
+- **Tidak ada tombol bahasa** di topbar, halaman depan, login/register, maupun halaman undangan (keputusan user 13 Okt 2026): bahasa **hanya** diubah di Pengaturan → Profil. Pengunjung yang belum login selalu melihat English (kecuali cookie `NEXT_LOCALE` dari login sebelumnya).
 - Migration baru: `alter table public.profiles alter column locale set default 'en';` (baris lama tidak diubah — user yang sudah memilih ID tetap ID). Sesuaikan `provisionOrganization`/seed agar user baru `locale = 'en'`.
 - `<html lang>` mengikuti bahasa aktif; format tanggal/uang (`lib/format.ts`) mengikuti bahasa aktif (Rupiah tetap).
 

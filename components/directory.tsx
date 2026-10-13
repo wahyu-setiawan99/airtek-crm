@@ -84,7 +84,7 @@ export function ContactsScreen({
         onSaved={() => { setOpen(false); router.refresh(); }}
       />
       <Dialog open={importOpen} onOpenChange={setImportOpen} title={tc("import")} description={t("importHint")} wide>
-        <Textarea onChange={(event) => {
+        <Textarea aria-label={t("importHint")} onChange={(event) => {
           const grid = parseCsv(event.target.value);
           const [header, ...body] = grid;
           if (!header) return;

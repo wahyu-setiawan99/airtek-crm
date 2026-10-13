@@ -1,14 +1,12 @@
 "use client";
 
-import { Languages } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { devLoginAction, forgotAction, loginAction, registerAction, resendConfirmationAction, resetAction } from "@/lib/actions/auth";
 import { DEMO_PASSWORD } from "@/lib/constants";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
-import { LocaleSwitch } from "@/components/locale-switch";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/form";
@@ -50,7 +48,6 @@ export function AuthScreen({
   devAccounts?: readonly { email: string; role: string }[];
 }) {
   const t = useTranslations("auth");
-  const locale = useLocale();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -124,9 +121,11 @@ export function AuthScreen({
   const subtitle = mode === "login" ? t("loginSubtitle") : mode === "register" ? t("registerSubtitle") : mode === "forgot" ? t("forgotSubtitle") : t("resetTitle");
 
   return (
-    <div className="grid min-h-dvh lg:grid-cols-2">
+    <main className="grid min-h-dvh lg:grid-cols-2">
       <section className="relative hidden overflow-hidden border-r bg-accent/60 px-12 py-14 text-foreground lg:flex lg:flex-col lg:justify-between dark:border-sidebar-border dark:bg-sidebar dark:text-sidebar-foreground">
-        <BrandLogo priority className="h-14 self-start" />
+        <Link href="/" className="inline-flex self-start rounded-md hover:opacity-80">
+          <BrandLogo priority className="h-14" />
+        </Link>
         <div>
           <h1 className="max-w-md text-4xl font-semibold tracking-tight">{t("heroTitle")}</h1>
           <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground dark:text-sidebar-muted">{t("heroBody")}</p>
@@ -142,16 +141,12 @@ export function AuthScreen({
         <p className="text-xs text-muted-foreground dark:text-sidebar-muted">PT. Airtek Solusi Nusantara</p>
       </section>
       <section className="relative grid place-items-center px-4 py-16">
-        <div className="absolute right-4 top-4 flex items-center gap-2">
-          <LocaleSwitch className="inline-flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground">
-            <Languages className="h-3.5 w-3.5" />
-            {locale === "id" ? "EN" : "ID"}
-          </LocaleSwitch>
-          <ThemeSwitch />
-        </div>
+        <ThemeSwitch className="absolute right-4 top-4" />
         <div className="w-full max-w-md">
           <div className="mb-8 lg:hidden">
-            <BrandLogo className="h-10" />
+            <Link href="/" className="inline-flex rounded-md hover:opacity-80">
+              <BrandLogo className="h-10" />
+            </Link>
           </div>
           <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
@@ -248,14 +243,14 @@ export function AuthScreen({
               <>
                 {t("noAccountInvite")}
                 <span className="mx-2">·</span>
-                <Link href="/forgot-password" className="text-primary">{t("forgot")}</Link>
+                <Link href="/forgot-password" className="text-primary underline">{t("forgot")}</Link>
               </>
             ) : (
-              <Link href="/login" className="text-primary">{t("backToLogin")}</Link>
+              <Link href="/login" className="text-primary underline">{t("backToLogin")}</Link>
             )}
           </p>
         </div>
       </section>
-    </div>
+    </main>
   );
 }

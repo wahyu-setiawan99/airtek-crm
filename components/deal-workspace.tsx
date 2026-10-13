@@ -498,6 +498,7 @@ export function DealWorkspace({
                   role="radio"
                   aria-checked={deal.priority === level}
                   disabled={!deal.canEdit}
+                  aria-label={t("stars", { count: level })}
                   title={t("stars", { count: level })}
                   onClick={() => void patch({ priority: deal.priority === level ? 0 : level })}
                   className="rounded p-0.5 disabled:cursor-default"

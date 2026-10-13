@@ -379,9 +379,9 @@ function Column({
               event.currentTarget.reset();
             }}
           >
-            <Input name="title" required placeholder={t("titlePlaceholder")} className="h-8" />
-            <Input name="value" type="number" min={0} required placeholder="0" className="h-8" />
-            <Select name="companyId" className="h-8" defaultValue="">
+            <Input name="title" required placeholder={t("titlePlaceholder")} aria-label={t("titlePlaceholder")} className="h-8" />
+            <Input name="value" type="number" min={0} required placeholder="0" aria-label={tc("value")} className="h-8" />
+            <Select name="companyId" className="h-8" defaultValue="" aria-label={tc("company")}>
               <option value="">{tc("company")}</option>
               {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
             </Select>

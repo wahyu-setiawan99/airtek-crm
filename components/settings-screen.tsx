@@ -110,7 +110,7 @@ export function SettingsScreen({
               <Field label={tc("email")}><Input value={data.profile.email} disabled /></Field>
               <Field label={tc("phone")}><Input name="phone" defaultValue={data.profile.phone} /></Field>
               <Field label={t("language")}>
-                <Select name="locale" defaultValue={data.profile.locale}><option value="id">Indonesia</option><option value="en">English</option></Select>
+                <Select name="locale" defaultValue={data.profile.locale}><option value="en">English</option><option value="id">Indonesia</option></Select>
               </Field>
               <Button type="submit">{tc("save")}</Button>
             </form>

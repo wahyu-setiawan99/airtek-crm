@@ -7,17 +7,15 @@ import { cn } from "@/lib/utils";
 
 /**
  * Light/dark toggle for pages without the app topbar (login, register). Until someone picks,
- * the theme follows the device setting.
+ * the theme follows the device setting. The visible label is the accessible name.
  */
 export function ThemeSwitch({ className }: { className?: string }) {
   const t = useTranslations("settings");
-  const tc = useTranslations("common");
   const { resolvedTheme, setTheme } = useTheme();
   return (
     <button
       type="button"
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-      aria-label={tc("theme")}
       className={cn("inline-flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground", className)}
     >
       <Moon className="h-3.5 w-3.5 dark:hidden" />

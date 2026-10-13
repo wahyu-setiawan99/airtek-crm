@@ -8,7 +8,6 @@ import {
   CalendarCheck,
   Columns3,
   Handshake,
-  Languages,
   LayoutDashboard,
   LogOut,
   Menu as MenuIcon,
@@ -37,7 +36,6 @@ import { cn } from "@/lib/utils";
 import type { ShellData } from "@/types/view";
 import mark from "@/public/brand/airtek-mark.png";
 import { BrandLogo } from "@/components/brand-logo";
-import { LocaleSwitch } from "@/components/locale-switch";
 import { Button } from "@/components/ui/button";
 import { MenuContent, MenuItem, Menu, MenuTrigger } from "@/components/ui/dropdown";
 
@@ -286,9 +284,6 @@ export function AppShell({
                 ))}
               </MenuContent>
             </Menu>
-            <LocaleSwitch className="grid h-9 w-9 place-items-center rounded-md hover:bg-accent">
-              <Languages className="h-4 w-4" />
-            </LocaleSwitch>
             <button
               type="button"
               onClick={toggleTheme}
@@ -373,7 +368,7 @@ export function AppShell({
         overlayClassName="fixed inset-0 z-50 bg-black/50"
         contentClassName="fixed left-1/2 top-[12%] z-50 w-[min(100%-1.5rem,36rem)] -translate-x-1/2 overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl"
       >
-        <Command.Input placeholder={tcmd("placeholder")} className="h-12 w-full border-b bg-transparent px-4 text-sm outline-none" />
+        <Command.Input placeholder={tcmd("placeholder")} aria-label={tcmd("placeholder")} className="h-12 w-full border-b bg-transparent px-4 text-sm outline-none" />
         <Command.List className="max-h-80 overflow-y-auto p-2">
           <Command.Empty className="px-3 py-8 text-center text-sm text-muted-foreground">{tcmd("empty")}</Command.Empty>
           <Command.Group heading={tcmd("actions")} className="px-2 py-1 text-[11px] uppercase tracking-wide text-muted-foreground">
