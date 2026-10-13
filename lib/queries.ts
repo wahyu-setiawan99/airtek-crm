@@ -1,5 +1,6 @@
 import { activitySignal, dealProbability, isRotting, weightedValue } from "@/lib/domain";
-import { addMonthsKey, inPeriod, jakartaMonthKey, jakartaStart } from "@/lib/format";
+import { addMonthsKey, jakartaMonthKey, jakartaStart } from "@/lib/format";
+import { inPeriodFilter, periodMonthKeys, type PeriodFilter } from "@/lib/period";
 import { canEditOwned, canManage, canWrite } from "@/lib/permissions";
 import type { Session } from "@/lib/session";
 import { contactName } from "@/lib/utils";
@@ -247,18 +248,7 @@ export function defaultPipelineId(store: Store, organizationId: string) {
   return (pipelines.find((item) => item.is_default) ?? pipelines[0])?.id ?? null;
 }
 
-function periodMonthKeys(period: "month" | "quarter" | "year", now = new Date()) {
-  const current = jakartaMonthKey(now.toISOString());
-  const [yearText, monthText] = current.split("-");
-  const year = Number(yearText);
-  const month = Number(monthText);
-  if (period === "month") return [current];
-  if (period === "year") return Array.from({ length: 12 }, (_, index) => `${year}-${String(index + 1).padStart(2, "0")}`);
-  const start = Math.floor((month - 1) / 3) * 3 + 1;
-  return [0, 1, 2].map((offset) => `${year}-${String(start + offset).padStart(2, "0")}`);
-}
-
-function targetFor(store: Store, organizationId: string, userId: string, period: "month" | "quarter" | "year") {
+function targetFor(store: Store, organizationId: string, userId: string, period: PeriodFilter) {
   const keys = new Set(periodMonthKeys(period));
   const rows = store.sales_targets.filter((item) => item.organization_id === organizationId && item.user_id === userId && keys.has(item.month.slice(0, 7)));
   if (rows.length === 0) return null;
@@ -283,8 +273,8 @@ export function buildDashboard(
   const open = deals.filter((deal) => deal.status === "open");
   const pipelineValue = open.reduce((sum, deal) => sum + deal.value, 0);
   const weighted = open.reduce((sum, deal) => sum + weightOf(deal), 0);
-  const wonDeals = deals.filter((deal) => deal.status === "won" && inPeriod(deal.won_at, period));
-  const lostDeals = deals.filter((deal) => deal.status === "lost" && inPeriod(deal.lost_at, period));
+  const wonDeals = deals.filter((deal) => deal.status === "won" && inPeriodFilter(deal.won_at, period));
+  const lostDeals = deals.filter((deal) => deal.status === "lost" && inPeriodFilter(deal.lost_at, period));
   const closed = wonDeals.length + lostDeals.length;
   const cycleSamples = wonDeals
     .map((deal) => (deal.won_at ? (new Date(deal.won_at).getTime() - new Date(deal.created_at).getTime()) / 86400000 : 0))
@@ -627,8 +617,8 @@ export function buildReports(
     if (ownerId !== "all" && deal.owner_id !== ownerId) return false;
     return true;
   });
-  const won = deals.filter((deal) => deal.status === "won" && inPeriod(deal.won_at, period));
-  const lost = deals.filter((deal) => deal.status === "lost" && inPeriod(deal.lost_at, period));
+  const won = deals.filter((deal) => deal.status === "won" && inPeriodFilter(deal.won_at, period));
+  const lost = deals.filter((deal) => deal.status === "lost" && inPeriodFilter(deal.lost_at, period));
   const reasonMap = new Map<string, number>();
   lost.forEach((deal) => {
     const name = store.lost_reasons.find((item) => item.id === deal.lost_reason_id)?.name ?? "Lainnya";

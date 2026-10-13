@@ -178,7 +178,11 @@
     "colWeighted": "Weighted",
     "colWon": "Won",
     "colTarget": "Target",
-    "colOverdue": "Overdue"
+    "colOverdue": "Overdue",
+    "period": "Period",
+    "customRange": "Date range",
+    "rangeFrom": "From date",
+    "rangeTo": "To date"
   },
   "pipeline": {
     "kanban": "Kanban",

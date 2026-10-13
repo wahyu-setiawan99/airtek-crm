@@ -9,7 +9,7 @@ import type { BoardDeal, PipelineData } from "@/types/view";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select } from "@/components/ui/form";
-import { MoneyInput } from "@/components/ui/money-input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 
 export function DealDialog({
   open,
@@ -60,7 +60,7 @@ export function DealDialog({
           <Input name="title" required defaultValue={deal?.title ?? ""} />
         </Field>
         <Field label={t("estimatedValue")}>
-          <MoneyInput name="value" required defaultValue={deal?.value ?? null} />
+          <CurrencyInput name="value" required defaultValue={deal?.value ?? null} />
         </Field>
         <Field label={tc("stage")}>
           <Select name="stageId" defaultValue={deal?.stageId ?? stages.find((stage) => stage.type === "open")?.id}>

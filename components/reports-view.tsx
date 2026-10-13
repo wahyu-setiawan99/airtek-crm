@@ -11,6 +11,8 @@ import type { ReportData } from "@/types/view";
 import { FilterBar, type FilterValues } from "@/components/filters/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/form";
+import { PeriodPicker } from "@/components/period-picker";
+import { periodQuery, type PeriodFilter } from "@/lib/period";
 
 const SimpleBarChart = dynamic(() => import("@/components/charts/bar-chart"), {
   ssr: false,
@@ -28,20 +30,19 @@ export function ReportsView({
   locale: AppLocale;
   pipelineId: string;
   ownerId: string;
-  period: string;
+  period: PeriodFilter;
 }) {
   const t = useTranslations("reports");
   const td = useTranslations("dashboard");
   const tc = useTranslations("common");
   const router = useRouter();
   const [query, setQuery] = useState("");
-  function go(next: { pipeline?: string; owner?: string; period?: string }) {
+  function go(next: { pipeline?: string; owner?: string; period?: PeriodFilter }) {
     const params = new URLSearchParams({
       pipeline: next.pipeline ?? pipelineId,
       owner: next.owner ?? ownerId,
-      period: next.period ?? period,
     });
-    router.push(`/reports?${params.toString()}`);
+    router.push(`/reports?${params.toString()}&${periodQuery(next.period ?? period)}`);
   }
   return (
     <div className="grid gap-4">
@@ -68,11 +69,7 @@ export function ReportsView({
             <option value="all">{tc("all")}</option>
             {data.owners.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </Select>
-          <Select className="w-auto" value={period} aria-label="Period" onChange={(event) => go({ period: event.target.value })}>
-            <option value="month">{td("thisMonth")}</option>
-            <option value="quarter">{td("thisQuarter")}</option>
-            <option value="year">{td("thisYear")}</option>
-          </Select>
+          <PeriodPicker value={period} onChange={(next) => go({ period: next })} />
           <Button variant="outline" onClick={() => downloadCsv("laporan.csv", [["title", "status", "value", "owner", "closed", "reason"], ...data.rows.map((row) => [row.title, row.status, row.value, row.owner, row.closed, row.reason])])}>{tc("export")}</Button>
         </div>
       </div>

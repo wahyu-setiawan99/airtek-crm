@@ -10,6 +10,8 @@ import { formatCompact, formatDate, formatMonth } from "@/lib/format";
 import { cn, initials } from "@/lib/utils";
 import type { DashboardData } from "@/types/view";
 import { Select } from "@/components/ui/form";
+import { PeriodPicker } from "@/components/period-picker";
+import { periodQuery } from "@/lib/period";
 
 const SimpleBarChart = dynamic(() => import("@/components/charts/bar-chart"), {
   ssr: false,
@@ -34,21 +36,12 @@ export function DashboardView({ data, locale }: { data: DashboardData; locale: A
             className="w-auto"
             value={data.pipelineId}
             aria-label="Pipeline"
-            onChange={(event) => router.push(`/dashboard?pipeline=${event.target.value}&period=${data.period}`)}
+            onChange={(event) => router.push(`/dashboard?pipeline=${event.target.value}&${periodQuery(data.period)}`)}
           >
             <option value="all">{t("allPipelines")}</option>
             {data.pipelines.map((pipeline) => <option key={pipeline.id} value={pipeline.id}>{pipeline.name}</option>)}
           </Select>
-          <Select
-            className="w-auto"
-            value={data.period}
-            aria-label="Period"
-            onChange={(event) => router.push(`/dashboard?pipeline=${data.pipelineId}&period=${event.target.value}`)}
-          >
-            <option value="month">{t("thisMonth")}</option>
-            <option value="quarter">{t("thisQuarter")}</option>
-            <option value="year">{t("thisYear")}</option>
-          </Select>
+          <PeriodPicker value={data.period} onChange={(next) => router.push(`/dashboard?pipeline=${data.pipelineId}&${periodQuery(next)}`)} />
         </div>
       </div>
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-5 [&>:last-child:nth-child(odd)]:col-span-2 xl:[&>:last-child:nth-child(odd)]:col-span-1">

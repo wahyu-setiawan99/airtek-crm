@@ -3,6 +3,7 @@ import { ReportsView } from "@/components/reports-view";
 import type { AppLocale } from "@/i18n/locale";
 import { preload, withStore, type TableName } from "@/lib/store";
 import { buildReports } from "@/lib/queries";
+import { parsePeriod } from "@/lib/period";
 import { requireSession } from "@/lib/session";
 
 /** Tables this page reads; fetched while the session is checked. */
@@ -11,13 +12,13 @@ const TABLES: readonly TableName[] = ["pipelines", "stages", "deals", "lost_reas
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pipeline?: string; owner?: string; period?: string }>;
+  searchParams: Promise<{ pipeline?: string; owner?: string; period?: string; from?: string; to?: string }>;
 }) {
   preload(TABLES);
   const locale = await getLocale();
   const query = await searchParams;
   const session = await requireSession();
-  const period = query.period === "quarter" || query.period === "year" ? query.period : "month";
+  const period = parsePeriod(query);
   const data = await withStore(TABLES, (store) =>
     buildReports(store, session, query.pipeline ?? "all", query.owner ?? "all", period),
   );

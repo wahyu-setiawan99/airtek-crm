@@ -177,7 +177,11 @@
     "colWeighted": "Tertimbang",
     "colWon": "Menang",
     "colTarget": "Target",
-    "colOverdue": "Terlambat"
+    "colOverdue": "Terlambat",
+    "period": "Periode",
+    "customRange": "Rentang tanggal",
+    "rangeFrom": "Dari tanggal",
+    "rangeTo": "Sampai tanggal"
   },
   "pipeline": {
     "kanban": "Kanban",

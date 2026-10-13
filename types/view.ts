@@ -1,3 +1,4 @@
+import type { PeriodFilter } from "@/lib/period";
 import type { ActivityType, ClientType, DealStatus, Role, SavedView, StageType } from "@/types/crm";
 
 export type TagChip = { id: string; name: string; color: string };
@@ -74,7 +75,7 @@ export type DashboardData = {
   name: string;
   pipelines: Option[];
   pipelineId: string;
-  period: "month" | "quarter" | "year";
+  period: PeriodFilter;
   openCount: number;
   pipelineValue: number;
   weighted: number;

@@ -13,7 +13,7 @@ export function groupDigits(digits: string) {
  * Rupiah amount field: shows "Rp 850.000.000" while typing, strips leading zeros and
  * non-digits, and submits the plain number through a hidden input named `name`.
  */
-export function MoneyInput({
+export function CurrencyInput({
   name,
   defaultValue,
   required,
