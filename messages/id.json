@@ -338,7 +338,12 @@
     "title": "Perusahaan",
     "subtitle": "Klien dan prospek.",
     "new": "Perusahaan baru",
-    "industry": "Industri",
+    "clientType": "Jenis klien",
+    "types": {
+      "konsultan": "Konsultan",
+      "kontraktor": "Kontraktor",
+      "owner": "Owner"
+    },
     "city": "Kota",
     "province": "Provinsi",
     "npwp": "NPWP",

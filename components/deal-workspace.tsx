@@ -33,10 +33,12 @@ import {
   restoreDealAction,
   addNoteAction,
   saveLineAction,
+  setDealContactRoleAction,
   updateDealAction,
 } from "@/lib/actions/crm";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/routing";
+import { CLIENT_TYPES, isClientType, type ClientType } from "@/lib/client-type";
 import { daysUntil, formatCompact, formatDate, formatDateTime, formatRupiah } from "@/lib/format";
 import { cn, initials } from "@/lib/utils";
 import type { DealDetailData } from "@/types/view";
@@ -57,6 +59,9 @@ type DealPatch = {
   expectedCloseDate?: string | null;
   priority?: number;
   companyId?: string | null;
+  ownerCompanyId?: string | null;
+  consultantCompanyId?: string | null;
+  contractorCompanyId?: string | null;
   contactId?: string | null;
   ownerId?: string;
   tagIds?: string[];
@@ -90,6 +95,44 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
+function PartyRow({
+  label,
+  type,
+  companyId,
+  companies,
+  canEdit,
+  locale,
+  empty,
+  onSave,
+}: {
+  label: string;
+  type: ClientType;
+  companyId: string | null;
+  companies: { id: string; name: string; clientType: ClientType }[];
+  canEdit: boolean;
+  locale: string;
+  empty: string;
+  onSave: (companyId: string | null) => Promise<boolean>;
+}) {
+  const options = companies.filter((item) => item.clientType === type);
+  return (
+    <InfoRow label={label}>
+      <div className="flex items-center gap-1">
+        <div className="min-w-0 flex-1">
+          <InlineSelect value={companyId} options={options} canEdit={canEdit} onSave={onSave} />
+        </div>
+        {companyId ? (
+          <IconLink href={`/${locale}/companies/${companyId}`} label={label}>
+            <Building2 className="h-3.5 w-3.5" />
+          </IconLink>
+        ) : (
+          <span className="sr-only">{empty}</span>
+        )}
+      </div>
+    </InfoRow>
+  );
+}
+
 function IconLink({ href, label, children, external }: { href: string; label: string; children: React.ReactNode; external?: boolean }) {
   return (
     <a
@@ -118,6 +161,7 @@ export function DealWorkspace({
 }) {
   const t = useTranslations("deals");
   const tc = useTranslations("common");
+  const tk = useTranslations("companies");
   const router = useRouter();
   const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
   const [lostOpen, setLostOpen] = useState(false);
@@ -503,18 +547,36 @@ export function DealWorkspace({
           {/* Info grid */}
           <section className="grid gap-x-10 gap-y-1 rounded-lg border bg-card px-5 py-4 xl:grid-cols-2">
             <dl className="grid content-start gap-1">
-              <InfoRow label={tc("company")}>
-                <div className="flex items-center gap-1">
-                  <div className="min-w-0 flex-1">
-                    <InlineSelect value={deal.companyId} options={deal.companies} canEdit={deal.canEdit} onSave={(companyId) => patch({ companyId })} />
-                  </div>
-                  {deal.company ? (
-                    <IconLink href={`/${locale}/companies/${deal.company.id}`} label={tc("company")}>
-                      <Building2 className="h-3.5 w-3.5" />
-                    </IconLink>
-                  ) : null}
-                </div>
-              </InfoRow>
+              <PartyRow
+                label={tk("types.owner")}
+                type="owner"
+                companyId={deal.ownerCompanyId}
+                companies={deal.companies}
+                canEdit={deal.canEdit}
+                locale={locale}
+                empty={t("notSet")}
+                onSave={(ownerCompanyId) => patch({ ownerCompanyId })}
+              />
+              <PartyRow
+                label={tk("types.konsultan")}
+                type="konsultan"
+                companyId={deal.consultantCompanyId}
+                companies={deal.companies}
+                canEdit={deal.canEdit}
+                locale={locale}
+                empty={t("notSet")}
+                onSave={(consultantCompanyId) => patch({ consultantCompanyId })}
+              />
+              <PartyRow
+                label={tk("types.kontraktor")}
+                type="kontraktor"
+                companyId={deal.contractorCompanyId}
+                companies={deal.companies}
+                canEdit={deal.canEdit}
+                locale={locale}
+                empty={t("notSet")}
+                onSave={(contractorCompanyId) => patch({ contractorCompanyId })}
+              />
               <InfoRow label={tc("contact")}>
                 <InlineSelect value={deal.contactId} options={contactOptions} canEdit={deal.canEdit} onSave={(contactId) => patch({ contactId })} />
                 {deal.primaryContact?.jobTitle ? <p className="-mt-1 pb-1 text-xs text-muted-foreground">{deal.primaryContact.jobTitle}</p> : null}
@@ -711,7 +773,22 @@ export function DealWorkspace({
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold">{initials(person.name)}</span>
                     <div className="min-w-0 flex-1">
                       <Link href={`/contacts/${person.id}`} className="block truncate text-sm font-medium hover:underline">{person.name}</Link>
-                      <p className="truncate text-xs text-muted-foreground">{person.role ?? person.email ?? person.phone ?? "—"}</p>
+                      {deal.canEdit ? (
+                        <Select
+                          className="mt-1 h-8"
+                          aria-label={tk("clientType")}
+                          value={person.role ?? ""}
+                          onChange={(event) => {
+                            const role = event.target.value;
+                            void run(setDealContactRoleAction(person.linkId, isClientType(role) ? role : null));
+                          }}
+                        >
+                          <option value="">—</option>
+                          {CLIENT_TYPES.map((type) => <option key={type} value={type}>{tk(`types.${type}`)}</option>)}
+                        </Select>
+                      ) : (
+                        <p className="truncate text-xs text-muted-foreground">{isClientType(person.role) ? tk(`types.${person.role}`) : person.email ?? person.phone ?? "—"}</p>
+                      )}
                     </div>
                     {person.phone ? <IconLink href={`tel:${person.phone}`} label={t("call")}><Phone className="h-3.5 w-3.5" /></IconLink> : null}
                     {person.whatsapp ? (

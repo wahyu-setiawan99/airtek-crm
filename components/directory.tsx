@@ -13,6 +13,7 @@ import { formatDateTime, formatRupiah } from "@/lib/format";
 import type { ActivityRow, CompanyRow, ContactRow, Option } from "@/types/view";
 import type { Product } from "@/types/crm";
 import { DataTable } from "@/components/data-table";
+import { ClientTypeChip } from "@/components/client-type-chip";
 import { FilterBar, filtersFromSearch, useFilterQuery } from "@/components/filters/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -45,6 +46,7 @@ export function ContactsScreen({
     const q = values.q?.trim().toLowerCase();
     if (q && !`${row.name} ${row.email ?? ""} ${row.phone ?? ""} ${row.companyName ?? ""}`.toLowerCase().includes(q)) return false;
     if (values.owner && row.ownerId !== values.owner) return false;
+    if (values.client && row.clientType !== values.client) return false;
     return true;
   });
   const columns = useMemo<LegacyColumnDef<ContactRow>[]>(() => [
@@ -69,7 +71,7 @@ export function ContactsScreen({
         {canCreate ? <Button onClick={() => { setEditing(null); setOpen(true); }}>{t("new")}</Button> : null}
       </>
     }>
-      <FilterBar values={values} owners={owners} showMine={false} onChange={apply} />
+      <FilterBar values={values} owners={owners} extras={["client"]} showMine={false} onChange={apply} />
       {visible.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : <DataTable columns={columns} data={visible} />}
       <PersonDialog
         open={open}
@@ -182,11 +184,12 @@ export function CompaniesScreen({ rows, owners, canCreate, openNew }: { rows: Co
     if (q && !`${row.name} ${row.city ?? ""} ${row.province ?? ""} ${row.phone ?? ""}`.toLowerCase().includes(q)) return false;
     if (values.owner && row.ownerId !== values.owner) return false;
     if (values.city && !`${row.city ?? ""} ${row.province ?? ""}`.toLowerCase().includes(values.city.toLowerCase())) return false;
+    if (values.client && row.clientType !== values.client) return false;
     return true;
   });
   const columns = useMemo<LegacyColumnDef<CompanyRow>[]>(() => [
     { accessorKey: "name", header: tc("name"), cell: ({ row }) => <Link className="font-medium hover:underline" href={`/companies/${row.original.id}`}>{row.original.name}</Link> },
-    { accessorKey: "industry", header: t("industry") },
+    { accessorKey: "clientType", header: t("clientType"), cell: ({ row }) => <ClientTypeChip type={row.original.clientType} label={t(`types.${row.original.clientType}`)} /> },
     { accessorKey: "city", header: t("city") },
     { accessorKey: "phone", header: tc("phone") },
     { accessorKey: "ownerName", header: tc("owner") },
@@ -199,7 +202,7 @@ export function CompaniesScreen({ rows, owners, canCreate, openNew }: { rows: Co
         {canCreate ? <Button onClick={() => { setEditing(null); setOpen(true); }}>{t("new")}</Button> : null}
       </>
     }>
-      <FilterBar values={values} owners={owners} extras={["city"]} showMine={false} onChange={apply} />
+      <FilterBar values={values} owners={owners} extras={["city", "client"]} showMine={false} onChange={apply} />
       {visible.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : <DataTable columns={columns} data={visible} />}
       <Dialog open={open} onOpenChange={setOpen} title={editing ? tc("edit") : t("new")} wide>
         <form className="grid gap-3 sm:grid-cols-2" onSubmit={(event) => {
@@ -208,7 +211,7 @@ export function CompaniesScreen({ rows, owners, canCreate, openNew }: { rows: Co
           void saveCompanyAction({
             id: editing?.id ?? null,
             name: String(form.get("name") ?? ""),
-            industry: String(form.get("industry") ?? "") || null,
+            clientType: String(form.get("clientType") ?? "owner"),
             city: String(form.get("city") ?? "") || null,
             province: String(form.get("province") ?? "") || null,
             phone: String(form.get("phone") ?? "") || null,
@@ -223,7 +226,13 @@ export function CompaniesScreen({ rows, owners, canCreate, openNew }: { rows: Co
           });
         }}>
           <Field label={tc("name")}><Input name="name" required defaultValue={editing?.name ?? ""} /></Field>
-          <Field label={t("industry")}><Input name="industry" defaultValue={editing?.industry ?? ""} /></Field>
+          <Field label={t("clientType")}>
+            <Select name="clientType" required defaultValue={editing?.clientType ?? "owner"}>
+              <option value="konsultan">{t("types.konsultan")}</option>
+              <option value="kontraktor">{t("types.kontraktor")}</option>
+              <option value="owner">{t("types.owner")}</option>
+            </Select>
+          </Field>
           <Field label={t("city")}><Input name="city" defaultValue={editing?.city ?? ""} /></Field>
           <Field label={t("province")}><Input name="province" defaultValue={editing?.province ?? ""} /></Field>
           <Field label={tc("phone")}><Input name="phone" defaultValue={editing?.phone ?? ""} /></Field>

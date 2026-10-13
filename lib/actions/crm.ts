@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { getTranslations } from "next-intl/server";
 import { revalidatePath } from "next/cache";
 import { ActionError, runAction, touch } from "@/lib/action";
+import { isClientType, setParty, slotPrimaryCompany, type ClientType } from "@/lib/client-type";
 import { cookieOptions, ORG_COOKIE } from "@/lib/constants";
 import { subtotal } from "@/lib/domain";
 import { addMembership, duplicatePipeline } from "@/lib/demo/onboarding";
@@ -20,6 +21,7 @@ import {
   companySchema,
   contactSchema,
   dealPatchSchema,
+  dealContactRoleSchema,
   dealSchema,
   importContactSchema,
   inviteSchema,
@@ -163,7 +165,11 @@ export async function saveDealAction(input: unknown) {
       const previousStage = deal.stage_id;
       deal.title = parsed.data.title;
       deal.value = parsed.data.value;
-      deal.company_id = parsed.data.companyId;
+      const picked = parsed.data.companyId
+        ? store.companies.find((item) => item.id === parsed.data.companyId && item.organization_id === session.organizationId)
+        : null;
+      if (parsed.data.companyId && !picked) throw new ActionError(t("error"));
+      slotPrimaryCompany(deal, picked ?? null);
       deal.primary_contact_id = parsed.data.contactId;
       deal.owner_id = ownerId;
       deal.priority = parsed.data.priority;
@@ -200,7 +206,10 @@ export async function saveDealAction(input: unknown) {
       probability_override: parsed.data.probabilityOverride,
       expected_close_date: parsed.data.expectedCloseDate,
       priority: parsed.data.priority,
-      company_id: parsed.data.companyId,
+      company_id: null,
+      owner_company_id: null,
+      consultant_company_id: null,
+      contractor_company_id: null,
       primary_contact_id: parsed.data.contactId,
       owner_id: ownerId,
       status: stage.type === "open" ? "open" : (stage.type as DealStatus),
@@ -214,6 +223,11 @@ export async function saveDealAction(input: unknown) {
       updated_at: timestamp,
       created_by: session.userId,
     };
+    const picked = parsed.data.companyId
+      ? store.companies.find((item) => item.id === parsed.data.companyId && item.organization_id === session.organizationId)
+      : null;
+    if (parsed.data.companyId && !picked) throw new ActionError(t("error"));
+    slotPrimaryCompany(deal, picked ?? null);
     placeDeal(store, deal, stage.id);
     store.deals.push(deal);
     parsed.data.tagIds.forEach((tagId) => store.deal_tags.push({ deal_id: dealId, tag_id: tagId }));
@@ -299,12 +313,26 @@ export async function updateDealAction(dealId: string, input: unknown) {
       deal.priority = patch.priority;
     }
     if (patch.companyId !== undefined) {
-      if (patch.companyId && !store.companies.some((item) => item.id === patch.companyId && item.organization_id === orgId)) {
-        throw new ActionError(t("error"));
-      }
+      const picked = patch.companyId
+        ? store.companies.find((item) => item.id === patch.companyId && item.organization_id === orgId)
+        : null;
+      if (patch.companyId && !picked) throw new ActionError(t("error"));
       track("company", companyName(deal.company_id), companyName(patch.companyId));
-      deal.company_id = patch.companyId;
+      slotPrimaryCompany(deal, picked ?? null);
     }
+    const applyParty = (type: ClientType, companyId: string | null | undefined) => {
+      if (companyId === undefined) return;
+      if (companyId) {
+        const company = store.companies.find((item) => item.id === companyId && item.organization_id === orgId);
+        if (!company || company.client_type !== type) throw new ActionError(t("error"));
+      }
+      const current = type === "owner" ? deal.owner_company_id : type === "konsultan" ? deal.consultant_company_id : deal.contractor_company_id;
+      track(type, companyName(current), companyName(companyId));
+      setParty(deal, type, companyId);
+    };
+    applyParty("owner", patch.ownerCompanyId);
+    applyParty("konsultan", patch.consultantCompanyId);
+    applyParty("kontraktor", patch.contractorCompanyId);
     if (patch.contactId !== undefined) {
       if (patch.contactId && !store.contacts.some((item) => item.id === patch.contactId && item.organization_id === orgId)) {
         throw new ActionError(t("error"));
@@ -531,7 +559,7 @@ export async function importContactsAction(input: unknown) {
             id: companyId,
             organization_id: session.organizationId,
             name: row.company.trim(),
-            industry: null,
+            client_type: "owner",
             npwp: null,
             address: null,
             city: null,
@@ -581,9 +609,10 @@ export async function saveCompanyAction(input: unknown) {
     if (parsed.data.id) {
       const company = store.companies.find((item) => item.id === parsed.data.id && item.organization_id === session.organizationId);
       if (!company || !canEditOwned(session.role, session.userId, company.owner_id)) throw new ActionError(t("forbidden"));
+      const previousType = company.client_type;
       Object.assign(company, {
         name: parsed.data.name,
-        industry: parsed.data.industry,
+        client_type: parsed.data.clientType,
         city: parsed.data.city,
         province: parsed.data.province,
         phone: parsed.data.phone,
@@ -593,6 +622,17 @@ export async function saveCompanyAction(input: unknown) {
         address: parsed.data.address,
         owner_id: ownerId,
       });
+      if (previousType !== company.client_type) {
+        for (const deal of store.deals) {
+          if (deal.organization_id !== session.organizationId) continue;
+          const linked = deal.owner_company_id === company.id || deal.consultant_company_id === company.id || deal.contractor_company_id === company.id;
+          if (!linked) continue;
+          if (deal.owner_company_id === company.id) deal.owner_company_id = null;
+          if (deal.consultant_company_id === company.id) deal.consultant_company_id = null;
+          if (deal.contractor_company_id === company.id) deal.contractor_company_id = null;
+          setParty(deal, company.client_type, company.id);
+        }
+      }
       touch(company);
       return company.id;
     }
@@ -601,7 +641,7 @@ export async function saveCompanyAction(input: unknown) {
       id: companyId,
       organization_id: session.organizationId,
       name: parsed.data.name,
-      industry: parsed.data.industry,
+      client_type: parsed.data.clientType,
       city: parsed.data.city,
       province: parsed.data.province,
       phone: parsed.data.phone,
@@ -615,6 +655,19 @@ export async function saveCompanyAction(input: unknown) {
       created_by: session.userId,
     });
     return companyId;
+  });
+}
+
+export async function setDealContactRoleAction(linkId: string, role: string | null) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    const parsed = dealContactRoleSchema.safeParse({ linkId, role });
+    if (!parsed.success || (parsed.data.role && !isClientType(parsed.data.role))) throw new ActionError(t("error"));
+    const link = store.deal_contacts.find((item) => item.id === linkId);
+    if (!link) throw new ActionError(t("error"));
+    assertDeal(store, session, link.deal_id);
+    link.role = parsed.data.role;
+    return null;
   });
 }
 

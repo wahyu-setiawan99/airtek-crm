@@ -37,7 +37,10 @@ function toBoardDeal(store: Store, session: Session, dealId: string): BoardDeal 
   if (!deal) return null;
   const stage = store.stages.find((item) => item.id === deal.stage_id);
   if (!stage) return null;
-  const company = store.companies.find((item) => item.id === deal.company_id);
+  const contractor = store.companies.find((item) => item.id === deal.contractor_company_id);
+  const ownerCompany = store.companies.find((item) => item.id === deal.owner_company_id);
+  const consultant = store.companies.find((item) => item.id === deal.consultant_company_id);
+  const company = contractor ?? ownerCompany ?? consultant ?? store.companies.find((item) => item.id === deal.company_id);
   const contact = store.contacts.find((item) => item.id === deal.primary_contact_id);
   const tags = store.deal_tags
     .filter((item) => item.deal_id === deal.id)
@@ -53,8 +56,9 @@ function toBoardDeal(store: Store, session: Session, dealId: string): BoardDeal 
     weighted: weightedValue(deal, stage),
     priority: deal.priority,
     status: deal.status,
-    companyId: deal.company_id,
+    companyId: company?.id ?? null,
     companyName: company?.name ?? null,
+    clientTypes: [contractor, ownerCompany, consultant].flatMap((item) => (item ? [item.client_type] : [])),
     contactId: deal.primary_contact_id,
     contactName: contact ? contactName(contact) : null,
     ownerId: deal.owner_id,
@@ -429,14 +433,17 @@ export function buildDeal(
     stages: stages.map((item) => ({ id: item.id, name: item.name, type: item.type, probability: item.probability })),
     allTags: store.tags.filter((item) => item.organization_id === session.organizationId).map((item) => ({ id: item.id, name: item.name, color: item.color })),
     owners: orgPeople(store, session.organizationId, session.role).map((item) => ({ id: item.id, name: item.full_name })),
-    companies: store.companies.filter((item) => item.organization_id === session.organizationId).map((item) => ({ id: item.id, name: item.name })),
+    companies: store.companies.filter((item) => item.organization_id === session.organizationId).map((item) => ({ id: item.id, name: item.name, clientType: item.client_type })),
     contacts: store.contacts.filter((item) => item.organization_id === session.organizationId).map((item) => ({ id: item.id, name: contactName(item), companyId: item.company_id })),
+    ownerCompanyId: deal.owner_company_id,
+    consultantCompanyId: deal.consultant_company_id,
+    contractorCompanyId: deal.contractor_company_id,
     related: store.deal_contacts
       .filter((item) => item.deal_id === deal.id)
       .map((link) => {
         const contact = store.contacts.find((item) => item.id === link.contact_id);
         if (!contact) return null;
-        return { id: contact.id, name: contactName(contact), role: link.role, phone: contact.phone, email: contact.email, whatsapp: contact.whatsapp };
+        return { id: contact.id, linkId: link.id, name: contactName(contact), role: link.role, phone: contact.phone, email: contact.email, whatsapp: contact.whatsapp };
       })
       .filter((item): item is NonNullable<typeof item> => Boolean(item)),
     lines,
@@ -479,6 +486,7 @@ export function buildContacts(store: Store, session: Session): ContactRow[] {
       jobTitle: item.job_title,
       companyId: item.company_id,
       companyName: store.companies.find((company) => company.id === item.company_id)?.name ?? null,
+      clientType: store.companies.find((company) => company.id === item.company_id)?.client_type ?? null,
       ownerId: item.owner_id ?? session.userId,
       ownerName: personName(store, item.owner_id),
       source: item.source,
@@ -493,7 +501,7 @@ export function buildCompanies(store: Store, session: Session): CompanyRow[] {
     .map((item) => ({
       id: item.id,
       name: item.name,
-      industry: item.industry,
+      clientType: item.client_type,
       city: item.city,
       province: item.province,
       phone: item.phone,

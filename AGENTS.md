@@ -7,8 +7,8 @@ Panduan untuk AI agent (Cursor, Claude, dll) yang membangun project ini. Baca se
 User memberi **satu perintah yang sama** setiap sesi: *"Baca AGENTS.md dan lanjutkan Antrian Kerja §0."* Agent menentukan sendiri tugas berikutnya dari daftar di bawah, mengerjakannya sampai selesai, lalu **lanjut ke item berikutnya** — sampai bertemu **kondisi berhenti**.
 
 ### 0.1 Antrian kerja (kerjakan berurutan, item teratas yang belum ✅ dan tidak 🔒)
-1. [ ] **§15.0 Langkah 3** — Speed Insights + Analytics, ukur ulang, isi tabel §15.1.
-2. [ ] **§16.1–16.2** — jenis klien Konsultan/Kontraktor/Owner (hapus "Industri") + pihak proyek di deal. *(butuh migration `0005`)*
+1. [x] **§15.0 Langkah 3** — Speed Insights + Analytics, ukur ulang, isi tabel §15.1.
+2. [x] **§16.1–16.2** — jenis klien Konsultan/Kontraktor/Owner (hapus "Industri") + pihak proyek di deal. *(butuh migration `0005`)*
 3. [ ] **§16.3–16.4** — filter lintas sales di daftar Deal (pipeline, tahap, jenis klien, lokasi, target closing, nilai), badge "Milik {nama}", target sales per bulan, cek duplikat, lokasi proyek. *(kemungkinan migration `0006`)*
 4. [ ] **§13.8** — QA: Lighthouse desktop ≥ 90, aksesibilitas, nol hydration warning, uji alur lengkap di lokal.
 5. [ ] 🔒 **§14 Impor Odoo** — TERKUNCI sampai user menulis di chat bahwa direktur & semua sales sudah aktif di CRM.
@@ -221,7 +221,7 @@ Aturan DB:
 - [x] Sidebar bisa diciutkan (mode ikon) / dimunculkan (§13.9)
 - [x] Lingkungan dev lokal (Docker) + akun testing + masuk cepat (§18)
 - [ ] Impor data dari Odoo CRM (§14) — **hanya setelah semua sales sudah diundang & aktif** (§14.0)
-- [ ] Jenis klien Konsultan/Kontraktor/Owner + pihak proyek (§16.1–16.2)
+- [x] Jenis klien Konsultan/Kontraktor/Owner + pihak proyek (§16.1–16.2)
 - [ ] Visibilitas & filter proyek lintas sales (§16.3)
 - [ ] Fitur sederhana dari riset CRM lain: target sales, cek duplikat, lokasi proyek (§16.4)
 
@@ -715,7 +715,7 @@ Di proyek MEP biasanya ada tiga pihak: **Owner** (pemilik gedung), **Konsultan**
   | Tahap / stage proyek | kolom kanban | ❌ **belum** | tambah (multi) |
   | Status Open/Won/Lost | — | ✅ ada | — |
   | Tag / kategori (Lift, Pompa, AC, …) | ✅ ada | ✅ ada | — |
-  | Jenis klien & nama Owner/Konsultan/Kontraktor | ❌ | ❌ | tambah |
+  | Jenis klien & nama Owner/Konsultan/Kontraktor | ✅ jenis klien | ✅ jenis klien | nama pihak menyusul §16.3 |
   | Lokasi proyek (kota/provinsi) | ❌ | ❌ | tambah (§16.4) |
   | Target closing (bulan/kuartal/rentang) | ❌ | ❌ | tambah |
   | Nilai min–maks | ❌ | ❌ | tambah |

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CLIENT_TYPES } from "@/lib/client-type";
 
 export const loginSchema = z.object({
   email: z.email(),
@@ -70,7 +71,7 @@ export const contactSchema = z.object({
 export const companySchema = z.object({
   id: z.string().nullable(),
   name: z.string().trim().min(2).max(160),
-  industry: z.string().max(80).nullable(),
+  clientType: z.enum(CLIENT_TYPES),
   city: z.string().max(80).nullable(),
   province: z.string().max(80).nullable(),
   phone: z.string().max(30).nullable(),
@@ -200,9 +201,17 @@ export const dealPatchSchema = z.object({
   expectedCloseDate: z.string().nullable().optional(),
   priority: z.number().int().min(0).max(3).optional(),
   companyId: z.string().nullable().optional(),
+  ownerCompanyId: z.string().nullable().optional(),
+  consultantCompanyId: z.string().nullable().optional(),
+  contractorCompanyId: z.string().nullable().optional(),
   contactId: z.string().nullable().optional(),
   ownerId: z.string().min(1).optional(),
   tagIds: z.array(z.string()).optional(),
   description: z.string().max(8000).nullable().optional(),
   stageId: z.string().min(1).optional(),
+});
+
+export const dealContactRoleSchema = z.object({
+  linkId: z.string().min(1),
+  role: z.enum(CLIENT_TYPES).nullable(),
 });

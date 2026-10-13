@@ -1,4 +1,4 @@
-import type { ActivityType, DealStatus, Role, SavedView, StageType } from "@/types/crm";
+import type { ActivityType, ClientType, DealStatus, Role, SavedView, StageType } from "@/types/crm";
 
 export type TagChip = { id: string; name: string; color: string };
 export type Option = { id: string; name: string };
@@ -13,6 +13,7 @@ export type BoardDeal = {
   status: DealStatus;
   companyId: string | null;
   companyName: string | null;
+  clientTypes: ClientType[];
   contactId: string | null;
   contactName: string | null;
   ownerId: string;
@@ -103,9 +104,12 @@ export type DealDetailData = BoardDeal & {
   tags: TagChip[];
   allTags: TagChip[];
   owners: Option[];
-  companies: Option[];
+  companies: { id: string; name: string; clientType: ClientType }[];
   contacts: { id: string; name: string; companyId: string | null }[];
-  related: { id: string; name: string; role: string | null; phone: string | null; email: string | null; whatsapp: string | null }[];
+  ownerCompanyId: string | null;
+  consultantCompanyId: string | null;
+  contractorCompanyId: string | null;
+  related: { id: string; linkId: string; name: string; role: string | null; phone: string | null; email: string | null; whatsapp: string | null }[];
   lines: { id: string; name: string; qty: number; unitPrice: number; discount: number; subtotal: number }[];
   catalog: { id: string; name: string; unitPrice: number; unit: string }[];
   lineTotal: number;
@@ -146,6 +150,7 @@ export type ContactRow = {
   jobTitle: string | null;
   companyId: string | null;
   companyName: string | null;
+  clientType: ClientType | null;
   ownerId: string;
   ownerName: string;
   source: string | null;
@@ -155,7 +160,7 @@ export type ContactRow = {
 export type CompanyRow = {
   id: string;
   name: string;
-  industry: string | null;
+  clientType: ClientType;
   city: string | null;
   province: string | null;
   phone: string | null;

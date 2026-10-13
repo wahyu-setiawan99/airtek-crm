@@ -339,7 +339,12 @@
     "title": "Companies",
     "subtitle": "Clients and prospects.",
     "new": "New company",
-    "industry": "Industry",
+    "clientType": "Client type",
+    "types": {
+      "konsultan": "Consultant",
+      "kontraktor": "Contractor",
+      "owner": "Owner"
+    },
     "city": "City",
     "province": "Province",
     "npwp": "Tax ID",

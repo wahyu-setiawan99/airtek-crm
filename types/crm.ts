@@ -1,3 +1,7 @@
+import type { ClientType } from "@/lib/client-type";
+
+export type { ClientType };
+
 export type Role = "owner" | "admin" | "manager" | "sales" | "presales" | "viewer";
 export type ThemePreference = "light" | "dark" | "system";
 export type StageType = "open" | "won" | "lost";
@@ -97,7 +101,7 @@ export type Company = Stamp & {
   id: string;
   organization_id: string;
   name: string;
-  industry: string | null;
+  client_type: ClientType;
   npwp: string | null;
   address: string | null;
   city: string | null;
@@ -140,6 +144,9 @@ export type Deal = Stamp & {
   expected_close_date: string | null;
   priority: number;
   company_id: string | null;
+  owner_company_id: string | null;
+  consultant_company_id: string | null;
+  contractor_company_id: string | null;
   primary_contact_id: string | null;
   owner_id: string;
   status: DealStatus;

@@ -137,7 +137,7 @@ export function DealsTable({ rows, filters, locale, canManage = false }: { rows:
           owners={filters.owners}
           tags={filters.tags}
           statuses={(["open", "won", "lost"] as const).map((status) => ({ id: status, name: tc(status) }))}
-          extras={["priority", "value", "condition", "close", "created"]}
+          extras={["priority", "value", "condition", "close", "created", "client"]}
           onChange={(next) => applyQuery(next, { group: grouped ? "owner" : "" })}
         />
         {canManage ? (

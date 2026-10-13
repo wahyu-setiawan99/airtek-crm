@@ -15,6 +15,7 @@ export type FilterValues = {
   valueMin?: string;
   valueMax?: string;
   city?: string;
+  client?: string;
   condition?: string;
   closeFrom?: string;
   closeTo?: string;
@@ -22,7 +23,7 @@ export type FilterValues = {
   createdTo?: string;
 };
 
-const QUERY_KEYS = ["q", "owner", "tag", "status", "priority", "valueMin", "valueMax", "city", "condition", "closeFrom", "closeTo", "createdFrom", "createdTo"] as const;
+const QUERY_KEYS = ["q", "owner", "tag", "status", "priority", "valueMin", "valueMax", "city", "client", "condition", "closeFrom", "closeTo", "createdFrom", "createdTo"] as const;
 
 export function filtersFromSearch(params: { get: (key: string) => string | null }): FilterValues {
   const values: FilterValues = { mine: params.get("mine") === "1" };
@@ -46,11 +47,12 @@ export function FilterBar({
   owners?: { id: string; name: string }[];
   tags?: { id: string; name: string }[];
   statuses?: { id: string; name: string }[];
-  extras?: ("priority" | "value" | "condition" | "close" | "created" | "city")[];
+  extras?: ("priority" | "value" | "condition" | "close" | "created" | "city" | "client")[];
   showMine?: boolean;
   onChange: (next: FilterValues) => void;
 }) {
   const t = useTranslations("common");
+  const tk = useTranslations("companies");
   const chips = [
     values.q ? { key: "q", label: values.q } : null,
     values.owner ? { key: "owner", label: owners.find((item) => item.id === values.owner)?.name ?? values.owner } : null,
@@ -60,6 +62,7 @@ export function FilterBar({
     values.valueMin ? { key: "valueMin", label: `≥ ${values.valueMin}` } : null,
     values.valueMax ? { key: "valueMax", label: `≤ ${values.valueMax}` } : null,
     values.city ? { key: "city", label: values.city } : null,
+    values.client ? { key: "client", label: values.client === "konsultan" ? tk("types.konsultan") : values.client === "kontraktor" ? tk("types.kontraktor") : tk("types.owner") } : null,
     values.condition ? { key: "condition", label: t(values.condition === "none" ? "noActivity" : values.condition === "rotting" ? "rotting" : "overdue") } : null,
     values.closeFrom || values.closeTo ? { key: "closeFrom", label: `${values.closeFrom ?? "…"} – ${values.closeTo ?? "…"}` } : null,
     values.createdFrom || values.createdTo ? { key: "createdFrom", label: `${values.createdFrom ?? "…"} – ${values.createdTo ?? "…"}` } : null,
@@ -109,6 +112,14 @@ export function FilterBar({
         ) : null}
         {extras.includes("city") ? (
           <Input className="md:max-w-40" value={values.city ?? ""} placeholder={t("city")} aria-label={t("city")} onChange={(event) => onChange({ ...values, city: event.target.value })} />
+        ) : null}
+        {extras.includes("client") ? (
+          <Select aria-label={tk("clientType")} value={values.client ?? ""} onChange={(event) => onChange({ ...values, client: event.target.value })}>
+            <option value="">{tk("clientType")}</option>
+            <option value="konsultan">{tk("types.konsultan")}</option>
+            <option value="kontraktor">{tk("types.kontraktor")}</option>
+            <option value="owner">{tk("types.owner")}</option>
+          </Select>
         ) : null}
         {extras.includes("condition") ? (
           <Select aria-label={t("condition")} value={values.condition ?? ""} onChange={(event) => onChange({ ...values, condition: event.target.value })}>
@@ -180,12 +191,14 @@ type DealLike = {
   rotting: boolean;
   expectedCloseDate: string | null;
   createdAt?: string | null;
+  clientTypes?: string[];
 };
 
 export function matchDeal(deal: DealLike, values: FilterValues, meId?: string) {
   const q = values.q?.trim().toLowerCase();
   if (q && !`${deal.title} ${deal.companyName ?? ""} ${deal.contactName ?? ""}`.toLowerCase().includes(q)) return false;
   if (values.owner && deal.ownerId !== values.owner) return false;
+  if (values.client && !(deal.clientTypes ?? []).includes(values.client)) return false;
   if (values.mine && meId && deal.ownerId !== meId) return false;
   if (values.tag && !deal.tags.some((item) => item.id === values.tag)) return false;
   if (values.status && deal.status !== values.status) return false;

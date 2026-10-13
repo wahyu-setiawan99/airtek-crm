@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { AttachmentsPanel } from "@/components/attachments-panel";
+import { ClientTypeChip } from "@/components/client-type-chip";
 import { CustomFieldsPanel } from "@/components/custom-fields-panel";
 import { OwnerPicker } from "@/components/owner-picker";
 import { Link } from "@/i18n/navigation";
@@ -26,8 +27,11 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
     <div className="grid gap-5">
       <Link href="/companies" className="text-sm text-muted-foreground">←</Link>
       <div>
-        <h1 className="text-2xl font-semibold">{company.name}</h1>
-        <p className="text-sm text-muted-foreground">{[company.industry, company.city, company.province].filter(Boolean).join(" · ")}</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-semibold">{company.name}</h1>
+          <ClientTypeChip type={company.client_type} label={t(`types.${company.client_type}`)} />
+        </div>
+        <p className="text-sm text-muted-foreground">{[company.city, company.province].filter(Boolean).join(" · ")}</p>
         <div className="mt-3">
           <OwnerPicker kind="company" id={company.id} ownerId={company.owner_id} canEdit={canManage(session.role)} owners={orgPeople(store, session.organizationId, session.role).map((person) => ({ id: person.id, name: person.full_name }))} />
         </div>

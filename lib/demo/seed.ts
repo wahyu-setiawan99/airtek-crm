@@ -8,7 +8,7 @@ import type { Activity, ActivityType, Deal, DealProduct, Profile, Role, Stage, S
  * Customer names and the top eight deals come from the old Odoo pipeline; the sales team
  * (except Fajrul) is fictional. Dates are relative to today so the demo always looks current.
  */
-export const STORE_VERSION = 4;
+export const STORE_VERSION = 5;
 
 /** Deterministic UUID: group (record kind) + number. */
 const u = (group: number, n: number) => `${String(group).padStart(8, "0")}-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -58,18 +58,18 @@ const stageType = Object.fromEntries(stageDefs.map(([key, , , , , type]) => [key
 const stagePipeline = Object.fromEntries(stageDefs.map(([key, pipelineId]) => [key, pipelineId])) as Record<StageKey, string>;
 
 const companyDefs = [
-  ["nindya", "PT Nindya Karya", "Konstruksi", "Jakarta Selatan", "DKI Jakarta", "0217654321", "proyek@nindyakarya.co.id"],
-  ["palindo", "PT. Palindo Inti Nusantara", "Kontraktor MEP", "Batam", "Kepulauan Riau", "0778456789", "procurement@palindo.co.id"],
-  ["poleanro", "PT. Poleanro Arta Konstruksi", "Konstruksi", "Makassar", "Sulawesi Selatan", "0411445566", "admin@poleanro.co.id"],
-  ["bintang", "CV Bintang Leo Jaya", "Kontraktor", "Mamuju", "Sulawesi Barat", "0426221133", "leo@bintangjaya.co.id"],
-  ["iain", "IAIN Parepare", "Pendidikan", "Parepare", "Sulawesi Selatan", "042121234", "umum@iainpare.ac.id"],
-  ["vale", "PT Vale Indonesia", "Pertambangan", "Sorowako", "Sulawesi Selatan", "0215249000", "procurement@vale.co.id"],
-  ["wahidin", "RSUP Dr. Wahidin Sudirohusodo", "Kesehatan", "Makassar", "Sulawesi Selatan", "0411584675", "teknik@rsupwahidin.go.id"],
-  ["unam", "UNAM", "Pendidikan", "Makassar", "Sulawesi Selatan", "0411866972", "sarpras@unam.ac.id"],
-  ["siloam", "RS Siloam Makassar", "Kesehatan", "Makassar", "Sulawesi Selatan", "04113000900", "facility@siloamhospitals.com"],
-  ["bandara", "Bandara Sultan Hasanuddin", "Transportasi", "Maros", "Sulawesi Selatan", "0411550108", "teknik@hasanuddin-airport.co.id"],
-  ["mall", "Nipah Park Makassar", "Retail", "Makassar", "Sulawesi Selatan", "04114662000", "engineering@nipahpark.co.id"],
-  ["hotel", "Hotel Claro Kendari", "Perhotelan", "Kendari", "Sulawesi Tenggara", "0401312888", "chief.engineer@claro.co.id"],
+  ["nindya", "PT Nindya Karya", "kontraktor", "Jakarta Selatan", "DKI Jakarta", "0217654321", "proyek@nindyakarya.co.id"],
+  ["palindo", "PT. Palindo Inti Nusantara", "kontraktor", "Batam", "Kepulauan Riau", "0778456789", "procurement@palindo.co.id"],
+  ["poleanro", "PT. Poleanro Arta Konstruksi", "kontraktor", "Makassar", "Sulawesi Selatan", "0411445566", "admin@poleanro.co.id"],
+  ["bintang", "CV Bintang Leo Jaya", "kontraktor", "Mamuju", "Sulawesi Barat", "0426221133", "leo@bintangjaya.co.id"],
+  ["iain", "IAIN Parepare", "owner", "Parepare", "Sulawesi Selatan", "042121234", "umum@iainpare.ac.id"],
+  ["vale", "PT Vale Indonesia", "owner", "Sorowako", "Sulawesi Selatan", "0215249000", "procurement@vale.co.id"],
+  ["wahidin", "RSUP Dr. Wahidin Sudirohusodo", "owner", "Makassar", "Sulawesi Selatan", "0411584675", "teknik@rsupwahidin.go.id"],
+  ["unam", "UNAM", "owner", "Makassar", "Sulawesi Selatan", "0411866972", "sarpras@unam.ac.id"],
+  ["siloam", "RS Siloam Makassar", "owner", "Makassar", "Sulawesi Selatan", "04113000900", "facility@siloamhospitals.com"],
+  ["bandara", "Bandara Sultan Hasanuddin", "owner", "Maros", "Sulawesi Selatan", "0411550108", "teknik@hasanuddin-airport.co.id"],
+  ["mall", "Nipah Park Makassar", "owner", "Makassar", "Sulawesi Selatan", "04114662000", "engineering@nipahpark.co.id"],
+  ["hotel", "Hotel Claro Kendari", "owner", "Kendari", "Sulawesi Tenggara", "0401312888", "chief.engineer@claro.co.id"],
 ] as const;
 type CompanyKey = (typeof companyDefs)[number][0];
 const company = Object.fromEntries(companyDefs.map(([key], index) => [key, u(50, index + 1)])) as Record<CompanyKey, string>;
@@ -237,6 +237,8 @@ export function createSeed(): Store {
     const createdAgo = def.createdAgo ?? Math.min(def.last - 20, -25);
     const closedAt = def.closedAgo === undefined ? null : jakartaDate(def.closedAgo, 15);
     const contactId = contact[def.contact] ?? null;
+    const linkedCompanyId = contactId ? (contactCompany[def.contact] ?? null) : null;
+    const linkedType = companyDefs.find((item) => company[item[0]] === linkedCompanyId)?.[2];
     return {
       id: dealId(index),
       organization_id: ORG,
@@ -249,7 +251,10 @@ export function createSeed(): Store {
       probability_override: null,
       expected_close_date: jakartaDate(def.close, 17),
       priority: def.priority,
-      company_id: contactId ? (contactCompany[def.contact] ?? null) : null,
+      company_id: linkedCompanyId,
+      owner_company_id: linkedType === "owner" ? linkedCompanyId : null,
+      consultant_company_id: (linkedType as string | undefined) === "konsultan" ? linkedCompanyId : null,
+      contractor_company_id: linkedType === "kontraktor" ? linkedCompanyId : null,
       primary_contact_id: contactId,
       owner_id: people[def.owner],
       status: type === "open" ? "open" : type,
@@ -423,12 +428,12 @@ export function createSeed(): Store {
       { ...stamp, id: pipe.umum, organization_id: ORG2, name: "Sales", description: null, color: "#9a1b4b", position: 0, is_default: true, archived: false },
     ],
     stages: [...stages, ...umumStages],
-    companies: companyDefs.map(([key, name, industry, city, province, phone, email], index) => ({
+    companies: companyDefs.map(([key, name, clientType, city, province, phone, email], index) => ({
       ...stamp,
       id: company[key],
       organization_id: ORG,
       name,
-      industry,
+      client_type: clientType,
       npwp: null,
       address: null,
       city,
@@ -473,7 +478,12 @@ export function createSeed(): Store {
     deals,
     deal_contacts: deals
       .filter((deal) => deal.primary_contact_id)
-      .map((deal, index) => ({ id: u(71, index + 1), deal_id: deal.id, contact_id: deal.primary_contact_id ?? "", role: "Pengambil keputusan" })),
+      .map((deal, index) => ({
+        id: u(71, index + 1),
+        deal_id: deal.id,
+        contact_id: deal.primary_contact_id ?? "",
+        role: deal.contractor_company_id ? "kontraktor" : deal.owner_company_id ? "owner" : deal.consultant_company_id ? "konsultan" : null,
+      })),
     deal_tags: deals.map((deal, index) => ({ deal_id: deal.id, tag_id: tag[dealDefs[index]?.tag ?? "hvac"] })),
     products: productDefs.map(([name, sku, unit, price, tagKey], index) => ({
       ...stamp,

@@ -76,7 +76,7 @@ export function PipelineBoard({
     const params = new URLSearchParams();
     const merged = { ...filters, ...next };
     if (merged.view && merged.view !== "kanban") params.set("view", merged.view);
-    const keys = ["q", "owner", "tag", "priority", "valueMin", "valueMax", "condition", "closeFrom", "closeTo", "createdFrom", "createdTo"] as const;
+    const keys = ["q", "owner", "tag", "priority", "valueMin", "valueMax", "condition", "client", "closeFrom", "closeTo", "createdFrom", "createdTo"] as const;
     for (const key of keys) {
       const value = merged[key];
       if (typeof value === "string" && value) params.set(key, value);
@@ -169,7 +169,7 @@ export function PipelineBoard({
           values={filters}
           owners={data.owners}
           tags={data.tags}
-          extras={["priority", "value", "condition", "close", "created"]}
+          extras={["priority", "value", "condition", "close", "created", "client"]}
           onChange={(next) => pushFilters({
             q: next.q ?? "",
             owner: next.owner ?? "",
@@ -179,6 +179,7 @@ export function PipelineBoard({
             valueMin: next.valueMin ?? "",
             valueMax: next.valueMax ?? "",
             condition: next.condition ?? "",
+            client: next.client ?? "",
             closeFrom: next.closeFrom ?? "",
             closeTo: next.closeTo ?? "",
             createdFrom: next.createdFrom ?? "",
