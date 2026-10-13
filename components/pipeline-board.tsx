@@ -446,13 +446,13 @@ function DealCard({
     <article className={cn("rounded-lg border bg-card p-3 shadow-sm", deal.rotting && "border-warning bg-warning/10", overlay && "shadow-xl")}>
       <div className="flex items-start gap-2">
         {deal.canEdit && listeners ? (
-          <button className="mt-0.5 text-muted-foreground" aria-label={t("drag")} {...listeners}>
+          <button className="-m-1 grid h-6 w-6 shrink-0 place-items-center rounded text-muted-foreground hover:bg-accent" aria-label={t("drag")} {...listeners}>
             <GripVertical className="h-4 w-4" />
           </button>
         ) : null}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <Link href={`/deals/${deal.id}`} className="truncate text-sm font-medium hover:underline">{deal.title}</Link>
+            <Link href={`/deals/${deal.id}`} className="-my-0.5 min-h-6 truncate py-0.5 text-sm font-medium hover:underline">{deal.title}</Link>
             {deal.ownedBy ? <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{tc("ownedBy", { name: deal.ownedBy })}</span> : null}
             <span className={cn("mt-1 h-2 w-2 shrink-0 rounded-full", deal.activityStatus === "scheduled" && "bg-success", deal.activityStatus === "overdue" && "bg-destructive", deal.activityStatus === "none" && "bg-muted-foreground/40")} />
           </div>
@@ -460,7 +460,7 @@ function DealCard({
           <p className="truncate text-xs text-muted-foreground">{deal.companyName ?? "—"}{deal.contactName ? ` · ${deal.contactName}` : ""}</p>
           <div className="mt-2 flex flex-wrap items-center gap-1">
             {deal.tags.map((tag) => (
-              <span key={tag.id} className="rounded-full px-1.5 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `${tag.color}22`, color: tag.color }}>{tag.name}</span>
+              <span key={tag.id} className="tag-chip rounded-full px-1.5 py-0.5 text-[10px] font-medium" style={{ "--tag": tag.color } as React.CSSProperties}>{tag.name}</span>
             ))}
             {deal.rotting ? <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-[10px] font-medium text-warning">{t("legendRotting")}</span> : null}
             <span className="ml-auto inline-flex text-warning">
@@ -472,7 +472,7 @@ function DealCard({
           <div className="mt-2 flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground">{deal.expectedCloseDate ? formatDate(deal.expectedCloseDate, locale) : t("noClose")}</span>
             <span className="inline-flex items-center gap-1" title={deal.ownerName}>
-              <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">{initials(deal.ownerName)}</span>
+              <span className="grid h-6 w-6 place-items-center rounded-full bg-accent text-[10px] font-semibold text-accent-foreground">{initials(deal.ownerName)}</span>
               <span className="text-[11px] text-muted-foreground">{deal.ownerName.split(" ")[0]}</span>
             </span>
           </div>

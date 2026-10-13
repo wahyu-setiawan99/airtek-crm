@@ -103,7 +103,7 @@ export function DashboardView({ data, locale }: { data: DashboardData; locale: A
                   <tr key={person.id} className="border-b last:border-b-0 hover:bg-accent/40">
                     <td className="px-4 py-2.5">
                       <Link href={person.href} className="inline-flex items-center gap-2 font-medium hover:underline">
-                        <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">{initials(person.name)}</span>
+                        <span className="grid h-6 w-6 place-items-center rounded-full bg-accent text-[10px] font-semibold text-accent-foreground">{initials(person.name)}</span>
                         {person.name}
                       </Link>
                     </td>

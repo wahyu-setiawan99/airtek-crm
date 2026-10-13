@@ -100,7 +100,7 @@ export function DealsTable({ rows, filters, locale, canManage = false }: { rows:
         cell: ({ row }) => (
           <span className="flex flex-wrap gap-1">
             {row.original.tags.map((tag) => (
-              <span key={tag.id} className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ backgroundColor: `${tag.color}26`, color: tag.color }}>
+              <span key={tag.id} className="tag-chip rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ "--tag": tag.color } as React.CSSProperties}>
                 {tag.name}
               </span>
             ))}
@@ -112,7 +112,7 @@ export function DealsTable({ rows, filters, locale, canManage = false }: { rows:
         header: t("salesperson"),
         cell: ({ row }) => (
           <span className="inline-flex items-center gap-2 whitespace-nowrap">
-            <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">{initials(row.original.ownerName)}</span>
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-accent text-[10px] font-semibold text-accent-foreground">{initials(row.original.ownerName)}</span>
             {row.original.ownerName}
           </span>
         ),

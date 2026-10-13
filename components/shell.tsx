@@ -137,7 +137,7 @@ export function AppShell({
         <div className={cn("flex h-14 items-center border-b border-sidebar-border", collapsed ? "justify-center px-2" : "px-3")}>
           <Link
             href="/dashboard"
-            aria-label={t("dashboard")}
+            aria-label={collapsed ? t("dashboard") : undefined}
             className={cn("flex min-w-0 items-center rounded-md hover:opacity-80", collapsed ? "justify-center" : "gap-3")}
           >
             {collapsed ? <Image src={mark} alt="" priority className="h-8 w-8 object-contain" /> : (

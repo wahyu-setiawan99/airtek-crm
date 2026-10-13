@@ -11,7 +11,7 @@ User memberi **satu perintah yang sama** setiap sesi: *"Baca AGENTS.md dan lanju
 2. [x] **§16.1–16.2** — jenis klien Konsultan/Kontraktor/Owner (hapus "Industri") + pihak proyek di deal. *(butuh migration `0005`)*
 3. [x] **§16.3–16.4** — filter lintas sales di daftar Deal (pipeline, tahap, jenis klien, lokasi, target closing, nilai), badge "Milik {nama}", target sales per bulan, cek duplikat, lokasi proyek. *(migration `0006`)*
 4. [x] **§19** — URL tanpa `/id`/`/en` (bahasa dari pengaturan, default English) + halaman depan statis di `/` (tombol Masuk / Buka Dashboard). *(migration `0007`: default `profiles.locale` = `en`)*
-5. [ ] **§13.8** — QA: Lighthouse desktop ≥ 90, aksesibilitas, nol hydration warning, uji alur lengkap di lokal.
+5. [x] **§13.8** — QA: Lighthouse desktop ≥ 90, aksesibilitas, nol hydration warning, uji alur lengkap di lokal.
 6. [ ] 🔒 **§14 Impor Odoo** — TERKUNCI sampai user menulis di chat bahwa direktur & semua sales sudah aktif di CRM.
 7. [ ] **§20 Mobile-friendly & PWA** — dasar sudah ada (manifest, ikon, service worker aset, safe area menu bawah); kerjakan sisanya per §20.2–20.6.
 8. [ ] **§15.3, §15.5, §15.6, §15.7** — optimasi besar (query per halaman, revalidasi sempit, bundle, index). Setelah item 7, atau lebih dulu bila user meminta.
@@ -193,7 +193,7 @@ Aturan DB:
 - [ ] Custom fields
 - [x] Audit log di settings (admin)
 - [x] Empty state, skeleton loading, error boundary, halaman 404
-- [ ] Lighthouse desktop ≥ 90, aksesibilitas (label, fokus, kontras)
+- [x] Lighthouse desktop ≥ 90, aksesibilitas (label, fokus, kontras)
 
 ### Fase 8 — Akses, demo & konfigurasi bisnis (KERJAKAN SEBELUM Fase 7) — spesifikasi di §11
 - [x] Main administrator dari env `BOOTSTRAP_ADMIN_EMAIL` (§11.1)
@@ -218,7 +218,7 @@ Aturan DB:
 - [x] Realtime kanban (§13.5)
 - [x] Custom fields (§13.6)
 - [x] Pengingat aktivitas via email harian (§13.7)
-- [ ] QA: Lighthouse ≥ 90, aksesibilitas, hydration warning (§13.8)
+- [x] QA: Lighthouse ≥ 90, aksesibilitas, hydration warning (§13.8)
 - [x] Sidebar bisa diciutkan (mode ikon) / dimunculkan (§13.9)
 - [x] Lingkungan dev lokal (Docker) + akun testing + masuk cepat (§18)
 - [ ] Impor data dari Odoo CRM (§14) — **hanya setelah semua sales sudah diundang & aktif** (§14.0)
@@ -505,6 +505,8 @@ Sudah selesai & live: Supabase (data + auth, RLS read-only, server writes), mult
 - Lighthouse desktop ≥ 90; label aksesibilitas; tidak ada hydration warning di console (jangan render atribut yang bergantung pada tema/waktu di server).
 - Uji alur lengkap di produksi: Boss daftar → undang Administrator → Administrator undang Sales → Sales buat deal → Administrator lihat Performa Sales.
 - Halaman `/register` hanya untuk Boss (email `BOOTSTRAP_ADMIN_EMAIL`); link "Daftar" di halaman login sudah dihapus.
+- ✅ **Hasil 13 Okt 2026** (build produksi lokal, Lighthouse desktop, login `admin`): halaman depan perf 96 / a11y 100, login 100/100, dashboard 99/100, pipeline 97/100, daftar deal 100/100, detail deal 99/100, kontak/perusahaan/aktivitas/produk/laporan/anggota 99–100/100. Best-practices 96 hanya karena skrip Vercel Analytics tidak ada di lokal. Nol hydration warning di semua halaman (setelah `.next` bersih). Alur lokal lulus: admin undang `sales3` → email Mailpit (link `next=/accept-invite`) → buat kata sandi → dashboard English → quick-add deal tercatat milik Sales Tiga.
+- Perbaikan QA: chip tag pakai kelas `.tag-chip` (warna tag digelapkan/diterangkan agar kontras ≥ 4.5), `--success-foreground` & `--destructive-foreground` gelap di mode gelap, avatar `bg-accent`, header tabel kosong diberi `sr-only`, logo sidebar tanpa `aria-label` saat lebar, target sentuh handle drag 24px, filter bar tidak lagi bertumpuk (filter utama satu baris + tombol **Filter lainnya**).
 
 ### 13.9 Sidebar ciut / lebar
 - Tombol toggle di header sidebar (ikon `PanelLeftClose` / `PanelLeftOpen` dari lucide) + shortcut `[`.
@@ -639,6 +641,17 @@ Sesudah Langkah 1–2, terukur 13 Okt 2026 (curl, belum login). Rantai aplikasi 
 | `https://airtek.my.id/` | 1 (`/`→`/id/login`) | 0,37 s |
 | `https://airtek.my.id/id` | 1 (`/id`→`/id/login`) | 0,40 s |
 | `https://airtek.my.id/id/login` | 0 | TTFB 0,34 s |
+
+Sesudah §19 (URL tanpa locale + halaman depan statis), terukur 13 Okt 2026 (curl, belum login):
+
+| URL | Redirect | Waktu |
+|---|---|---|
+| `https://airtek.my.id/` | **0** (halaman depan statis) | 0,18 s |
+| `https://airtek.my.id/login` | 0 | 1,0 s (cold start) |
+| `https://airtek.my.id/dashboard` (belum login) | 1 (→ `/login?next=…`) | 0,87 s |
+| `https://airtek.my.id/id/login` (URL lama) | 1 (→ `/login`) | 0,36 s |
+| `http://airtek.my.id/` | 1 (Vercel http→https) | 0,53 s |
+| `https://www.airtek.my.id/` | 1 (Vercel www→apex) | 0,44 s |
 
 Ukuran JS: shared 103 kB; `/pipelines/[id]` 186 kB; `/deals/[id]` 192 kB; `/reports` 244 kB (first load).
 

@@ -292,7 +292,7 @@ export function DealWorkspace({
               </div>
               {deal.canEdit && deal.status === "open" ? (
                 <>
-                  <Button size="sm" className="bg-success text-white hover:bg-success/90" onClick={() => void run(markWonAction(deal.id))}>
+                  <Button size="sm" className="bg-success text-success-foreground hover:bg-success/90" onClick={() => void run(markWonAction(deal.id))}>
                     <Trophy className="h-3.5 w-3.5" /> {tc("won")}
                   </Button>
                   <Button size="sm" variant="outline" className="border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => setLostOpen(true)}>
@@ -510,7 +510,7 @@ export function DealWorkspace({
             <span className="h-5 w-px bg-border" />
             <div className="flex flex-wrap items-center gap-1.5">
               {deal.tags.map((tag) => (
-                <span key={tag.id} className="rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ backgroundColor: `${tag.color}26`, color: tag.color }}>
+                <span key={tag.id} className="tag-chip rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ "--tag": tag.color } as React.CSSProperties}>
                   {tag.name}
                 </span>
               ))}
@@ -641,7 +641,7 @@ export function DealWorkspace({
                   onSave={(ownerId) => (ownerId ? patch({ ownerId }) : Promise.resolve(false))}
                   display={
                     <span className="inline-flex items-center gap-2">
-                      <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">{initials(deal.ownerName)}</span>
+                      <span className="grid h-6 w-6 place-items-center rounded-full bg-accent text-[10px] font-semibold text-accent-foreground">{initials(deal.ownerName)}</span>
                       {deal.ownerName}
                     </span>
                   }

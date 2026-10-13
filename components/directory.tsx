@@ -391,7 +391,7 @@ export function ProductsScreen({ products, tags, canCreate }: { products: Produc
       {visible.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : (
         <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="w-full text-sm">
-            <thead className="text-left text-xs text-muted-foreground"><tr><th className="p-3">{tc("name")}</th><th className="p-3">{t("sku")}</th><th className="p-3">{t("category")}</th><th className="p-3">{t("unitPrice")}</th><th /></tr></thead>
+            <thead className="text-left text-xs text-muted-foreground"><tr><th className="p-3">{tc("name")}</th><th className="p-3">{t("sku")}</th><th className="p-3">{t("category")}</th><th className="p-3">{t("unitPrice")}</th><th className="p-3"><span className="sr-only">{tc("actions")}</span></th></tr></thead>
             <tbody>
               {visible.map((product) => (
                 <tr key={product.id} className="border-t">

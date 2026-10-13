@@ -29,9 +29,13 @@ export function DataTable<T extends Record<string, unknown>>({ columns, data }: 
               <tr key={group.id}>
                 {group.headers.map((header) => (
                   <th key={header.id} className="p-3 font-medium">
-                    <button className="text-left" onClick={header.column.getToggleSortingHandler()}>
-                      {renderHeader(header.column.columnDef.header, header.getContext())}
-                    </button>
+                    {header.column.columnDef.header ? (
+                      <button className="text-left" onClick={header.column.getToggleSortingHandler()}>
+                        {renderHeader(header.column.columnDef.header, header.getContext())}
+                      </button>
+                    ) : (
+                      <span className="sr-only">{t("select")}</span>
+                    )}
                   </th>
                 ))}
               </tr>
