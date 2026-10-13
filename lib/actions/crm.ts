@@ -15,7 +15,7 @@ import { siteUrl, supabaseEnabled } from "@/lib/env";
 import { createAdminClient, createStatelessClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { canAdmin, canEditOwned, canManage, canWrite } from "@/lib/permissions";
-import { getSession } from "@/lib/session";
+import { getSession, getUserId } from "@/lib/session";
 import type { Deal, DealStatus, Stage, Store } from "@/types/crm";
 import type { Session } from "@/lib/session";
 import {
@@ -943,28 +943,45 @@ export async function updateProfileAction(input: unknown) {
   return result;
 }
 
+/**
+ * Theme and language are one-column changes to the caller's own profile, so they are written
+ * with a single targeted update instead of the full snapshot diff.
+ */
+async function updateOwnPreference(fields: { theme?: "light" | "dark" | "system"; locale?: "en" | "id" }) {
+  const t = await getTranslations("common");
+  if (!supabaseEnabled) {
+    return runAction(({ session, store }) => {
+      const profile = store.profiles.find((item) => item.id === session.userId);
+      if (!profile) throw new ActionError("Missing");
+      Object.assign(profile, fields, { updated_at: new Date().toISOString() });
+      return null;
+    });
+  }
+  const userId = await getUserId();
+  if (!userId) return { ok: false as const, error: t("forbidden") };
+  const { error } = await createAdminClient()
+    .from("profiles")
+    .update({ ...fields, updated_at: new Date().toISOString() })
+    .eq("id", userId);
+  if (error) {
+    console.error("update preference", error);
+    return { ok: false as const, error: t("error") };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true as const, data: null };
+}
+
 /** Language only, separate from the profile form: saves the profile and the cookie. */
 export async function updateLocaleAction(locale: unknown) {
   if (locale !== "en" && locale !== "id") return { ok: false as const, error: "Invalid" };
-  const result = await runAction(({ session, store }) => {
-    const profile = store.profiles.find((item) => item.id === session.userId);
-    if (!profile) throw new ActionError("Missing");
-    profile.locale = locale;
-    profile.updated_at = new Date().toISOString();
-    return locale;
-  });
+  const result = await updateOwnPreference({ locale });
   if (result.ok) await rememberLocale(locale);
   return result;
 }
 
-export async function updateThemeAction(theme: "light" | "dark" | "system") {
-  return runAction(({ session, store }) => {
-    const profile = store.profiles.find((item) => item.id === session.userId);
-    if (!profile) throw new ActionError("Missing");
-    profile.theme = theme;
-    profile.updated_at = new Date().toISOString();
-    return null;
-  });
+export async function updateThemeAction(theme: unknown) {
+  if (theme !== "light" && theme !== "dark" && theme !== "system") return { ok: false as const, error: "Invalid" };
+  return updateOwnPreference({ theme });
 }
 
 export async function changePasswordAction(input: unknown) {

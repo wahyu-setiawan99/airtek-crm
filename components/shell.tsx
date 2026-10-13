@@ -24,7 +24,7 @@ import Image from "next/image";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { markNotificationsReadAction, switchOrgAction, updateThemeAction } from "@/lib/actions/crm";
 import Link from "next/link";
@@ -52,6 +52,24 @@ const links = [
   { href: "/settings/profile", key: "settings", icon: Settings },
 ] as const;
 
+const SYNCED_THEME_KEY = "airtek_theme_synced";
+
+function readSyncedTheme() {
+  try {
+    return window.localStorage.getItem(SYNCED_THEME_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeSyncedTheme(theme: string) {
+  try {
+    window.localStorage.setItem(SYNCED_THEME_KEY, theme);
+  } catch {
+    // Storage blocked: the saved profile value is applied on each visit instead.
+  }
+}
+
 function isTyping(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
   return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable;
@@ -76,18 +94,18 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const { setTheme } = useTheme();
-  // Last theme received from the server; applied only when the saved value itself changes,
-  // because setTheme's identity changes with every theme switch and would re-run the effect.
-  const syncedTheme = useRef<string | null>(null);
   const [open, setOpen] = useState(false);
   const [mobile, setMobile] = useState(false);
   const [more, setMore] = useState(false);
   const [collapsed, setCollapsed] = useState(sidebarCollapsed);
   const unread = shell.notifications.filter((item) => !item.read).length;
 
+  // The device keeps the theme the user picked (next-themes stores it). The saved profile value
+  // is applied only when it differs from the last one this device saw or sent, i.e. it was
+  // changed on another device or this is the first visit here.
   useEffect(() => {
-    if (syncedTheme.current === shell.user.theme) return;
-    syncedTheme.current = shell.user.theme;
+    if (readSyncedTheme() === shell.user.theme) return;
+    writeSyncedTheme(shell.user.theme);
     setTheme(shell.user.theme);
   }, [setTheme, shell.user.theme]);
 
@@ -289,7 +307,12 @@ export function AppShell({
             </Menu>
             <ThemeMenu
               labels={{ theme: tc("theme"), light: ts("themeLight"), dark: ts("themeDark"), system: ts("themeSystem") }}
-              onChange={(next) => void updateThemeAction(next)}
+              onChange={(next) => {
+                writeSyncedTheme(next);
+                void updateThemeAction(next).then((result) => {
+                  if (!result.ok) toast.error(result.error);
+                });
+              }}
             />
             <Menu>
               <MenuTrigger className="grid h-9 w-9 place-items-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
