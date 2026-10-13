@@ -437,7 +437,7 @@ Langkah deploy:
 - Detail kontak & perusahaan menampilkan salesperson pemilik; manager/admin bisa menggantinya.
 
 ### 11.8 Mode Terang / Gelap
-- Satu tombol Terang/Gelap di topbar dan halaman login (tanpa opsi "Sistem"). Sebelum user memilih, tema mengikuti perangkat (`profiles.theme = system`).
+- Menu tema **Terang / Gelap / Sistem** (`components/theme-menu.tsx`) di topbar, halaman login/undangan, dan halaman depan. **Sistem** mengikuti pengaturan HP/komputer; ini juga default sebelum user memilih (`profiles.theme = system`). Keputusan user 13 Okt 2026: opsi Sistem dikembalikan.
 - Simpan per user di `profiles.theme` (`light` | `dark` | `system`, default `system`) dan terapkan setelah login. Halaman login/register mengikuti tema sistem.
 - Cek kontras semua komponen (kanban, chart Recharts, dialog, tabel, badge DEMO) di kedua mode pada 1280px dan 1920px.
 
@@ -521,7 +521,6 @@ Sudah selesai & live: Supabase (data + auth, RLS read-only, server writes), mult
 ### Tidak dikerjakan (keputusan user)
 - Akun/organisasi demo di produksi (dihapus).
 - Undangan lewat WhatsApp / salin tautan (dihapus — email saja).
-- Opsi tema "Sistem" di UI (otomatis mengikuti perangkat sampai user memilih Terang/Gelap).
 
 ## 14. Impor Data dari Odoo
 
@@ -935,7 +934,7 @@ Uji di 360, 390, 414 dan 768px (Chrome DevTools device mode: iPhone SE, iPhone 1
 ### 20.7 Hasil (13 Okt 2026)
 - **Komponen bersama:** `Dialog` = layar penuh di < 640px; input 16px di HP; `DataTable` = kartu di < 768px (kolom pertama jadi judul, sisanya label/nilai); `TabsList` bisa digeser; topbar HP: logo kecil + ikon cari (command palette layar penuh dengan tombol Batal).
 - **Filter:** HP = kotak cari + tombol **Filter (n)** → sheet berisi semua filter + Reset / Tampilkan hasil. Desktop = satu baris + **Filter lainnya**.
-- **Kanban:** satu kolom selebar layar (scroll-snap), chip tahap di atas (nama · jumlah) yang mengikuti posisi geser; handle drag disembunyikan di HP; menu **Pindah ke…** di kartu (semua ukuran layar) memakai alur yang sama dengan drag (Kalah → dialog alasan).
+- **Kanban:** satu kolom selebar layar (scroll-snap), chip tahap di atas (nama · jumlah) yang mengikuti posisi geser. **Seluruh kartu bisa di-drag** (bukan hanya ikon grip): mouse setelah bergeser 6px, layar sentuh dengan tekan-tahan 250ms (geser biasa tetap menggulir). Menu **Pindah ke…** di kartu tetap ada sebagai alternatif; keduanya memakai alur yang sama (Kalah → dialog alasan).
 - **Detail deal:** satu halaman bergulir di < 1024px (panel aktivitas di bawah), header ringkas (kembali, ‹ n/N ›, ⋯ berisi Menang/Kalah), stage bar bisa digeser, **bar aksi bawah**: Telepon · WhatsApp · Aktivitas · Catatan (membuka & memfokuskan composer).
 - **PWA:** `components/pwa-register.tsx` (`PwaSupport` di `AppShell`): daftar `public/sw.js` hanya di produksi; toast **Versi baru tersedia → Muat ulang** (SW menunggu `SKIP_WAITING`); banner pasang sekali di HP (Android `beforeinstallprompt`, iOS petunjuk Bagikan → Tambahkan ke Layar Utama; ditutup = `localStorage airtek_install_dismissed`). Halaman offline = `public/offline.html` (HTML statis tanpa JS, dipre-cache; navigasi gagal → halaman ini). `theme-color` terang/gelap lewat `viewport`. Cache `airtek-static-v2`.
 - **Diuji lokal:** 390px tanpa scroll horizontal di dashboard, pipeline, deal, detail deal, aktivitas; pindah tahap via menu tersimpan di DB; Chrome headless: SW aktif & mengontrol halaman, server dimatikan → halaman offline tampil. Lighthouse mobile: halaman depan 87–88 (halaman depan kini Server Component, hanya tombol tema & Sign in yang client), login 91, a11y 100. Halaman setelah login mobile 56–65 (dibatasi §15.3 muat-semua-tabel & §15.6 bundle — dikerjakan di item 8).

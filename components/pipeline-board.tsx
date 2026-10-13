@@ -3,7 +3,8 @@
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCorners,
   useDroppable,
   useSensor,
@@ -74,7 +75,12 @@ export function PipelineBoard({
     if (params.get("new") === "1") setCreating(true);
   }, []);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  // Mouse: drag after moving 6px so clicks on the card still work. Touch: press and hold 250ms,
+  // so a normal swipe keeps scrolling the board.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+  );
   const visible = useMemo(() => {
     return stages.map((stage) => ({
       ...stage,
@@ -465,8 +471,14 @@ function SortableDeal({ deal, locale, onEdit, onWon, onLost, targets, onMove }: 
 function DraggableDeal({ deal, locale, onEdit, onWon, onLost, targets, onMove }: { deal: BoardDeal; locale: AppLocale; onEdit: () => void; onWon: () => void; onLost: () => void; targets: { id: string; name: string }[]; onMove: (stageId: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: deal.id, disabled: !deal.canEdit });
   return (
-    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 }} {...attributes}>
-      <DealCard deal={deal} locale={locale} listeners={listeners} onEdit={onEdit} onWon={onWon} onLost={onLost} targets={targets} onMove={onMove} />
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 }}
+      className={cn(deal.canEdit && "cursor-grab select-none active:cursor-grabbing [-webkit-touch-callout:none]")}
+      {...attributes}
+      {...listeners}
+    >
+      <DealCard deal={deal} locale={locale} draggable={deal.canEdit} onEdit={onEdit} onWon={onWon} onLost={onLost} targets={targets} onMove={onMove} />
     </div>
   );
 }
@@ -475,7 +487,7 @@ function DealCard({
   deal,
   locale,
   overlay = false,
-  listeners,
+  draggable = false,
   onEdit,
   onWon,
   onLost,
@@ -485,7 +497,7 @@ function DealCard({
   deal: BoardDeal;
   locale: AppLocale;
   overlay?: boolean;
-  listeners?: Record<string, unknown>;
+  draggable?: boolean;
   targets?: { id: string; name: string }[];
   onMove?: (stageId: string) => void;
   onEdit?: () => void;
@@ -497,11 +509,7 @@ function DealCard({
   return (
     <article className={cn("rounded-lg border bg-card p-3 shadow-sm", deal.rotting && "border-warning bg-warning/10", overlay && "shadow-xl")}>
       <div className="flex items-start gap-2">
-        {deal.canEdit && listeners ? (
-          <button className="-m-1 hidden h-6 w-6 shrink-0 place-items-center rounded text-muted-foreground hover:bg-accent md:grid" aria-label={t("drag")} {...listeners}>
-            <GripVertical className="h-4 w-4" />
-          </button>
-        ) : null}
+        {draggable || overlay ? <GripVertical aria-hidden className="-ml-1 mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/60" /> : null}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <Link href={`/deals/${deal.id}`} className="-my-0.5 min-h-6 truncate py-0.5 text-sm font-medium hover:underline">{deal.title}</Link>
