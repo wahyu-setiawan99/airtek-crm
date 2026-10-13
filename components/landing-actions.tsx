@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Moon, SunMedium } from "lucide-react";
-import { useTheme } from "next-themes";
+import { ArrowRight } from "lucide-react";
+import { ThemeMenu } from "@/components/theme-menu";
 import { SIGNED_IN_COOKIE } from "@/lib/constants";
 
 /** Sign in, or Open dashboard when the browser still has the signed-in marker cookie. */
@@ -28,17 +28,5 @@ export function LandingCta() {
 }
 
 export function LandingThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme();
-  return (
-    <button
-      type="button"
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-      className="inline-flex h-9 items-center gap-2 rounded-lg border bg-card px-3 text-xs font-medium text-muted-foreground shadow-sm hover:bg-accent hover:text-foreground"
-    >
-      <Moon className="h-3.5 w-3.5 dark:hidden" />
-      <SunMedium className="hidden h-3.5 w-3.5 dark:block" />
-      <span className="dark:hidden">Dark</span>
-      <span className="hidden dark:inline">Light</span>
-    </button>
-  );
+  return <ThemeMenu variant="pill" labels={{ theme: "Theme", light: "Light", dark: "Dark", system: "System" }} />;
 }

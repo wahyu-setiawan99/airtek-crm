@@ -1,27 +1,17 @@
 "use client";
 
-import { Moon, SunMedium } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useTheme } from "next-themes";
-import { cn } from "@/lib/utils";
+import { ThemeMenu } from "@/components/theme-menu";
 
-/**
- * Light/dark toggle for pages without the app topbar (login, register). Until someone picks,
- * the theme follows the device setting. The visible label is the accessible name.
- */
+/** Theme picker for pages without the app topbar (login, register, accept invite). */
 export function ThemeSwitch({ className }: { className?: string }) {
   const t = useTranslations("settings");
-  const { resolvedTheme, setTheme } = useTheme();
+  const tc = useTranslations("common");
   return (
-    <button
-      type="button"
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-      className={cn("inline-flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground", className)}
-    >
-      <Moon className="h-3.5 w-3.5 dark:hidden" />
-      <SunMedium className="hidden h-3.5 w-3.5 dark:block" />
-      <span className="dark:hidden">{t("themeDark")}</span>
-      <span className="hidden dark:inline">{t("themeLight")}</span>
-    </button>
+    <ThemeMenu
+      variant="pill"
+      className={className}
+      labels={{ theme: tc("theme"), light: t("themeLight"), dark: t("themeDark"), system: t("themeSystem") }}
+    />
   );
 }

@@ -11,14 +11,12 @@ import {
   LayoutDashboard,
   LogOut,
   Menu as MenuIcon,
-  Moon,
   Package,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
   Search,
   Settings,
-  SunMedium,
   Users,
 } from "lucide-react";
 import Image from "next/image";
@@ -37,6 +35,7 @@ import type { ShellData } from "@/types/view";
 import mark from "@/public/brand/airtek-mark.png";
 import { BrandLogo } from "@/components/brand-logo";
 import { PwaSupport } from "@/components/pwa-register";
+import { ThemeMenu } from "@/components/theme-menu";
 import { Button } from "@/components/ui/button";
 import { MenuContent, MenuItem, Menu, MenuTrigger } from "@/components/ui/dropdown";
 
@@ -72,9 +71,10 @@ export function AppShell({
   const tc = useTranslations("common");
   const tcmd = useTranslations("command");
   const tn = useTranslations("notifications");
+  const ts = useTranslations("settings");
   const pathname = usePathname();
   const router = useRouter();
-  const { resolvedTheme, setTheme } = useTheme();
+  const { setTheme } = useTheme();
   // Last theme received from the server; applied only when the saved value itself changes,
   // because setTheme's identity changes with every theme switch and would re-run the effect.
   const syncedTheme = useRef<string | null>(null);
@@ -90,11 +90,6 @@ export function AppShell({
     setTheme(shell.user.theme);
   }, [setTheme, shell.user.theme]);
 
-  function toggleTheme() {
-    const next = resolvedTheme === "dark" ? "light" : "dark";
-    setTheme(next);
-    void updateThemeAction(next);
-  }
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -291,16 +286,10 @@ export function AppShell({
                 ))}
               </MenuContent>
             </Menu>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="grid h-9 w-9 place-items-center rounded-md hover:bg-accent"
-              aria-label={tc("theme")}
-              title={tc("theme")}
-            >
-              <Moon className="h-4 w-4 dark:hidden" />
-              <SunMedium className="hidden h-4 w-4 dark:block" />
-            </button>
+            <ThemeMenu
+              labels={{ theme: tc("theme"), light: ts("themeLight"), dark: ts("themeDark"), system: ts("themeSystem") }}
+              onChange={(next) => void updateThemeAction(next)}
+            />
             <Menu>
               <MenuTrigger className="grid h-9 w-9 place-items-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
                 {shell.user.name.slice(0, 1)}
