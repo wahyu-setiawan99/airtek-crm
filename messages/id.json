@@ -497,7 +497,10 @@
     "fieldEntity": "Untuk",
     "upload": "Unggah berkas",
     "download": "Unduh",
-    "demoFile": "Mode demo hanya menyimpan nama berkas."
+    "demoFile": "Mode demo hanya menyimpan nama berkas.",
+    "languageHint": "Langsung berlaku di semua halaman.",
+    "invalidProfile": "Periksa nama (minimal 2 karakter) dan nomor telepon.",
+    "savedProfile": "Profil diperbarui"
   },
   "command": {
     "placeholder": "Cari atau ketik perintah…",

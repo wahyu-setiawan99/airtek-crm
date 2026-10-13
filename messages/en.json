@@ -499,7 +499,9 @@
     "fieldEntity": "For",
     "upload": "Upload file",
     "download": "Download",
-    "demoFile": "Demo mode only stores the file name."
+    "demoFile": "Demo mode only stores the file name.",
+    "languageHint": "Applies right away, on every page.",
+    "invalidProfile": "Check your name (at least 2 characters) and phone number."
   },
   "command": {
     "placeholder": "Search or type a command…",

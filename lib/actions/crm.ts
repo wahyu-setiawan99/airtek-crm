@@ -929,17 +929,31 @@ export async function updateProfileAction(input: unknown) {
   const t = await getTranslations("settings");
   const result = await runAction(({ session, store }) => {
     const parsed = profileSchema.safeParse(input);
-    if (!parsed.success) throw new ActionError(t("savedProfile"));
+    if (!parsed.success) throw new ActionError(t("invalidProfile"));
     const profile = store.profiles.find((item) => item.id === session.userId);
     if (!profile) throw new ActionError("Missing");
     profile.full_name = parsed.data.fullName;
     profile.phone = parsed.data.phone;
-    profile.locale = parsed.data.locale;
+    if (parsed.data.locale) profile.locale = parsed.data.locale;
     if (parsed.data.theme) profile.theme = parsed.data.theme;
     profile.updated_at = new Date().toISOString();
-    return parsed.data.locale;
+    return parsed.data.locale ?? null;
   });
   if (result.ok && typeof result.data === "string") await rememberLocale(result.data);
+  return result;
+}
+
+/** Language only, separate from the profile form: saves the profile and the cookie. */
+export async function updateLocaleAction(locale: unknown) {
+  if (locale !== "en" && locale !== "id") return { ok: false as const, error: "Invalid" };
+  const result = await runAction(({ session, store }) => {
+    const profile = store.profiles.find((item) => item.id === session.userId);
+    if (!profile) throw new ActionError("Missing");
+    profile.locale = locale;
+    profile.updated_at = new Date().toISOString();
+    return locale;
+  });
+  if (result.ok) await rememberLocale(locale);
   return result;
 }
 

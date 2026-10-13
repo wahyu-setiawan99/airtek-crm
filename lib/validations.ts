@@ -123,7 +123,7 @@ export const lineSchema = z.object({
 export const profileSchema = z.object({
   fullName: z.string().trim().min(2).max(80),
   phone: z.string().max(30).nullable(),
-  locale: z.enum(["id", "en"]),
+  locale: z.enum(["id", "en"]).optional(),
   theme: z.enum(["light", "dark", "system"]).optional(),
 });
 

@@ -17,6 +17,7 @@ import {
   saveTagAction,
   saveSalesTargetAction,
   updateOrganizationAction,
+  updateLocaleAction,
   updateProfileAction,
 } from "@/lib/actions/crm";
 import { deleteCustomFieldAction, saveCustomFieldAction } from "@/lib/actions/phase9";
@@ -25,6 +26,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { AppLocale } from "@/i18n/locale";
 import { formatDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { Role } from "@/types/crm";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/form";
@@ -99,21 +101,46 @@ export function SettingsScreen({
             <form className="grid max-w-lg gap-3" onSubmit={(event) => {
               event.preventDefault();
               const form = new FormData(event.currentTarget);
-              const localeValue = String(form.get("locale")) as AppLocale;
               void updateProfileAction({
                 fullName: String(form.get("fullName")),
                 phone: String(form.get("phone")) || null,
-                locale: localeValue,
-              }).then((result) => done(result));
+              }).then((result) => {
+                if (result.ok) toast.success(t("savedProfile"));
+                void done(result);
+              });
             }}>
               <Field label={tc("name")}><Input name="fullName" required defaultValue={data.profile.fullName} /></Field>
               <Field label={tc("email")}><Input value={data.profile.email} disabled /></Field>
               <Field label={tc("phone")}><Input name="phone" defaultValue={data.profile.phone} /></Field>
-              <Field label={t("language")}>
-                <Select name="locale" defaultValue={data.profile.locale}><option value="en">English</option><option value="id">Indonesia</option></Select>
-              </Field>
               <Button type="submit">{tc("save")}</Button>
             </form>
+            <section className="grid max-w-lg gap-2 rounded-lg border bg-card p-4" aria-labelledby="language-heading">
+              <h2 id="language-heading" className="text-sm font-semibold">{t("language")}</h2>
+              <p className="text-xs text-muted-foreground">{t("languageHint")}</p>
+              <div role="radiogroup" aria-labelledby="language-heading" className="mt-1 inline-flex w-full rounded-lg border bg-muted p-1 sm:w-auto">
+                {([["en", "English"], ["id", "Bahasa Indonesia"]] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={data.profile.locale === value}
+                    disabled={data.profile.locale === value}
+                    onClick={() => {
+                      void updateLocaleAction(value).then((result) => {
+                        if (!result.ok) return toast.error(result.error);
+                        router.refresh();
+                      });
+                    }}
+                    className={cn(
+                      "h-10 flex-1 rounded-md px-4 text-sm font-medium transition-colors sm:flex-none",
+                      data.profile.locale === value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </section>
             <form className="grid max-w-lg gap-3" onSubmit={(event) => {
               event.preventDefault();
               const form = new FormData(event.currentTarget);
