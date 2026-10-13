@@ -4,7 +4,7 @@ import { STORE_VERSION } from "@/lib/demo/seed";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Store } from "@/types/crm";
 
-type TableName = Exclude<keyof Store, "version" | "seeded_on">;
+export type TableName = Exclude<keyof Store, "version" | "seeded_on">;
 type Row = Record<string, unknown>;
 
 type TableSpec = {
@@ -46,7 +46,8 @@ const TABLES: [TableName, TableSpec][] = [
   ["deal_products", { key: ["id"], deal: true, strip: ["subtotal"] }],
   ["stage_history", { key: ["id"], deal: true }],
   ["audit_logs", { key: ["id"], org: "organization_id", newestFirst: true, limit: 200, appendOnly: true }],
-  ["notifications", { key: ["id"], org: "organization_id", newestFirst: true }],
+  // RLS returns only the reader's own notifications; the app shows the latest dozen.
+  ["notifications", { key: ["id"], org: "organization_id", newestFirst: true, limit: 100, appendOnly: true }],
   ["saved_views", { key: ["id"], org: "organization_id", newestFirst: true }],
   ["attachments", { key: ["id"], org: "organization_id", newestFirst: true }],
   ["custom_fields", { key: ["id"], org: "organization_id" }],
@@ -55,54 +56,85 @@ const TABLES: [TableName, TableSpec][] = [
   ["sales_targets", { key: ["id"], org: "organization_id" }],
 ];
 
+/** Every table, in write order. */
+export const TABLE_NAMES: readonly TableName[] = TABLES.map(([table]) => table);
+
+const SPECS = new Map(TABLES);
+
 const PAGE = 1000;
+/** Pages fetched at once after the first full page (PostgREST caps a response at 1000 rows). */
+const PARALLEL_PAGES = 4;
+
+function pageQuery(client: SupabaseClient, table: TableName, spec: TableSpec, from: number, size: number) {
+  let query = client.from(table).select("*");
+  if (table === "stage_history") query = query.order("changed_at", { ascending: true });
+  else if (spec.key.length === 1 && table !== "deal_contacts" && table !== "deal_products") {
+    query = query.order("created_at", { ascending: !spec.newestFirst });
+  }
+  for (const column of spec.key) query = query.order(column, { ascending: true });
+  return query.range(from, from + size - 1);
+}
 
 async function fetchAll(client: SupabaseClient, table: TableName, spec: TableSpec): Promise<Row[]> {
-  const rows: Row[] = [];
-  for (let from = 0; ; from += PAGE) {
-    let query = client.from(table).select("*");
-    if (table === "stage_history") query = query.order("changed_at", { ascending: true });
-    else if (spec.key.length === 1 && table !== "deal_contacts" && table !== "deal_products") {
-      query = query.order("created_at", { ascending: !spec.newestFirst });
+  const size = spec.limit ? Math.min(PAGE, spec.limit) : PAGE;
+  const first = await pageQuery(client, table, spec, 0, size);
+  if (first.error) throw new Error(`load ${table}: ${first.error.message}`);
+  const rows = [...(first.data as Row[])];
+  if (rows.length < size || (spec.limit && rows.length >= spec.limit)) return rows;
+  // Large table: fetch the next pages a few at a time instead of one by one.
+  for (let from = size; ; from += size * PARALLEL_PAGES) {
+    const pages = await Promise.all(
+      Array.from({ length: PARALLEL_PAGES }, (_, index) => pageQuery(client, table, spec, from + index * size, size)),
+    );
+    for (const page of pages) {
+      if (page.error) throw new Error(`load ${table}: ${page.error.message}`);
+      rows.push(...(page.data as Row[]));
+      if ((page.data?.length ?? 0) < size) return spec.limit ? rows.slice(0, spec.limit) : rows;
     }
-    for (const column of spec.key) query = query.order(column, { ascending: true });
-    const size = spec.limit ? Math.min(PAGE, spec.limit) : PAGE;
-    const { data, error } = await query.range(from, from + size - 1);
-    if (error) throw new Error(`load ${table}: ${error.message}`);
-    rows.push(...(data as Row[]));
-    if (!data || data.length < size || (spec.limit && rows.length >= spec.limit)) return rows;
+    if (spec.limit && rows.length >= spec.limit) return rows.slice(0, spec.limit);
   }
 }
 
-/** Everything the signed-in user can read (RLS), shaped like the demo store. */
+/** Fills in app-only fields so a table's rows match the demo store shape. */
+function normalize(table: TableName, rows: Row[]) {
+  if (table === "deals") rows.forEach((row) => delete row.search);
+  if (table === "profiles") {
+    rows.forEach((row) => {
+      row.email = row.email ?? "";
+      row.password = "";
+      row.reset_token = null;
+      row.reset_expires = null;
+      row.email_confirmed = true;
+      row.confirm_token = null;
+      row.theme = row.theme ?? "dark";
+    });
+  }
+  if (table === "organizations") rows.forEach((row) => { row.demo = Boolean(row.demo); });
+  if (table === "memberships") rows.forEach((row) => { row.disabled_at = row.disabled_at ?? null; });
+  if (table === "invitations") {
+    rows.forEach((row) => {
+      row.full_name = row.full_name ?? null;
+      row.team_id = row.team_id ?? null;
+      row.cancelled_at = row.cancelled_at ?? null;
+    });
+  }
+  if (table === "products") rows.forEach((row) => { row.tag_id = row.tag_id ?? null; });
+  return rows;
+}
+
+/** One table, as the signed-in user may read it (RLS). */
+export async function fetchTable(client: SupabaseClient, table: TableName): Promise<Row[]> {
+  const spec = SPECS.get(table);
+  if (!spec) throw new Error(`unknown table ${table}`);
+  return normalize(table, await fetchAll(client, table, spec));
+}
+
+/** Everything the client can read, shaped like the demo store (used by the cron job). */
 export async function loadSupabaseStore(client: SupabaseClient): Promise<Store> {
-  const results = await Promise.all(TABLES.map(([table, spec]) => fetchAll(client, table, spec)));
+  const results = await Promise.all(TABLE_NAMES.map((table) => fetchTable(client, table)));
   const store = { version: STORE_VERSION, seeded_on: "" } as Store;
-  TABLES.forEach(([table], index) => {
-    const rows = results[index] ?? [];
-    if (table === "deals") rows.forEach((row) => delete row.search);
-    if (table === "profiles") {
-      rows.forEach((row) => {
-        row.email = row.email ?? "";
-        row.password = "";
-        row.reset_token = null;
-        row.reset_expires = null;
-        row.email_confirmed = true;
-        row.confirm_token = null;
-        row.theme = row.theme ?? "dark";
-      });
-    }
-    if (table === "organizations") rows.forEach((row) => { row.demo = Boolean(row.demo); });
-    if (table === "memberships") rows.forEach((row) => { row.disabled_at = row.disabled_at ?? null; });
-    if (table === "invitations") {
-      rows.forEach((row) => {
-        row.full_name = row.full_name ?? null;
-        row.team_id = row.team_id ?? null;
-        row.cancelled_at = row.cancelled_at ?? null;
-      });
-    }
-    if (table === "products") rows.forEach((row) => { row.tag_id = row.tag_id ?? null; });
-    (store as Record<TableName, Row[]>)[table] = rows;
+  TABLE_NAMES.forEach((table, index) => {
+    (store as unknown as Record<TableName, Row[]>)[table] = results[index] ?? [];
   });
   return store;
 }
@@ -154,7 +186,8 @@ export async function commitSupabaseStore(before: Store, after: Store, scope: Co
     if (!ok) throw new ScopeError(`write outside scope: ${table} ${rowKey(row, spec)}`);
   }
 
-  const changes = TABLES.map(([table, spec]) => {
+  const present = TABLES.filter(([table]) => Array.isArray(before[table]) && Array.isArray(after[table]));
+  const changes = present.map(([table, spec]) => {
     const previous = new Map((before[table] as unknown as Row[]).map((row) => [rowKey(row, spec), row]));
     const next = new Map((after[table] as unknown as Row[]).map((row) => [rowKey(row, spec), row]));
     const upserts: Row[] = [];

@@ -11,11 +11,10 @@ const profileLocale = cache(async (): Promise<AppLocale | null> => {
   if (!userId) return null;
   const { supabaseEnabled } = await import("@/lib/env");
   if (supabaseEnabled) {
-    const { createClient } = await import("@/lib/supabase/server");
-    const supabase = await createClient();
-    if (!supabase) return null;
-    const { data } = await supabase.from("profiles").select("locale").eq("id", userId).maybeSingle();
-    return isLocale(data?.locale) ? data.locale : null;
+    // Same request-level profiles load the session uses, so no extra query.
+    const { withStore } = await import("@/lib/store");
+    const locale = await withStore(["profiles"], (store) => store.profiles.find((item) => item.id === userId)?.locale);
+    return isLocale(locale) ? locale : null;
   }
   const { readStore } = await import("@/lib/demo/store");
   const locale = readStore().profiles.find((item) => item.id === userId)?.locale;

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { ORG_COOKIE, SESSION_COOKIE } from "@/lib/constants";
 import { readStore } from "@/lib/demo/store";
 import { supabaseEnabled } from "@/lib/env";
-import { loadStore } from "@/lib/store";
+import { withStore } from "@/lib/store";
 import { createClient } from "@/lib/supabase/server";
 import type { CommitScope } from "@/lib/supabase/store";
 import type { User } from "@supabase/supabase-js";
@@ -52,28 +52,28 @@ export const getSession = cache(async (): Promise<Session | null> => {
   const userId = await getUserId();
   if (!userId) return null;
 
-  const jar = await cookies();
-  const store = await loadStore();
-  const profile = store.profiles.find((item) => item.id === userId);
-  if (!profile) return null;
+  const requested = (await cookies()).get(ORG_COOKIE)?.value;
+  return withStore(["profiles", "memberships", "organizations"], (store): Session | null => {
+    const profile = store.profiles.find((item) => item.id === userId);
+    if (!profile) return null;
 
-  const memberships = store.memberships.filter((item) => item.user_id === userId && !item.disabled_at);
-  if (memberships.length === 0) return null;
+    const memberships = store.memberships.filter((item) => item.user_id === userId && !item.disabled_at);
+    if (memberships.length === 0) return null;
 
-  const requested = jar.get(ORG_COOKIE)?.value;
-  const membership = memberships.find((item) => item.organization_id === requested) ?? memberships[0];
-  if (!membership) return null;
-  const organization = store.organizations.find((item) => item.id === membership.organization_id);
-  if (!organization) return null;
+    const membership = memberships.find((item) => item.organization_id === requested) ?? memberships[0];
+    if (!membership) return null;
+    const organization = store.organizations.find((item) => item.id === membership.organization_id);
+    if (!organization) return null;
 
-  return {
-    userId,
-    organizationId: organization.id,
-    role: membership.role,
-    profile,
-    organization,
-    memberships,
-  };
+    return {
+      userId,
+      organizationId: organization.id,
+      role: membership.role,
+      profile,
+      organization,
+      memberships,
+    };
+  });
 });
 
 /** What a signed-in user may write: their organizations and their own profile. */

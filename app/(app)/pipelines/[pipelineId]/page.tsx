@@ -3,9 +3,12 @@ import { notFound } from "next/navigation";
 import { DealsRealtime } from "@/components/deals-realtime";
 import { PipelineBoard } from "@/components/pipeline-board";
 import type { AppLocale } from "@/i18n/locale";
-import { loadStore } from "@/lib/store";
+import { preload, withStore, type TableName } from "@/lib/store";
 import { buildPipeline } from "@/lib/queries";
 import { requireSession } from "@/lib/session";
+
+/** Tables this page reads; fetched while the session is checked. */
+const TABLES: readonly TableName[] = ["pipelines", "stages", "deals", "deal_tags", "tags", "companies", "contacts", "activities", "memberships", "profiles", "lost_reasons", "saved_views"];
 
 export default async function PipelinePage({
   params,
@@ -14,11 +17,15 @@ export default async function PipelinePage({
   params: Promise<{ pipelineId: string }>;
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  preload(TABLES);
   const { pipelineId } = await params;
   const locale = await getLocale();
   const query = await searchParams;
   const session = await requireSession();
-  const data = buildPipeline(await loadStore(), session, pipelineId);
+  const data = await withStore(
+    TABLES,
+    (store) => buildPipeline(store, session, pipelineId),
+  );
   if (!data) notFound();
   return (
     <>
