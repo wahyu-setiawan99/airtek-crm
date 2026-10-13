@@ -16,6 +16,53 @@ import type {
   ShellData,
 } from "@/types/view";
 
+// Lookups built once per store snapshot. Builders map over every deal, so a linear
+// `find`/`filter` per deal turns into seconds once there are thousands of rows.
+const memo = new WeakMap<object, Map<string, unknown>>();
+
+function memoize<T>(store: Store, key: string, build: () => T): T {
+  let bag = memo.get(store);
+  if (!bag) {
+    bag = new Map();
+    memo.set(store, bag);
+  }
+  if (!bag.has(key)) bag.set(key, build());
+  return bag.get(key) as T;
+}
+
+function byId<T extends { id: string }>(rows: T[]) {
+  return new Map(rows.map((row) => [row.id, row]));
+}
+
+function groupBy<T>(rows: T[], keyOf: (row: T) => string | null) {
+  const groups = new Map<string, T[]>();
+  for (const row of rows) {
+    const key = keyOf(row);
+    if (key === null) continue;
+    const list = groups.get(key);
+    if (list) list.push(row);
+    else groups.set(key, [row]);
+  }
+  return groups;
+}
+
+const dealIndex = (store: Store) => memoize(store, "deals", () => byId(store.deals));
+const stageIndex = (store: Store) => memoize(store, "stages", () => byId(store.stages));
+const companyIndex = (store: Store) => memoize(store, "companies", () => byId(store.companies));
+const contactIndex = (store: Store) => memoize(store, "contacts", () => byId(store.contacts));
+const tagIndex = (store: Store) => memoize(store, "tags", () => byId(store.tags));
+const profileIndex = (store: Store) => memoize(store, "profiles", () => byId(store.profiles));
+const dealTagIndex = (store: Store) => memoize(store, "deal_tags", () => groupBy(store.deal_tags, (row) => row.deal_id));
+const dealActivityIndex = (store: Store) => memoize(store, "activities:deal", () => groupBy(store.activities, (row) => row.deal_id));
+const membershipIndex = (store: Store, organizationId: string) =>
+  memoize(store, `memberships:${organizationId}`, () => new Map(
+    store.memberships
+      .filter((item) => item.organization_id === organizationId && !item.disabled_at)
+      .map((item) => [item.user_id, item]),
+  ));
+
+const moneyHint = new Intl.NumberFormat("id-ID");
+
 /** Members of the organization. The owner ("boss") is hidden from everyone except owners. */
 export function orgPeople(store: Store, organizationId: string, viewerRole: Session["role"]) {
   const ids = new Set(
@@ -29,31 +76,33 @@ export function orgPeople(store: Store, organizationId: string, viewerRole: Sess
 
 function personName(store: Store, userId: string | null) {
   if (!userId) return "—";
-  return store.profiles.find((item) => item.id === userId)?.full_name ?? "—";
+  return profileIndex(store).get(userId)?.full_name ?? "—";
 }
 
 function visibleOwnerName(store: Store, session: Session, ownerId: string) {
-  const membership = store.memberships.find((item) => item.user_id === ownerId && item.organization_id === session.organizationId && !item.disabled_at);
+  const membership = membershipIndex(store, session.organizationId).get(ownerId);
   if (session.role !== "owner" && membership?.role === "owner") return "—";
   return personName(store, ownerId);
 }
 
-function toBoardDeal(store: Store, session: Session, dealId: string): BoardDeal | null {
-  const deal = store.deals.find((item) => item.id === dealId);
+function toBoardDeal(store: Store, session: Session, dealOrId: string | Store["deals"][number]): BoardDeal | null {
+  const deal = typeof dealOrId === "string" ? dealIndex(store).get(dealOrId) : dealOrId;
   if (!deal) return null;
-  const stage = store.stages.find((item) => item.id === deal.stage_id);
+  const stage = stageIndex(store).get(deal.stage_id);
   if (!stage) return null;
-  const contractor = store.companies.find((item) => item.id === deal.contractor_company_id);
-  const ownerCompany = store.companies.find((item) => item.id === deal.owner_company_id);
-  const consultant = store.companies.find((item) => item.id === deal.consultant_company_id);
-  const company = contractor ?? ownerCompany ?? consultant ?? store.companies.find((item) => item.id === deal.company_id);
-  const contact = store.contacts.find((item) => item.id === deal.primary_contact_id);
-  const tags = store.deal_tags
-    .filter((item) => item.deal_id === deal.id)
-    .map((item) => store.tags.find((tag) => tag.id === item.tag_id))
+  const companies = companyIndex(store);
+  const contractor = deal.contractor_company_id ? companies.get(deal.contractor_company_id) : undefined;
+  const ownerCompany = deal.owner_company_id ? companies.get(deal.owner_company_id) : undefined;
+  const consultant = deal.consultant_company_id ? companies.get(deal.consultant_company_id) : undefined;
+  const company = contractor ?? ownerCompany ?? consultant ?? (deal.company_id ? companies.get(deal.company_id) : undefined);
+  const contact = deal.primary_contact_id ? contactIndex(store).get(deal.primary_contact_id) : undefined;
+  const tagsById = tagIndex(store);
+  const tags = (dealTagIndex(store).get(deal.id) ?? [])
+    .map((item) => tagsById.get(item.tag_id))
     .filter((tag): tag is NonNullable<typeof tag> => Boolean(tag))
     .map((tag) => ({ id: tag.id, name: tag.name, color: tag.color }));
   const probability = dealProbability(deal, stage);
+  const ownerName = visibleOwnerName(store, session, deal.owner_id);
   return {
     id: deal.id,
     title: deal.title,
@@ -68,8 +117,8 @@ function toBoardDeal(store: Store, session: Session, dealId: string): BoardDeal 
     contactId: deal.primary_contact_id,
     contactName: contact ? contactName(contact) : null,
     ownerId: deal.owner_id,
-    ownerName: visibleOwnerName(store, session, deal.owner_id),
-    ownedBy: session.userId !== deal.owner_id && visibleOwnerName(store, session, deal.owner_id) !== "—" ? visibleOwnerName(store, session, deal.owner_id).split(" ")[0] ?? null : null,
+    ownerName,
+    ownedBy: session.userId !== deal.owner_id && ownerName !== "—" ? ownerName.split(" ")[0] ?? null : null,
     pipelineId: deal.pipeline_id,
     partyNames: [ownerCompany?.name, consultant?.name, contractor?.name].filter(Boolean).join(" "),
     projectCity: deal.project_city,
@@ -77,7 +126,7 @@ function toBoardDeal(store: Store, session: Session, dealId: string): BoardDeal 
     tags,
     expectedCloseDate: deal.expected_close_date,
     lastActivityAt: deal.last_activity_at,
-    activityStatus: activitySignal(store.activities, deal.id),
+    activityStatus: activitySignal(dealActivityIndex(store).get(deal.id) ?? [], deal.id),
     rotting: isRotting(deal, stage),
     canEdit: canEditOwned(session.role, session.userId, deal.owner_id),
     stageId: deal.stage_id,
@@ -138,7 +187,7 @@ export function buildShell(store: Store, session: Session): ShellData {
 }
 
 function formatMoneyHint(value: number) {
-  return new Intl.NumberFormat("id-ID").format(value);
+  return moneyHint.format(value);
 }
 
 export function buildPipeline(store: Store, session: Session, pipelineId: string): PipelineData | null {
@@ -156,7 +205,7 @@ export function buildPipeline(store: Store, session: Session, pipelineId: string
       deals: store.deals
         .filter((deal) => deal.stage_id === stage.id)
         .sort((a, b) => a.position - b.position)
-        .map((deal) => toBoardDeal(store, session, deal.id))
+        .map((deal) => toBoardDeal(store, session, deal))
         .filter((deal): deal is BoardDeal => Boolean(deal)),
     }));
   const people = orgPeople(store, session.organizationId, session.role);
@@ -223,15 +272,17 @@ export function buildDashboard(
   period: DashboardData["period"],
 ): DashboardData {
   const orgId = session.organizationId;
+  const stagesById = stageIndex(store);
+  const weightOf = (deal: Store["deals"][number]) => {
+    const stage = stagesById.get(deal.stage_id);
+    return stage ? weightedValue(deal, stage) : 0;
+  };
   const pipelines = store.pipelines.filter((item) => item.organization_id === orgId && !item.archived);
   const selected = pipelineId === "all" ? null : pipelines.find((item) => item.id === pipelineId) ?? pipelines.find((item) => item.is_default);
   const deals = store.deals.filter((deal) => deal.organization_id === orgId && (!selected || deal.pipeline_id === selected.id));
   const open = deals.filter((deal) => deal.status === "open");
   const pipelineValue = open.reduce((sum, deal) => sum + deal.value, 0);
-  const weighted = open.reduce((sum, deal) => {
-    const stage = store.stages.find((item) => item.id === deal.stage_id);
-    return sum + (stage ? weightedValue(deal, stage) : 0);
-  }, 0);
+  const weighted = open.reduce((sum, deal) => sum + weightOf(deal), 0);
   const wonDeals = deals.filter((deal) => deal.status === "won" && inPeriod(deal.won_at, period));
   const lostDeals = deals.filter((deal) => deal.status === "lost" && inPeriod(deal.lost_at, period));
   const closed = wonDeals.length + lostDeals.length;
@@ -242,17 +293,11 @@ export function buildDashboard(
     ? store.stages.filter((item) => item.pipeline_id === selected.id && item.type === "open").sort((a, b) => a.position - b.position)
     : [];
   const funnel = (selected ? stages : uniqueStageNames(store, pipelines.map((item) => item.id))).map((stage) => {
-    const rows = open.filter((deal) => {
-      const current = store.stages.find((item) => item.id === deal.stage_id);
-      return selected ? deal.stage_id === stage.id : current?.name === stage.name;
-    });
+    const rows = open.filter((deal) => (selected ? deal.stage_id === stage.id : stagesById.get(deal.stage_id)?.name === stage.name));
     return {
       name: stage.name,
       total: rows.reduce((sum, deal) => sum + deal.value, 0),
-      weighted: rows.reduce((sum, deal) => {
-        const current = store.stages.find((item) => item.id === deal.stage_id);
-        return sum + (current ? weightedValue(deal, current) : 0);
-      }, 0),
+      weighted: rows.reduce((sum, deal) => sum + weightOf(deal), 0),
     };
   });
   const forecast = Array.from({ length: 6 }, (_, index) => {
@@ -261,13 +306,14 @@ export function buildDashboard(
     return {
       key,
       total: rows.reduce((sum, deal) => sum + deal.value, 0),
-      weighted: rows.reduce((sum, deal) => {
-        const stage = store.stages.find((item) => item.id === deal.stage_id);
-        return sum + (stage ? weightedValue(deal, stage) : 0);
-      }, 0),
+      weighted: rows.reduce((sum, deal) => sum + weightOf(deal), 0),
     };
   });
   const todayStart = jakartaStart(0);
+  const overdueActivities = store.activities.filter(
+    (activity) => activity.organization_id === orgId && !activity.done_at && new Date(activity.due_at).getTime() < todayStart,
+  );
+  const overdueByPerson = groupBy(overdueActivities, (activity) => activity.assigned_to);
   const salesPipelineId = selected?.id ?? defaultPipelineId(store, orgId);
   const sales = orgPeople(store, orgId, session.role)
     .map((person) => {
@@ -279,28 +325,18 @@ export function buildDashboard(
         name: person.full_name,
         open: openMine.length,
         pipeline: openMine.reduce((sum, deal) => sum + deal.value, 0),
-        weighted: openMine.reduce((sum, deal) => {
-          const stage = store.stages.find((item) => item.id === deal.stage_id);
-          return sum + (stage ? weightedValue(deal, stage) : 0);
-        }, 0),
+        weighted: openMine.reduce((sum, deal) => sum + weightOf(deal), 0),
         won: wonMine.reduce((sum, deal) => sum + deal.value, 0),
         target: targetFor(store, orgId, person.id, period),
         winRate: wonMine.length + lostMine.length === 0 ? null : Math.round((wonMine.length / (wonMine.length + lostMine.length)) * 100),
-        overdue: store.activities.filter(
-          (activity) =>
-            activity.organization_id === orgId &&
-            activity.assigned_to === person.id &&
-            !activity.done_at &&
-            new Date(activity.due_at).getTime() < todayStart,
-        ).length,
+        overdue: overdueByPerson.get(person.id)?.length ?? 0,
         href: salesPipelineId ? `/pipelines/${salesPipelineId}?owner=${person.id}` : "/deals",
       };
     })
     .filter((row) => row.open > 0 || row.won > 0 || row.overdue > 0)
     .sort((a, b) => b.weighted - a.weighted || b.won - a.won);
   const overdueCutoff = canManage(session.role) || session.role === "viewer" ? null : session.userId;
-  const overdue = store.activities
-    .filter((activity) => activity.organization_id === orgId && !activity.done_at && new Date(activity.due_at).getTime() < jakartaStart(0))
+  const overdue = overdueActivities
     .filter((activity) => !overdueCutoff || activity.assigned_to === overdueCutoff)
     .sort((a, b) => a.due_at.localeCompare(b.due_at))
     .slice(0, 6)
@@ -362,7 +398,7 @@ export function buildDealFilters(store: Store, session: Session) {
 export function buildDeals(store: Store, session: Session): BoardDeal[] {
   return store.deals
     .filter((deal) => deal.organization_id === session.organizationId)
-    .map((deal) => toBoardDeal(store, session, deal.id))
+    .map((deal) => toBoardDeal(store, session, deal))
     .filter((deal): deal is BoardDeal => Boolean(deal))
     .sort((a, b) => b.value - a.value);
 }
@@ -518,8 +554,8 @@ export function buildContacts(store: Store, session: Session): ContactRow[] {
       whatsapp: item.whatsapp,
       jobTitle: item.job_title,
       companyId: item.company_id,
-      companyName: store.companies.find((company) => company.id === item.company_id)?.name ?? null,
-      clientType: store.companies.find((company) => company.id === item.company_id)?.client_type ?? null,
+      companyName: (item.company_id ? companyIndex(store).get(item.company_id)?.name : null) ?? null,
+      clientType: (item.company_id ? companyIndex(store).get(item.company_id)?.client_type : null) ?? null,
       ownerId: item.owner_id ?? session.userId,
       ownerName: personName(store, item.owner_id),
       source: item.source,
@@ -568,7 +604,7 @@ export function buildActivities(store: Store, session: Session, scope: "mine" | 
         assigneeId: item.assigned_to,
         assigneeName: personName(store, item.assigned_to),
         dealId: item.deal_id,
-        dealTitle: store.deals.find((deal) => deal.id === item.deal_id)?.title ?? null,
+        dealTitle: (item.deal_id ? dealIndex(store).get(item.deal_id)?.title : null) ?? null,
         contactId: item.contact_id,
         companyId: item.company_id,
         bucket,
@@ -603,9 +639,9 @@ export function buildReports(
   store.stage_history
     .filter((item) => relevant.has(item.deal_id))
     .forEach((item) => {
-      const name = store.stages.find((stage) => stage.id === item.from_stage_id)?.name;
+      const name = item.from_stage_id ? stageIndex(store).get(item.from_stage_id)?.name : undefined;
       if (!name) return;
-      const deal = store.deals.find((row) => row.id === item.deal_id);
+      const deal = dealIndex(store).get(item.deal_id);
       if (!deal) return;
       const entered = new Date(deal.created_at).getTime();
       const left = new Date(item.changed_at).getTime();

@@ -1,7 +1,34 @@
 import type { AppLocale } from "@/i18n/locale";
 
+// Building an Intl formatter is slow (tens of µs, more with a time zone); lists format
+// thousands of values, so each formatter is created once and reused.
+const formatters = new Map<string, Intl.DateTimeFormat | Intl.NumberFormat>();
+
+function dateFormat(locale: string, options: Intl.DateTimeFormatOptions) {
+  const key = `d|${locale}|${JSON.stringify(options)}`;
+  let formatter = formatters.get(key) as Intl.DateTimeFormat | undefined;
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, options);
+    formatters.set(key, formatter);
+  }
+  return formatter;
+}
+
+function numberFormat(locale: string, options: Intl.NumberFormatOptions) {
+  const key = `n|${locale}|${JSON.stringify(options)}`;
+  let formatter = formatters.get(key) as Intl.NumberFormat | undefined;
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locale, options);
+    formatters.set(key, formatter);
+  }
+  return formatter;
+}
+
+/** Asia/Jakarta is UTC+7 all year (no daylight saving). */
+const JAKARTA_OFFSET_MS = 7 * 60 * 60 * 1000;
+
 export function formatRupiah(value: number) {
-  const formatted = new Intl.NumberFormat("id-ID", {
+  const formatted = numberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
     maximumFractionDigits: 0,
@@ -12,8 +39,7 @@ export function formatRupiah(value: number) {
 export function formatCompact(value: number) {
   const sign = value < 0 ? "-" : "";
   const abs = Math.abs(value);
-  const fmt = (amount: number) =>
-    amount.toLocaleString("id-ID", { maximumFractionDigits: 1 });
+  const fmt = (amount: number) => numberFormat("id-ID", { maximumFractionDigits: 1 }).format(amount);
 
   const rp = `${sign}Rp\u00A0`;
   if (abs >= 1_000_000_000_000) return `${rp}${fmt(abs / 1_000_000_000_000)}\u00A0T`;
@@ -24,14 +50,9 @@ export function formatCompact(value: number) {
 }
 
 export function jakartaParts(date = new Date()) {
-  const formatted = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Jakarta",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-  const [year, month, day] = formatted.split("-").map(Number);
-  return { year: year ?? 1970, month: month ?? 1, day: day ?? 1 };
+  const shifted = new Date(date.getTime() + JAKARTA_OFFSET_MS);
+  if (Number.isNaN(shifted.getTime())) return { year: 1970, month: 1, day: 1 };
+  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1, day: shifted.getUTCDate() };
 }
 
 export function jakartaDate(dayOffset: number, hour = 9, minute = 0) {
@@ -44,16 +65,13 @@ export function jakartaStart(dayOffset = 0) {
 }
 
 export function jakartaMonthKey(iso: string) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Jakarta",
-    year: "numeric",
-    month: "2-digit",
-  }).format(new Date(iso));
+  const { year, month } = jakartaParts(new Date(iso));
+  return `${year}-${String(month).padStart(2, "0")}`;
 }
 
 export function formatDate(iso: string | null | undefined, locale: AppLocale) {
   if (!iso) return "—";
-  return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-GB", {
+  return dateFormat(locale === "id" ? "id-ID" : "en-GB", {
     timeZone: "Asia/Jakarta",
     day: "numeric",
     month: "short",
@@ -63,7 +81,7 @@ export function formatDate(iso: string | null | undefined, locale: AppLocale) {
 
 export function formatDateTime(iso: string | null | undefined, locale: AppLocale) {
   if (!iso) return "—";
-  return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-GB", {
+  return dateFormat(locale === "id" ? "id-ID" : "en-GB", {
     timeZone: "Asia/Jakarta",
     day: "numeric",
     month: "short",
@@ -75,7 +93,7 @@ export function formatDateTime(iso: string | null | undefined, locale: AppLocale
 export function formatMonth(monthKey: string, locale: AppLocale) {
   const [year, month] = monthKey.split("-").map(Number);
   if (!year || !month) return monthKey;
-  return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-GB", {
+  return dateFormat(locale === "id" ? "id-ID" : "en-GB", {
     timeZone: "Asia/Jakarta",
     month: "short",
     year: "numeric",
@@ -103,7 +121,7 @@ export function addMonthsKey(offset: number, now = new Date()) {
 }
 
 export function formatTime(iso: string, locale: AppLocale) {
-  return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-GB", {
+  return dateFormat(locale === "id" ? "id-ID" : "en-GB", {
     timeZone: "Asia/Jakarta",
     hour: "2-digit",
     minute: "2-digit",
