@@ -83,6 +83,7 @@ export function DashboardView({ data, locale }: { data: DashboardData; locale: A
           {data.sales.length === 0 ? (
             <p className="px-4 py-3 text-sm text-muted-foreground">{t("noChart")}</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="mt-3 w-full text-sm">
               <thead className="border-y bg-muted/40 text-xs text-muted-foreground">
                 <tr>
@@ -106,12 +107,12 @@ export function DashboardView({ data, locale }: { data: DashboardData; locale: A
                       </Link>
                     </td>
                     <td className="px-2 py-2.5 text-right tabular-nums">{person.open}</td>
-                    <td className="money px-2 py-2.5 text-right">{formatCompact(person.pipeline)}</td>
-                    <td className="money px-2 py-2.5 text-right">{formatCompact(person.weighted)}</td>
-                    <td className="money px-2 py-2.5 text-right font-medium">{formatCompact(person.won)}</td>
+                    <td className="money whitespace-nowrap px-2 py-2.5 text-right">{formatCompact(person.pipeline)}</td>
+                    <td className="money whitespace-nowrap px-2 py-2.5 text-right">{formatCompact(person.weighted)}</td>
+                    <td className="money whitespace-nowrap px-2 py-2.5 text-right font-medium">{formatCompact(person.won)}</td>
                     <td className="px-2 py-2.5">
-                      <div className="ml-auto grid w-24 gap-1">
-                        <span className="text-right text-xs tabular-nums text-muted-foreground">{person.target == null ? "—" : formatCompact(person.target)}</span>
+                      <div className="ml-auto grid w-28 gap-1">
+                        <span className="whitespace-nowrap text-right text-xs tabular-nums text-muted-foreground">{person.target == null ? "—" : formatCompact(person.target)}</span>
                         {person.target ? <span className="h-1.5 overflow-hidden rounded-full bg-muted"><span className="block h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (person.won / person.target) * 100)}%` }} /></span> : null}
                       </div>
                     </td>
@@ -121,6 +122,7 @@ export function DashboardView({ data, locale }: { data: DashboardData; locale: A
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
         <div className="rounded-lg border bg-card p-4">

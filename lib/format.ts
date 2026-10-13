@@ -15,10 +15,11 @@ export function formatCompact(value: number) {
   const fmt = (amount: number) =>
     amount.toLocaleString("id-ID", { maximumFractionDigits: 1 });
 
-  if (abs >= 1_000_000_000_000) return `${sign}Rp ${fmt(abs / 1_000_000_000_000)} T`;
-  if (abs >= 1_000_000_000) return `${sign}Rp ${fmt(abs / 1_000_000_000)} M`;
-  if (abs >= 1_000_000) return `${sign}Rp ${fmt(abs / 1_000_000)} jt`;
-  if (abs >= 1_000) return `${sign}Rp ${fmt(abs / 1_000)} rb`;
+  const rp = `${sign}Rp\u00A0`;
+  if (abs >= 1_000_000_000_000) return `${rp}${fmt(abs / 1_000_000_000_000)}\u00A0T`;
+  if (abs >= 1_000_000_000) return `${rp}${fmt(abs / 1_000_000_000)}\u00A0M`;
+  if (abs >= 1_000_000) return `${rp}${fmt(abs / 1_000_000)}\u00A0jt`;
+  if (abs >= 1_000) return `${rp}${fmt(abs / 1_000)}\u00A0rb`;
   return formatRupiah(value);
 }
 
