@@ -13,8 +13,8 @@ User memberi **satu perintah yang sama** setiap sesi: *"Baca AGENTS.md dan lanju
 4. [ ] **§19** — URL tanpa `/id`/`/en` (bahasa dari pengaturan, default English) + halaman depan statis di `/` (tombol Masuk / Buka Dashboard). Prioritas user: cepat, minim redirect, ringan.
 5. [ ] **§13.8** — QA: Lighthouse desktop ≥ 90, aksesibilitas, nol hydration warning, uji alur lengkap di lokal.
 6. [ ] 🔒 **§14 Impor Odoo** — TERKUNCI sampai user menulis di chat bahwa direktur & semua sales sudah aktif di CRM.
-7. [ ] **§15.3, §15.5, §15.6, §15.7** — optimasi besar (query per halaman, revalidasi sempit, bundle, index). Setelah item 6, atau lebih dulu bila user meminta.
-8. [ ] **Fase 7 PWA** (§5).
+7. [ ] **§20 Mobile-friendly & PWA** — dasar sudah ada (manifest, ikon, service worker aset, safe area menu bawah); kerjakan sisanya per §20.2–20.6.
+8. [ ] **§15.3, §15.5, §15.6, §15.7** — optimasi besar (query per halaman, revalidasi sempit, bundle, index). Setelah item 7, atau lebih dulu bila user meminta.
 9. [ ] 🔒 **Fase 11 AI Gemini** (§17) — TERKUNCI sampai user memberikan `GEMINI_API_KEY` di Vercel/`.env.local`.
 
 Saat item selesai: centang di sini **dan** di checklist fasenya (§5), perbarui status di §13 bila relevan.
@@ -43,7 +43,7 @@ Saat item selesai: centang di sini **dan** di checklist fasenya (§5), perbarui 
 - Tidak menghapus keputusan user yang tercatat (§11.2 level Boss/Administrator/Sales, §11.3 tanpa demo di produksi, §12 undangan email saja, §13 "Tidak dikerjakan", §16 hanya 3 jenis klien).
 
 ## 1. Tujuan
-CRM web untuk PT. Airtek Solusi Nusantara (kontraktor HVAC, Pump, TDG, Lift) — menggantikan Odoo CRM dengan UX lebih cepat, multi-pipeline, forecast yang jelas. **Desktop-first** (PC/laptop); versi mobile menyusul sebagai PWA (Fase 7).
+CRM web untuk PT. Airtek Solusi Nusantara (kontraktor HVAC, Pump, TDG, Lift) — menggantikan Odoo CRM dengan UX lebih cepat, multi-pipeline, forecast yang jelas. **Desktop-first** (PC/laptop), tetap **mobile-friendly** dan bisa dipasang sebagai aplikasi (PWA) — §20.
 
 Kelebihan dibanding Odoo yang WAJIB terasa:
 - Multi-pipeline dengan stage custom per pipeline (mis. "Proyek HVAC", "Pump & Fire", "Maintenance").
@@ -226,12 +226,16 @@ Aturan DB:
 - [x] Visibilitas & filter proyek lintas sales (§16.3)
 - [x] Fitur sederhana dari riset CRM lain: target sales, cek duplikat, lokasi proyek (§16.4)
 
-### Fase 7 — Mobile PWA (menyusul, JANGAN dikerjakan sebelum Fase 0–6, 8, dan 9 selesai)
-- [ ] Web App Manifest (nama, ikon 192/512, theme color), installable di Android/iOS
-- [ ] Service worker (Serwist) — cache aset + data baca terakhir (offline read-only)
-- [ ] Layout mobile ≤ 768px: bottom nav, kanban 1 kolom dengan swipe antar stage, detail deal satu kolom (timeline jadi tab)
-- [ ] Tombol telepon/WA besar, quick-add aktivitas sekali tap
-- [ ] Web push notification untuk aktivitas jatuh tempo
+### Fase 7 — Mobile-friendly & PWA — spesifikasi lengkap di §20
+- [x] Web App Manifest (nama, ikon 192/512 + maskable, theme color), installable — dibuat Cursor 13 Okt 2026, verifikasi §20.6
+- [x] Service worker aset statis (hanya produksi) — tanpa cache halaman/data user (§20.5)
+- [x] Menu bawah dengan safe area iPhone; tabel produk detail deal bisa digeser horizontal
+- [ ] Audit & perbaikan semua halaman di 360–768px (§20.2)
+- [ ] Kanban mobile 1 kolom + tab/geser antar tahap + pindah tahap via menu (§20.3)
+- [ ] Detail deal mobile 1 kolom + bar aksi bawah (telepon/WA/aktivitas/catatan) (§20.4)
+- [ ] Daftar → kartu, filter jadi panel bawah, dialog jadi sheet layar penuh (§20.2)
+- [ ] Ajakan pasang aplikasi (Android prompt + petunjuk iOS), halaman offline, notifikasi versi baru (§20.5)
+- [ ] 🔒 Web push notification — tunggu keputusan user (§20.5)
 
 ### Fase 10 — Optimasi kecepatan — detail di §15 (**§15.0 langkah 1–3 DIKERJAKAN SEKARANG**, sisanya setelah Fase 9)
 - [x] §15.0 Langkah 1 — redirect 1 lompatan (middleware & onboarding)
@@ -868,4 +872,50 @@ Keputusan user (13 Okt 2026): **website cepat, minim redirect, ringan.** (1) Tid
 - `curl -sL -o /dev/null -w "%{num_redirects} %{time_total}
 "` untuk tabel 19.1 di produksi setelah deploy; catat di §15.1.
 - Lighthouse desktop halaman depan ≥ 95 (statis), halaman login ≥ 90.
+
+## 20. Mobile-friendly & PWA
+
+Tujuan: sales di lapangan bisa membuka CRM dari HP dengan nyaman (cek proyek, telepon/WA klien, catat aktivitas, pindah tahap) dan **memasangnya di layar utama** seperti aplikasi. Desktop tetap tampilan utama — perubahan mobile **tidak boleh** merusak tampilan 1280–1920px.
+
+### 20.1 Yang sudah ada (Cursor, 13 Okt 2026) — pertahankan
+- `app/manifest.ts`: nama "Airtek CRM", `start_url: "/dashboard"`, `scope: "/"`, `display: "standalone"`, theme `#9a1b4b`, ikon 192/512 + maskable 512 (`public/icons`). Setelah §19, pastikan tidak ada path ber-prefix `/id`.
+- `public/sw.js` + `components/pwa-register.tsx`: hanya cache **aset statis** (`/_next/static`, `/brand`, `/icons`), didaftarkan **hanya di produksi**; `/api`, `/auth`, halaman, dan data user **tidak** di-cache (aman untuk HP bersama & logout).
+- Menu bawah (layar < 768px) dengan `env(safe-area-inset-bottom)`; tabel produk di detail deal bisa digeser horizontal.
+
+### 20.2 Audit semua halaman di lebar kecil (wajib)
+Uji di 360, 390, 414 dan 768px (Chrome DevTools device mode: iPhone SE, iPhone 14, Pixel 7, iPad Mini):
+- **Tidak ada scroll horizontal di level halaman**; elemen lebar (tabel, kanban) scroll di wadahnya sendiri.
+- **Target sentuh ≥ 44×44px**; jarak antar tombol cukup; teks minimal 14px.
+- **Input font-size ≥ 16px di mobile** (cegah zoom otomatis iOS).
+- **Daftar → kartu** di < 768px: Deal, Kontak, Perusahaan, Aktivitas, Produk, Anggota. Kartu berisi judul, nilai/subjudul, chip status/tag, salesperson, 1–2 aksi cepat. Desktop tetap tabel.
+- **Filter bar → tombol "Filter" + panel bawah (bottom sheet)** di mobile; chip filter aktif tetap terlihat di atas daftar.
+- **Dialog/form → sheet layar penuh** di mobile (tombol simpan menempel di bawah, tidak tertutup keyboard).
+- **Topbar mobile ringkas**: logo kecil, ikon cari (membuka command palette layar penuh), notifikasi, avatar. Sidebar desktop disembunyikan (menu bawah dipakai).
+- **Dashboard**: KPI 2 kolom, grafik tinggi menyesuaikan (min 220px), tabel Performa Sales → kartu per salesperson.
+- **Pengaturan**: menu samping jadi daftar/tab horizontal yang bisa digeser.
+- Halaman auth & halaman depan (§19): satu kolom, panel hero disembunyikan di < 1024px (sudah), tombol penuh lebar.
+
+### 20.3 Kanban di HP
+- < 768px: **satu kolom per layar** — tab/chip tahap di atas (nama + jumlah + total) yang bisa digeser; geser kiri/kanan konten pakai CSS `scroll-snap` (tanpa library baru).
+- **Pindah tahap tanpa drag**: menu "⋯" di kartu → "Pindah ke…" (daftar tahap) + Menang/Kalah. Drag & drop hanya desktop (atau sensor sentuh @dnd-kit dengan delay ≥ 250ms bila tetap diaktifkan).
+- Quick-add deal tetap ada di atas kolom aktif.
+- Header pipeline: pemilih pipeline + tombol Filter (sheet) + "Deal baru".
+
+### 20.4 Detail deal di HP
+- Satu kolom: header ringkas (judul, nilai, status, tahap) → kartu KPI 2×2 → info (pihak proyek, kontak, salesperson) → tab: **Timeline** | Catatan | Produk | Kontak | Lampiran.
+- **Bar aksi menempel di bawah**: **Telepon**, **WhatsApp**, **+ Aktivitas**, **+ Catatan** (membuka sheet). Telepon/WA memakai nomor kontak utama.
+- Stage bar → dropdown/segmented yang bisa digeser; Won/Lost di menu "⋯".
+- Inline edit tetap bisa (tap field → editor layar penuh bila perlu).
+
+### 20.5 Fitur aplikasi (PWA)
+- **Ajakan pasang**: Android/Chrome — tangkap `beforeinstallprompt`, tampilkan banner kecil "Pasang Airtek CRM" (sekali, bisa ditutup, simpan di `localStorage`). iOS Safari — tampilkan petunjuk "Bagikan → Tambahkan ke Layar Utama" bila belum standalone. Jangan muncul di desktop.
+- **Halaman offline** `/offline` (statis, dipre-cache): "Anda sedang offline — sambungkan internet untuk membuka data CRM." SW menampilkannya saat navigasi gagal. **Tetap tidak meng-cache halaman/data user.**
+- **Versi baru**: saat SW baru terpasang, toast "Versi baru tersedia" + tombol **Muat ulang** (`skipWaiting` lalu reload). Naikkan nama cache (`airtek-static-vN`) setiap perubahan daftar precache.
+- `apple-touch-icon`, `theme-color` per tema (terang/gelap) lewat `viewport` export Next.js, `apple-mobile-web-app-capable`/status bar style.
+- 🔒 **Web push** (aktivitas jatuh tempo): butuh kunci VAPID di env + tabel `push_subscriptions` + izin user; iOS hanya untuk PWA terpasang (iOS 16.4+). **Tunggu keputusan user** — sementara cukup notifikasi in-app + email harian (§13.7).
+
+### 20.6 Uji & definisi selesai
+- Lokal (§18): login sebagai `sales1` di DevTools device mode — buka pipeline (geser antar tahap, pindah tahap via menu), detail deal (bar aksi, tambah aktivitas), daftar Deal/Kontak (kartu + filter sheet), dashboard, pengaturan. Tidak ada scroll horizontal halaman.
+- Produksi (setelah push): Chrome DevTools → Application → Manifest "Installable" tanpa error; Lighthouse **mobile** ≥ 85 untuk halaman depan & login; uji pasang di HP Android (Chrome) & iPhone (Safari) bila memungkinkan — minta user mencoba dan melapor.
+- Desktop 1280 & 1920px tidak berubah (cek ulang kanban, detail deal, dashboard).
 
