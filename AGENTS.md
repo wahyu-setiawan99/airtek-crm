@@ -14,7 +14,7 @@ User memberi **satu perintah yang sama** setiap sesi: *"Baca AGENTS.md dan lanju
 5. [x] **§13.8** — QA: Lighthouse desktop ≥ 90, aksesibilitas, nol hydration warning, uji alur lengkap di lokal.
 6. [ ] 🔒 **§14 Impor Odoo** — TERKUNCI sampai user menulis di chat bahwa direktur & semua sales sudah aktif di CRM.
 7. [x] **§20 Mobile-friendly & PWA** — selesai 13 Okt 2026 (kecuali 🔒 web push). Sisa: user mencoba pasang di HP Android & iPhone lalu melapor.
-8. [ ] **§15.3, §15.5, §15.6, §15.7** — optimasi besar (query per halaman, revalidasi sempit, bundle, index). Setelah item 7, atau lebih dulu bila user meminta.
+8. [x] **§15.3, §15.5, §15.6, §15.7** — optimasi besar selesai 13 Okt 2026 (hasil di §15.9). Migration `0009` harus dijalankan user di produksi.
 9. [ ] 🔒 **Fase 11 AI Gemini** (§17) — TERKUNCI sampai user memberikan `GEMINI_API_KEY` di Vercel/`.env.local`.
 
 Saat item selesai: centang di sini **dan** di checklist fasenya (§5), perbarui status di §13 bila relevan.
@@ -241,13 +241,13 @@ Aturan DB:
 - [x] §15.0 Langkah 1 — redirect 1 lompatan (middleware & onboarding)
 - [x] §15.0 Langkah 2 — auth middleware tanpa round-trip (`getClaims`)
 - [x] §15.0 Langkah 3 — ukur (Speed Insights + catat angka)
-- [ ] Ukur baseline (Vercel Speed Insights, Lighthouse, waktu server per halaman) (§15.1)
-- [ ] Kurangi redirect berantai menjadi maksimal 1 lompatan (§15.2)
-- [ ] Ganti snapshot "muat semua tabel" dengan query per halaman (§15.3)
-- [ ] Kurangi panggilan auth per request (§15.4)
-- [ ] Revalidasi & cache yang lebih sempit (§15.5)
-- [ ] Perkecil bundle JavaScript (§15.6)
-- [ ] Cek region & index database (§15.7)
+- [x] Ukur baseline (Vercel Speed Insights, Lighthouse, waktu server per halaman) (§15.1)
+- [x] Kurangi redirect berantai menjadi maksimal 1 lompatan (§15.2)
+- [x] Ganti snapshot "muat semua tabel" dengan query per halaman (§15.3)
+- [x] Kurangi panggilan auth per request (§15.4)
+- [x] Revalidasi & cache yang lebih sempit (§15.5)
+- [x] Perkecil bundle JavaScript (§15.6)
+- [x] Cek region & index database (§15.7)
 
 ### Fase 11 — Integrasi AI (Gemini) — detail di §17 (boleh mulai setelah Fase 9)
 - [ ] Fondasi: wrapper server-only, env, kuota & log pemakaian (§17.2)
@@ -339,6 +339,13 @@ Target deploy (sudah ditentukan):
 
 Arsitektur data (penting):
 - Server Next.js adalah satu-satunya penulis data: server action → cek izin → `lib/store.ts#mutate` → hanya baris yang berubah ditulis dengan service-role key (`lib/supabase/store.ts`).
+- **Baca data per tabel, bukan seluruh snapshot (§15.3, sejak 13 Okt 2026):**
+  - Halaman: `preload(TABLES)` di baris pertama, lalu `const data = await withStore(TABLES, (store) => buildX(store, session))`. `TABLES` = konstanta di atas halaman berisi tabel yang dibaca. Callback **sinkron** dan hanya mengembalikan data turunan.
+  - Aksi: `runAction(fn, ["deals", "stages"])` — argumen kedua = tabel yang **dibaca** `fn`. Tabel yang hanya ditambah baris (`push`/`unshift`, mis. `audit_logs`, `notes`, `notifications`, `stage_history`) tidak perlu dimuat.
+  - Membaca tabel yang tidak didaftarkan → `MissingTable` → tabel itu dimuat dan callback diulang otomatis (benar, hanya lebih lambat). Jalankan dengan `STORE_TRACE=1` untuk melihat log `[store] loaded "x" on demand` lalu tambahkan tabelnya ke daftar.
+  - Jangan memakai `loadStore()` (sudah dihapus), spread `{...store}`, atau `Object.values(store)`.
+  - Di builder (`lib/queries.ts`) pakai indeks memo (`dealIndex`, `companyIndex`, `dealTagIndex`, …), bukan `find`/`filter` di dalam `map` per deal. Format tanggal/uang pakai helper `lib/format.ts` (formatter Intl dipakai ulang).
+  - Setelah aksi **jangan** memanggil `router.refresh()`: aksi sudah `revalidatePath` dan responsnya membawa halaman terbaru. Pengecualian: realtime, ganti organisasi, terima undangan.
 - Browser/anon key hanya bisa **membaca** data organisasinya (RLS read policies). Semua policy tulis sengaja dihapus di migration 0002.
 - Tanpa env Supabase, app jalan di mode demo (file JSON lokal, di Vercel memakai `/tmp` yang tidak permanen).
 - Local dev Supabase: `npx supabase start` (port 554xx di `supabase/config.toml`, karena 543xx dipakai project lain).
@@ -695,6 +702,27 @@ Target: TTFB halaman setelah login **< 600 ms**, LCP **< 2,5 s**, INP **< 200 ms
 - Pastikan project Supabase di **Southeast Asia (Singapore)**, sama dengan Vercel `sin1` (lihat `vercel.json`); jika beda region, setiap query bertambah ratusan ms — pertimbangkan pindah project.
 - Index: `organization_id` di setiap tabel bisnis, `deals(organization_id, pipeline_id, stage_id, position)` (ada), `deals(owner_id)`, `activities(assigned_to, due_at)`, `activities(deal_id)` (ada), `notes(deal_id)` (ada), `stage_history(deal_id)` (ada), `audit_logs(entity, entity_id, created_at)` (ada). Cek `EXPLAIN ANALYZE` untuk query terlambat (Supabase → Query Performance).
 - Kebijakan RLS memanggil `is_member()` per baris — pastikan fungsi `stable` dan index `memberships(user_id, organization_id)` ada.
+
+### 15.9 Hasil (13 Okt 2026)
+Diukur di build produksi lokal dengan data skala pasca-impor (1.537 deal, 1.520 kontak, 812 perusahaan, 6.000 aktivitas, 6.000 catatan, 7.500 riwayat tahap, 18.000 audit log, 2.400 notifikasi), login `admin`, median TTFB:
+
+| Halaman | Sebelum | Sesudah |
+|---|---|---|
+| Dashboard | 4.552 ms | ±450–500 ms |
+| Pipeline (kanban) | 6.401 ms (load 7,7 s) | ±380–650 ms (load ±0,8–0,9 s) |
+| Daftar Deal | 3.906 ms | ±490–560 ms |
+| Detail deal | 1.855 ms | ±450–550 ms |
+| Kontak / Perusahaan / Aktivitas | 1,8–2,6 s | ±300–490 ms |
+| Laporan / Pengaturan | ±2 s | ±240–410 ms |
+| Aksi simpan catatan | 4.302 ms | ±255–325 ms |
+
+Yang dikerjakan:
+- **§15.3** `withStore`/`mutate` per tabel + cache per request, muat ulang otomatis bila tabel kurang, tabel tambah-saja tidak dimuat, paginasi 4 halaman paralel, `preload` tabel halaman selama cek sesi, bahasa (`i18n/request.ts`) memakai `profiles` yang sama. Builder memakai indeks Map; `Intl` formatter di-cache (Jakarta = UTC+7 tetap). Notifikasi dimuat 100 terbaru; "tandai semua dibaca" = satu `update`.
+- **§15.5** `router.refresh()` ganda setelah aksi dihapus (satu POST, halaman tetap terbarui — diuji). `revalidatePath("/", "layout")` dipertahankan: biayanya kini satu render ringan. `unstable_cache`/`staleTimes` sengaja tidak dipakai agar data antar sales tidak basi.
+- **§15.6** recharts lewat `next/dynamic` (dashboard 240 → 131 kB, laporan 241 → 160 kB first-load JS); command palette (cmdk) dimuat saat idle/dibuka; kolom kanban menampilkan 30 kartu + "Tampilkan N lagi".
+- **§15.7** migration `0009_fast_rls_indexes.sql`: policy baca memakai `my_org_ids()`/`my_deal_ids()` (sekali per query, aturan akses sama — diuji: orang luar 0 baris), index `memberships(user_id, organization_id)`, `deals(owner_id)`, `activities(organization_id, due_at)`, `notes`, `notifications`, `audit_logs`, dll. Pembacaan tabel besar 4–10× lebih cepat. **Region:** Vercel `sin1` + Supabase Singapore (§8) — sudah sama.
+- Bonus: service worker tidak lagi me-reload halaman saat pertama kali aktif.
+- Diuji: 27 halaman × (admin, sales1) tanpa error, alur tulis (pindah tahap, won/restore, aktivitas, catatan, quick-add, drag, kontak, notifikasi, tag), undangan → terima → membership, cron 401/200.
 
 ### 15.8 Definition of done
 - Tabel baseline di §15.1 diisi ulang dengan angka sesudah optimasi (dan halaman setelah login: Dashboard, Pipeline, Detail deal, Deal list).
