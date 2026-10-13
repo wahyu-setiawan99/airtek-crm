@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Undangan Airtek CRM</title>
+    <title>You are invited to Airtek CRM</title>
   </head>
   <body style="margin:0;padding:0;background:#f6f3f4;">
-    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f6f3f4;">{{ .Data.invited_by }} mengundang Anda ke Airtek CRM. Tautan berlaku 7 hari.</div>
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f6f3f4;">{{ .Data.invited_by }} invited you to Airtek CRM. This link is valid for 7 days.</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f3f4;padding:24px 12px;">
       <tr>
         <td align="center">
@@ -14,23 +14,23 @@
             <tr>
               <td>
                 <img src="https://airtek.my.id/brand/airtek-logo.png" alt="Airtek CRM" width="180" height="59" style="display:block;width:180px;height:59px;border:0;outline:none;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:700;line-height:59px;color:#9a1b4b;" />
-                <p style="margin:24px 0 8px;font-size:16px;">Halo {{ .Data.full_name }},</p>
-                <p style="margin:0 0 16px;font-size:13px;color:#78716c;"><em>Tautan ini berlaku 7 hari.</em></p>
+                <p style="margin:24px 0 8px;font-size:16px;">Hello {{ .Data.full_name }},</p>
+                <p style="margin:0 0 16px;font-size:13px;color:#78716c;"><em>This link is valid for 7 days.</em></p>
                 <p style="margin:0 0 16px;font-size:15px;line-height:1.5;">
-                  <strong>{{ .Data.organization }}</strong> menggunakan <strong>Airtek CRM</strong> untuk mengelola pipeline penjualan.
-                  Anda diundang oleh <strong>{{ .Data.invited_by }}</strong> sebagai
+                  <strong>{{ .Data.organization }}</strong> uses <strong>Airtek CRM</strong> to manage its sales pipeline.
+                  <strong>{{ .Data.invited_by }}</strong> invited you as
                   <strong>{{ if eq .Data.role "admin" }}Administrator{{ else }}Sales{{ end }}</strong>.
                 </p>
-                <p style="margin:0 0 8px;font-size:14px;">Setelah diterima, Anda dapat masuk melalui:</p>
+                <p style="margin:0 0 8px;font-size:14px;">After you accept, sign in with:</p>
                 <p style="margin:0 0 20px;font-size:14px;line-height:1.6;">
                   • Login: {{ .Email }}<br />
-                  • Tautan: {{ .SiteURL }}/login
+                  • Link: {{ .SiteURL }}/login
                 </p>
                 <p style="margin:0 0 24px;">
-                  <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/accept-invite" style="display:inline-block;background:#9a1b4b;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:6px;">Terima undangan</a>
+                  <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/accept-invite" style="display:inline-block;background:#9a1b4b;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:6px;">Accept invitation</a>
                 </p>
-                <p style="margin:0 0 20px;font-size:12px;line-height:1.5;color:#78716c;">Jika tombol tidak berfungsi, salin tautan berikut ke browser:<br /><a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/accept-invite" style="color:#9a1b4b;word-break:break-all;">{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/accept-invite</a></p>
-                <p style="margin:0 0 8px;font-size:12px;line-height:1.5;color:#78716c;">Anda menerima email ini karena {{ .Data.invited_by }} dari {{ .Data.organization }} mengundang {{ .Email }} ke Airtek CRM. Jika Anda tidak merasa mengenal pengundang, abaikan email ini.</p>
+                <p style="margin:0 0 20px;font-size:12px;line-height:1.5;color:#78716c;">If the button does not work, copy this link into your browser:<br /><a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/accept-invite" style="color:#9a1b4b;word-break:break-all;">{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/accept-invite</a></p>
+                <p style="margin:0 0 8px;font-size:12px;line-height:1.5;color:#78716c;">You received this email because {{ .Data.invited_by }} from {{ .Data.organization }} invited {{ .Email }} to Airtek CRM. If you do not know the sender, ignore this email.</p>
                 <p style="margin:0;font-size:12px;color:#78716c;">Airtek CRM · PT. Airtek Solusi Nusantara · <a href="https://airtek.my.id/" style="color:#78716c;">airtek.my.id</a></p>
               </td>
             </tr>

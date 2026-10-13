@@ -194,15 +194,15 @@ otp_expiry = 3600
 # sender_name = "Airtek CRM"
 
 [auth.email.template.invite]
-subject = "Anda diundang ke Airtek CRM"
+subject = "You are invited to Airtek CRM"
 content_path = "./supabase/templates/invite.html"
 
 [auth.email.template.confirmation]
-subject = "Konfirmasi email Airtek CRM"
+subject = "Confirm your Airtek CRM email"
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.recovery]
-subject = "Atur ulang kata sandi Airtek CRM"
+subject = "Reset your Airtek CRM password"
 content_path = "./supabase/templates/recovery.html"
 
 [auth.sms]
