@@ -22,7 +22,7 @@ import {
 } from "@/lib/actions/crm";
 import { deleteCustomFieldAction, saveCustomFieldAction } from "@/lib/actions/phase9";
 import { MembersPanel } from "@/components/members-panel";
-import Link from "next/link";
+import { settingsSections } from "@/components/settings-nav";
 import type { AppLocale } from "@/i18n/locale";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -48,18 +48,6 @@ type SettingsData = {
   audit: { id: string; entity: string; action: string; created_at: string; actor: string }[];
 };
 
-const sections = [
-  ["profile", "/settings/profile"],
-  ["organization", "/settings/organization"],
-  ["members", "/settings/members"],
-  ["targets", "/settings/targets"],
-  ["pipelines", "/settings/pipelines"],
-  ["tags", "/settings/tags"],
-  ["lostReasons", "/settings/lost-reasons"],
-  ["customFields", "/settings/custom-fields"],
-  ["import", "/settings/import"],
-  ["audit", "/settings/audit"],
-] as const;
 
 export function SettingsScreen({
   section,
@@ -67,7 +55,7 @@ export function SettingsScreen({
   locale,
   demo = false,
 }: {
-  section: (typeof sections)[number][0];
+  section: (typeof settingsSections)[number][0];
   data: SettingsData;
   locale: AppLocale;
   demo?: boolean;
@@ -83,14 +71,7 @@ export function SettingsScreen({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[200px_1fr]">
-      <nav className="flex gap-2 overflow-x-auto lg:flex-col">
-        {sections.map(([key, href]) => key === "targets" && !data.canAdmin ? null : (
-          <Link key={key} href={href} className={`rounded-md px-3 py-2 text-sm ${section === key ? "bg-accent font-medium" : "text-muted-foreground"}`}>
-            {t(key)}
-          </Link>
-        ))}
-      </nav>
+    <>
       <div className="grid gap-4">
         <h1 className="text-2xl font-semibold tracking-tight">{t(section)}</h1>
         {section === "profile" ? (
@@ -114,7 +95,7 @@ export function SettingsScreen({
             <section className="grid max-w-lg gap-2 rounded-lg border bg-card p-4" aria-labelledby="language-heading">
               <h2 id="language-heading" className="text-sm font-semibold">{t("language")}</h2>
               <p className="text-xs text-muted-foreground">{t("languageHint")}</p>
-              <div role="radiogroup" aria-labelledby="language-heading" className="mt-1 inline-flex w-full rounded-lg border bg-muted p-1 sm:w-auto">
+              <div role="radiogroup" aria-labelledby="language-heading" className="mt-1 grid w-full grid-cols-2 gap-1 rounded-lg border bg-muted p-1 sm:max-w-sm">
                 {([["en", "English"], ["id", "Bahasa Indonesia"]] as const).map(([value, label]) => (
                   <button
                     key={value}
@@ -128,7 +109,7 @@ export function SettingsScreen({
                       });
                     }}
                     className={cn(
-                      "h-10 flex-1 rounded-md px-4 text-sm font-medium transition-colors sm:flex-none",
+                      "h-10 rounded-md px-3 text-sm font-medium transition-colors",
                       data.profile.locale === value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                     )}
                   >
@@ -268,19 +249,22 @@ export function SettingsScreen({
                 const form = new FormData(event.currentTarget);
                 void saveTagAction({ id: tag.id, name: String(form.get("name")), color: String(form.get("color")) }).then((result) => done(result));
               }}>
-                <Input name="name" defaultValue={tag.name} />
-                <Input name="color" type="color" defaultValue={tag.color} className="w-16" />
-                <Button type="submit" size="sm" variant="outline">{tc("save")}</Button>
-                <Button type="button" size="sm" variant="ghost" onClick={() => void deleteTagAction(tag.id).then((result) => done(result))}>{tc("delete")}</Button>
+                <Input name="name" defaultValue={tag.name} aria-label={t("tags")} className="min-w-0 flex-1" />
+                <Input name="color" type="color" defaultValue={tag.color} aria-label={t("tagColor")} className="w-12 shrink-0 p-1" />
+                <RowActions save={tc("save")} remove={tc("delete")} onRemove={() => void deleteTagAction(tag.id).then((result) => done(result))} />
               </form>
             ))}
             <form className="flex gap-2" onSubmit={(event) => {
               event.preventDefault();
-              const form = new FormData(event.currentTarget);
-              void saveTagAction({ id: null, name: String(form.get("name")), color: "#0f766e" }).then((result) => done(result));
+              const target = event.currentTarget;
+              const form = new FormData(target);
+              void saveTagAction({ id: null, name: String(form.get("name")), color: "#0f766e" }).then((result) => {
+                if (result.ok) target.reset();
+                done(result);
+              });
             }}>
-              <Input name="name" required placeholder={t("addTag")} />
-              <Button type="submit">{t("addTag")}</Button>
+              <Input name="name" required placeholder={t("addTag")} aria-label={t("addTag")} className="min-w-0 flex-1" />
+              <Button type="submit" className="h-10 w-[14.5rem] shrink-0">{t("addTag")}</Button>
             </form>
           </div>
         ) : null}
@@ -291,17 +275,20 @@ export function SettingsScreen({
                 event.preventDefault();
                 void saveReasonAction({ id: reason.id, name: String(new FormData(event.currentTarget).get("name")) }).then((result) => done(result));
               }}>
-                <Input name="name" defaultValue={reason.name} />
-                <Button type="submit" size="sm" variant="outline">{tc("save")}</Button>
-                <Button type="button" size="sm" variant="ghost" onClick={() => void deleteReasonAction(reason.id).then((result) => done(result))}>{tc("delete")}</Button>
+                <Input name="name" defaultValue={reason.name} aria-label={t("lostReasons")} className="min-w-0 flex-1" />
+                <RowActions save={tc("save")} remove={tc("delete")} onRemove={() => void deleteReasonAction(reason.id).then((result) => done(result))} />
               </form>
             ))}
             <form className="flex gap-2" onSubmit={(event) => {
               event.preventDefault();
-              void saveReasonAction({ id: null, name: String(new FormData(event.currentTarget).get("name")) }).then((result) => done(result));
+              const target = event.currentTarget;
+              void saveReasonAction({ id: null, name: String(new FormData(target).get("name")) }).then((result) => {
+                if (result.ok) target.reset();
+                done(result);
+              });
             }}>
-              <Input name="name" required placeholder={t("addReason")} />
-              <Button type="submit">{t("addReason")}</Button>
+              <Input name="name" required placeholder={t("addReason")} aria-label={t("addReason")} className="min-w-0 flex-1" />
+              <Button type="submit" className="h-10 w-44 shrink-0">{t("addReason")}</Button>
             </form>
           </div>
         ) : null}
@@ -367,6 +354,16 @@ export function SettingsScreen({
           </div>
         ) : null}
       </div>
+    </>
+  );
+}
+
+/** Save + Delete pair with a fixed width, so the "Add" button below can match it. */
+function RowActions({ save, remove, onRemove }: { save: string; remove: string; onRemove: () => void }) {
+  return (
+    <div className="grid w-44 shrink-0 grid-cols-2 gap-2">
+      <Button type="submit" variant="outline" className="h-10 px-2">{save}</Button>
+      <Button type="button" variant="ghost" className="h-10 px-2" onClick={onRemove}>{remove}</Button>
     </div>
   );
 }

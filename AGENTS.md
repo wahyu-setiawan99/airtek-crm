@@ -321,6 +321,15 @@ Referensi: form opportunity Odoo, tapi lebih rapi, informatif, dan cepat. Layout
 - Shortcut: `J`/`K` deal sebelumnya/berikutnya, `W` won, `L` lost, `A` jadwalkan aktivitas, `Ctrl+Enter` kirim catatan.
 - Skeleton loading untuk header, kartu KPI, dan timeline.
 
+### 7.2 Form deal baru & pengaturan (keputusan user 13 Okt 2026)
+- Label **Value → "Estimasi nilai proyek"** (EN "Estimated project value"), input Rupiah `components/ui/money-input.tsx`: prefiks "Rp", tanpa nol di depan, pemisah ribuan titik seperti `formatRupiah` (850.000.000); dipakai juga di quick-add kanban.
+- **Owner → "PIC Sales"** di form deal.
+- **Prioritas** tampil sebagai kata: 0 Rendah / 1 Sedang / 2 Tinggi / 3 Sangat tinggi (`common.priorities`); nilai DB tetap 0–3.
+- **Probability override tidak ada di form deal baru** (masih bisa diubah di kartu Probabilitas detail deal); simpan form tidak menghapus override yang sudah ada.
+- Pilihan **tag** di form = pill berwarna (kelas `.tag-option` di `globals.css`), bukan checkbox biasa.
+- Pengaturan: nav tab ada di `app/(app)/settings/layout.tsx` (`components/settings-nav.tsx`) agar posisi gulir tab di HP tidak di-reset saat pindah tab. Baris Tag/Alasan kalah: tombol Save+Delete lebar tetap, tombol "Tambah" selebar keduanya. Toggle bahasa dua kolom sama lebar.
+- Nama aplikasi terpasang (PWA) = **AirtekCRM**.
+
 ## 8. Environment & Deploy
 `.env.example`:
 ```

@@ -80,6 +80,12 @@
       "sales": "Sales",
       "presales": "Presales",
       "viewer": "Viewer"
+    },
+    "priorities": {
+      "0": "Low",
+      "1": "Medium",
+      "2": "High",
+      "3": "Very high"
     }
   },
   "nav": {
@@ -332,7 +338,9 @@
     "presetNone": "No activity",
     "exportFiltered": "Export filtered",
     "projectCity": "Project city",
-    "projectProvince": "Project province"
+    "projectProvince": "Project province",
+    "estimatedValue": "Estimated project value",
+    "picSales": "PIC Sales"
   },
   "contacts": {
     "title": "Contacts",
@@ -502,7 +510,8 @@
     "download": "Download",
     "demoFile": "Demo mode only stores the file name.",
     "languageHint": "Applies right away, on every page.",
-    "invalidProfile": "Check your name (at least 2 characters) and phone number."
+    "invalidProfile": "Check your name (at least 2 characters) and phone number.",
+    "tagColor": "Tag color"
   },
   "command": {
     "placeholder": "Search or type a command…",
@@ -522,9 +531,9 @@
     "mention": "Mentioned in a note"
   },
   "pwa": {
-    "updateTitle": "A new version of Airtek CRM is available",
+    "updateTitle": "A new version of AirtekCRM is available",
     "reload": "Reload",
-    "installTitle": "Install Airtek CRM",
+    "installTitle": "Install AirtekCRM",
     "installBody": "Open the CRM from your home screen like an app.",
     "iosBody": "Tap Share, then “Add to Home Screen”.",
     "install": "Install",

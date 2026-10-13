@@ -31,6 +31,7 @@ import { FilterBar, matchDeal, type FilterValues } from "@/components/filters/fi
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select } from "@/components/ui/form";
+import { MoneyInput } from "@/components/ui/money-input";
 import { MenuContent, MenuItem, Menu, MenuTrigger } from "@/components/ui/dropdown";
 
 type Filters = FilterValues & { q: string; owner: string; tag: string; mine: boolean; view: string };
@@ -397,6 +398,7 @@ function Column({
   onMove: (dealId: string, stageId: string) => void;
 }) {
   const t = useTranslations("pipeline");
+  const td = useTranslations("deals");
   const tc = useTranslations("common");
   const { setNodeRef, isOver } = useDroppable({ id: `stage:${stage.id}` });
   // Long columns render in pages so a pipeline with thousands of deals stays responsive.
@@ -434,7 +436,7 @@ function Column({
             }}
           >
             <Input name="title" required placeholder={t("titlePlaceholder")} aria-label={t("titlePlaceholder")} className="h-8" />
-            <Input name="value" type="number" min={0} required placeholder="0" aria-label={tc("value")} className="h-8" />
+            <MoneyInput name="value" required aria-label={td("estimatedValue")} className="h-8" />
             <Select name="companyId" className="h-8" defaultValue="" aria-label={tc("company")}>
               <option value="">{tc("company")}</option>
               {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}

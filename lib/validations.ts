@@ -35,7 +35,7 @@ export const dealSchema = z.object({
   priority: z.number().int().min(0).max(3),
   expectedCloseDate: z.string().nullable(),
   tagIds: z.array(z.string()),
-  probabilityOverride: z.number().min(0).max(100).nullable(),
+  probabilityOverride: z.number().min(0).max(100).nullable().optional(),
   description: z.string().max(8000).nullable().optional(),
 });
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -8,6 +9,7 @@ import type { BoardDeal, PipelineData } from "@/types/view";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select } from "@/components/ui/form";
+import { MoneyInput } from "@/components/ui/money-input";
 
 export function DealDialog({
   open,
@@ -30,7 +32,6 @@ export function DealDialog({
   async function onSubmit(formData: FormData) {
     setPending(true);
     const tagIds = formData.getAll("tagIds").map(String);
-    const override = String(formData.get("probabilityOverride") ?? "");
     const result = await saveDealAction({
       id: deal?.id ?? null,
       title: String(formData.get("title") ?? ""),
@@ -43,7 +44,6 @@ export function DealDialog({
       priority: Number(formData.get("priority") ?? 0),
       expectedCloseDate: String(formData.get("expectedCloseDate") ?? "") || null,
       tagIds,
-      probabilityOverride: override === "" ? null : Number(override),
     });
     setPending(false);
     if (!result.ok) {
@@ -59,15 +59,15 @@ export function DealDialog({
         <Field label={tc("name")}>
           <Input name="title" required defaultValue={deal?.title ?? ""} />
         </Field>
-        <Field label={tc("value")}>
-          <Input name="value" type="number" min={0} required defaultValue={deal?.value ?? 0} />
+        <Field label={t("estimatedValue")}>
+          <MoneyInput name="value" required defaultValue={deal?.value ?? null} />
         </Field>
         <Field label={tc("stage")}>
           <Select name="stageId" defaultValue={deal?.stageId ?? stages.find((stage) => stage.type === "open")?.id}>
             {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
           </Select>
         </Field>
-        <Field label={tc("owner")}>
+        <Field label={t("picSales")}>
           <Select name="ownerId" defaultValue={deal?.ownerId ?? data.me.id} disabled={!data.me.canManage && Boolean(deal)}>
             {data.owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
           </Select>
@@ -89,22 +89,20 @@ export function DealDialog({
         </Field>
         <Field label={tc("priority")}>
           <Select name="priority" defaultValue={String(deal?.priority ?? 0)}>
-            <option value="0">0</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
+            {(["0", "1", "2", "3"] as const).map((level) => <option key={level} value={level}>{tc(`priorities.${level}`)}</option>)}
           </Select>
-        </Field>
-        <Field label={t("probabilityOverride")} hint="0–100">
-          <Input name="probabilityOverride" type="number" min={0} max={100} defaultValue={deal && deal.probability !== stages.find((stage) => stage.id === deal.stageId)?.probability ? deal.probability : ""} />
         </Field>
         <fieldset className="sm:col-span-2">
           <legend className="mb-2 text-sm font-medium">{tc("tags")}</legend>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             {data.tags.map((tag) => (
-              <label key={tag.id} className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="tagIds" value={tag.id} defaultChecked={deal?.tags.some((item) => item.id === tag.id)} />
-                {tag.name}
+              <label key={tag.id} className="cursor-pointer">
+                <input type="checkbox" name="tagIds" value={tag.id} defaultChecked={deal?.tags.some((item) => item.id === tag.id)} className="tag-toggle sr-only" />
+                <span className="tag-option" style={{ "--tag": tag.color } as React.CSSProperties}>
+                  <Check aria-hidden className="tag-check h-3.5 w-3.5" strokeWidth={3} />
+                  <span aria-hidden className="tag-dot" />
+                  {tag.name}
+                </span>
               </label>
             ))}
           </div>

@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   title: { default: "Airtek CRM", template: "%s · Airtek CRM" },
   description: "CRM for PT. Airtek Solusi Nusantara",
   applicationName: "Airtek CRM",
-  appleWebApp: { capable: true, title: "Airtek", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "AirtekCRM", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

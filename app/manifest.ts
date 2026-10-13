@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Airtek CRM",
-    short_name: "Airtek",
+    name: "AirtekCRM",
+    short_name: "AirtekCRM",
     description: "CRM for PT. Airtek Solusi Nusantara",
     start_url: "/dashboard",
     scope: "/",

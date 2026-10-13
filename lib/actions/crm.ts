@@ -178,7 +178,7 @@ export async function saveDealAction(input: unknown) {
       deal.owner_id = ownerId;
       deal.priority = parsed.data.priority;
       deal.expected_close_date = parsed.data.expectedCloseDate;
-      deal.probability_override = parsed.data.probabilityOverride;
+      if (parsed.data.probabilityOverride !== undefined) deal.probability_override = parsed.data.probabilityOverride;
       if (previousStage !== stage.id) {
         applyStage(deal, stage, null);
         store.stage_history.push({
@@ -207,7 +207,7 @@ export async function saveDealAction(input: unknown) {
       stage_id: stage.id,
       value: parsed.data.value,
       currency: "IDR",
-      probability_override: parsed.data.probabilityOverride,
+      probability_override: parsed.data.probabilityOverride ?? null,
       expected_close_date: parsed.data.expectedCloseDate,
       priority: parsed.data.priority,
       company_id: null,
