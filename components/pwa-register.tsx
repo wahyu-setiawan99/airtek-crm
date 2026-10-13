@@ -36,16 +36,24 @@ export function PwaSupport() {
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
-    let reloading = false;
+    // Reload only after the user accepted an update. The first install also fires
+    // controllerchange (clients.claim), and that must not reload the page.
+    let accepted = false;
     const onControllerChange = () => {
-      if (reloading) return;
-      reloading = true;
+      if (!accepted) return;
+      accepted = false;
       window.location.reload();
     };
     const offerUpdate = (worker: ServiceWorker) => {
       toast(t("updateTitle"), {
         duration: Infinity,
-        action: { label: t("reload"), onClick: () => worker.postMessage("SKIP_WAITING") },
+        action: {
+          label: t("reload"),
+          onClick: () => {
+            accepted = true;
+            worker.postMessage("SKIP_WAITING");
+          },
+        },
       });
     };
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
