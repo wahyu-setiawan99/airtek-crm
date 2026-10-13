@@ -437,7 +437,7 @@ Langkah deploy:
 - Detail kontak & perusahaan menampilkan salesperson pemilik; manager/admin bisa menggantinya.
 
 ### 11.8 Mode Terang / Gelap
-- Menu tema **Terang / Gelap / Sistem** (`components/theme-menu.tsx`) di topbar, halaman login/undangan, dan halaman depan. **Sistem** mengikuti pengaturan HP/komputer; ini juga default sebelum user memilih (`profiles.theme = system`). Keputusan user 13 Okt 2026: opsi Sistem dikembalikan.
+- Menu tema **Terang / Gelap / Sistem** (`components/theme-menu.tsx`) di topbar, halaman login/undangan, dan halaman depan. **Sistem** mengikuti pengaturan HP/komputer. **Default = Gelap** untuk tamu (next-themes `defaultTheme="dark"`) dan akun baru (`profiles.theme` default `dark`, migration `0008`). Keputusan user 13 Okt 2026: opsi Sistem dikembalikan, default gelap.
 - Simpan per user di `profiles.theme` (`light` | `dark` | `system`, default `system`) dan terapkan setelah login. Halaman login/register mengikuti tema sistem.
 - Cek kontras semua komponen (kanban, chart Recharts, dialog, tabel, badge DEMO) di kedua mode pada 1280px dan 1920px.
 
@@ -857,7 +857,7 @@ Keputusan user (13 Okt 2026): **website cepat, minim redirect, ringan.** (1) Tid
 - Pindahkan semua route dari `app/[locale]/...` ke `app/...` (grup `(app)`, `(auth)`, `onboarding`, `accept-invite`, `not-found` tetap). Hapus segmen `[locale]`, `generateStaticParams` locale, dan `setRequestLocale`.
 - `i18n/request.ts` menentukan bahasa per request dengan urutan: **`profiles.locale`** (user login) → cookie **`NEXT_LOCALE`** → default **`en`**. Tidak ada deteksi `Accept-Language` (user minta default English).
 - Ganti `Link`/`redirect`/`useRouter`/`usePathname` dari `@/i18n/navigation` dengan versi `next/link` & `next/navigation`; hapus `i18n/routing.ts` & `createMiddleware` next-intl.
-- **Pengaturan → Profil → Bahasa** (English / Bahasa Indonesia): server action menyimpan `profiles.locale` **dan** cookie `NEXT_LOCALE` (1 tahun), lalu `router.refresh()` — tanpa navigasi ke URL lain.
+- **Pengaturan → Profil → bagian Bahasa tersendiri** (keputusan user 13 Okt 2026): toggle **English | Bahasa Indonesia** (bukan dropdown), terpisah dari form profil, langsung tersimpan lewat `updateLocaleAction` (`profiles.locale` + cookie `NEXT_LOCALE` 1 tahun) lalu `router.refresh()`. Default English.
 - **Tidak ada tombol bahasa** di topbar, halaman depan, login/register, maupun halaman undangan (keputusan user 13 Okt 2026): bahasa **hanya** diubah di Pengaturan → Profil. Pengunjung yang belum login selalu melihat English (kecuali cookie `NEXT_LOCALE` dari login sebelumnya).
 - Migration baru: `alter table public.profiles alter column locale set default 'en';` (baris lama tidak diubah — user yang sudah memilih ID tetap ID). Sesuaikan `provisionOrganization`/seed agar user baru `locale = 'en'`.
 - `<html lang>` mengikuti bahasa aktif; format tanggal/uang (`lib/format.ts`) mengikuti bahasa aktif (Rupiah tetap).

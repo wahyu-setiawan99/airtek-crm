@@ -18,6 +18,7 @@ import {
   Search,
   Settings,
   Users,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import * as Tooltip from "@radix-ui/react-tooltip";
@@ -335,18 +336,21 @@ export function AppShell({
 
       {mobile || more ? (
         <div className="fixed inset-0 z-50 bg-black/50 md:hidden" onClick={() => { setMobile(false); setMore(false); }}>
-          <div className="absolute inset-y-0 left-0 w-72 bg-sidebar p-4 text-sidebar-foreground" onClick={(event) => event.stopPropagation()}>
-            <Link href="/dashboard" aria-label={t("dashboard")} onClick={() => { setMobile(false); setMore(false); }} className="mb-4 flex items-center gap-3 rounded-md hover:opacity-80">
-              <BrandLogo className="h-8" />
-              <span aria-hidden className="h-6 w-px bg-sidebar-border" />
-              <span className="text-xs font-semibold tracking-[0.25em] text-sidebar-muted">CRM</span>
-            </Link>
-            <div className="space-y-1">
+          <div className="absolute inset-y-0 left-0 flex w-[min(14rem,64vw)] flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar px-2 pb-[env(safe-area-inset-bottom)] pt-[calc(0.75rem+env(safe-area-inset-top))] text-sidebar-foreground shadow-xl" onClick={(event) => event.stopPropagation()}>
+            <div className="mb-2 flex items-center justify-between gap-2 pl-2">
+              <Link href="/dashboard" aria-label={t("dashboard")} onClick={() => { setMobile(false); setMore(false); }} className="rounded-md hover:opacity-80">
+                <BrandLogo className="h-7" />
+              </Link>
+              <button type="button" aria-label={tc("close")} className="grid h-10 w-10 place-items-center rounded-md text-sidebar-muted hover:bg-sidebar-accent" onClick={() => { setMobile(false); setMore(false); }}>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-0.5">
               {links.map((item) => {
                 const href = item.key === "pipeline" ? pipelineHref : item.href;
                 const Icon = item.icon;
                 return (
-                  <Link key={item.key} href={href} onClick={() => { setMobile(false); setMore(false); }} className="flex items-center gap-2 rounded-md px-2 py-2 text-sm">
+                  <Link key={item.key} href={href} onClick={() => { setMobile(false); setMore(false); }} className={cn("flex min-h-10 items-center gap-2.5 rounded-md px-2 text-sm", active(item.href) && "bg-sidebar-accent font-medium text-primary dark:text-sidebar-foreground")}>
                     <Icon className="h-4 w-4" />
                     {t(item.key)}
                   </Link>
