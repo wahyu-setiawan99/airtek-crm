@@ -50,6 +50,8 @@
     "myDeals": "Deal saya",
     "reset": "Reset",
     "moreFilters": "Filter lainnya",
+    "filters": "Filter",
+    "showResults": "Tampilkan hasil",
     "valueMin": "Nilai min",
     "valueMax": "Nilai maks",
     "city": "Kota",
@@ -182,6 +184,7 @@
     "emptyColumn": "Lepas deal di sini",
     "markWon": "Menang",
     "markLost": "Kalah",
+    "moveTo": "Pindah ke…",
     "lostReason": "Alasan kalah",
     "chooseReason": "Pilih alasan",
     "confirmLost": "Tandai kalah",
@@ -274,6 +277,7 @@
     "schedule": "Jadwalkan",
     "composerNote": "Catatan",
     "composerActivity": "Aktivitas",
+    "quickActions": "Aksi cepat",
     "saveNote": "Simpan catatan",
     "sendHint": "Ctrl+Enter untuk simpan",
     "timeline": "Timeline",
@@ -346,7 +350,6 @@
     "importConfirm": "Impor {count} kontak",
     "empty": "Belum ada kontak.",
     "duplicate": "Duplikat",
-    "duplicateSave": "Email atau telepon sama dengan {name}. Simpan tetap?",
     "duplicateSave": "Email atau telepon sama dengan {name}. Simpan tetap?"
   },
   "companies": {
@@ -512,5 +515,14 @@
     "deal_assigned": "Deal ditugaskan",
     "activity_due": "Aktivitas jatuh tempo",
     "mention": "Disebut dalam catatan"
+  },
+  "pwa": {
+    "updateTitle": "Versi baru Airtek CRM tersedia",
+    "reload": "Muat ulang",
+    "installTitle": "Pasang Airtek CRM",
+    "installBody": "Buka CRM dari layar utama seperti aplikasi.",
+    "iosBody": "Ketuk Bagikan, lalu “Tambahkan ke Layar Utama”.",
+    "install": "Pasang",
+    "dismiss": "Tutup"
   }
 }

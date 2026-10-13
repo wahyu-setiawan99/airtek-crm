@@ -46,7 +46,7 @@ export function DashboardView({ data, locale }: { data: DashboardData; locale: A
           </Select>
         </div>
       </div>
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-5 [&>:last-child:nth-child(odd)]:col-span-2 xl:[&>:last-child:nth-child(odd)]:col-span-1">
         <Kpi label={t("pipelineValue")} value={formatCompact(data.pipelineValue)} hint={t("openDeals", { count: data.openCount })} />
         <Kpi label={t("weightedForecast")} value={formatCompact(data.weighted)} />
         <Kpi label={t("wonThisMonth")} value={formatCompact(data.wonValue)} />

@@ -14,9 +14,9 @@ import {
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMutation } from "@tanstack/react-query";
-import { GripVertical, Plus, Star } from "lucide-react";
+import { ArrowRightLeft, GripVertical, Plus, Star } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { deleteDealAction, markWonAction, moveDealAction, quickDealAction, saveViewAction } from "@/lib/actions/crm";
 import Link from "next/link";
@@ -30,6 +30,7 @@ import { FilterBar, matchDeal, type FilterValues } from "@/components/filters/fi
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select } from "@/components/ui/form";
+import { MenuContent, MenuItem, Menu, MenuTrigger } from "@/components/ui/dropdown";
 
 type Filters = FilterValues & { q: string; owner: string; tag: string; mine: boolean; view: string };
 
@@ -54,6 +55,14 @@ export function PipelineBoard({
   const [selected, setSelected] = useState<string[]>([]);
   const [viewName, setViewName] = useState("");
   const [quick, setQuick] = useState<string | null>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+  const [onScreen, setOnScreen] = useState(0);
+  const chips = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const chip = chips.current?.children[onScreen];
+    if (chip instanceof HTMLElement) chips.current?.scrollTo({ left: chip.offsetLeft - 12, behavior: "smooth" });
+  }, [onScreen]);
 
   useEffect(() => {
     setStages(data.stages);
@@ -121,6 +130,10 @@ export function PipelineBoard({
     const overId = event.over ? String(event.over.id) : "";
     const active = String(event.active.id);
     if (!overId || overId === active) return;
+    place(active, overId);
+  }
+
+  function place(active: string, overId: string) {
     const next = relocate(stages, active, overId);
     if (!next) return;
     const dest = next.find((stage) => stage.deals.some((deal) => deal.id === active));
@@ -213,8 +226,35 @@ export function PipelineBoard({
       ) : null}
 
       {view === "kanban" ? (
+        <div ref={chips} className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 md:hidden" role="tablist" aria-label={t("kanban")}>
+          {visible.map((stage, index) => (
+            <button
+              key={stage.id}
+              type="button"
+              role="tab"
+              aria-selected={onScreen === index}
+              className={cn("shrink-0 rounded-full border px-3 py-1.5 text-left text-xs", onScreen === index ? "border-primary bg-primary text-primary-foreground" : "bg-card")}
+              onClick={() => {
+                const node = scroller.current;
+                if (node) node.scrollTo({ left: index * node.clientWidth, behavior: "smooth" });
+              }}
+            >
+              <span className="font-medium">{stage.name}</span> · {stage.deals.length}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {view === "kanban" ? (
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={(event: DragStartEvent) => setActiveId(String(event.active.id))} onDragEnd={onDragEnd}>
-          <div className="kanban-scroll flex flex-1 gap-3 overflow-x-auto pb-3 snap-x snap-mandatory">
+          <div
+            ref={scroller}
+            onScroll={(event) => {
+              const node = event.currentTarget;
+              if (node.clientWidth > 0 && window.matchMedia("(max-width: 767px)").matches) setOnScreen(Math.round(node.scrollLeft / node.clientWidth));
+            }}
+            className="kanban-scroll -mx-3 flex flex-1 snap-x snap-mandatory overflow-x-auto pb-3 md:mx-0 md:gap-3"
+          >
             {visible.map((stage) => (
               <Column
                 key={stage.id}
@@ -242,6 +282,8 @@ export function PipelineBoard({
                   const next = relocate(stages, dealId, `stage:${stages.find((item) => item.type === "lost")?.id ?? stage.id}`);
                   if (next) setLost({ dealId, next, reason: data.lostReasons[0]?.id ?? "" });
                 }}
+                targets={stages.map((item) => ({ id: item.id, name: item.name }))}
+                onMove={(dealId, stageId) => place(dealId, `stage:${stageId}`)}
               />
             ))}
           </div>
@@ -334,6 +376,8 @@ function Column({
   onEdit,
   onWon,
   onLost,
+  targets,
+  onMove,
 }: {
   stage: BoardStage;
   locale: AppLocale;
@@ -345,6 +389,8 @@ function Column({
   onEdit: (deal: BoardDeal) => void;
   onWon: (id: string) => void;
   onLost: (id: string) => void;
+  targets: { id: string; name: string }[];
+  onMove: (dealId: string, stageId: string) => void;
 }) {
   const t = useTranslations("pipeline");
   const tc = useTranslations("common");
@@ -352,7 +398,8 @@ function Column({
   const total = stage.deals.reduce((sum, deal) => sum + deal.value, 0);
   const weighted = stage.deals.reduce((sum, deal) => sum + (stage.type === "open" ? deal.weighted : deal.value), 0);
   return (
-    <section className={cn("flex w-[280px] shrink-0 snap-start flex-col rounded-xl bg-muted/70 p-2 md:w-[300px]", isOver && "ring-2 ring-primary")}>
+    <section className={cn("flex w-full shrink-0 snap-start flex-col px-3 md:w-[300px] md:rounded-xl md:bg-muted/70 md:p-2", isOver && "ring-2 ring-primary")}>
+      <div className="flex flex-1 flex-col rounded-xl bg-muted/70 p-2 md:contents">
       <header className="px-1 pb-2">
         <div className="flex items-center justify-between gap-2">
           <h2 className="truncate text-sm font-semibold">{stage.name}</h2>
@@ -397,28 +444,29 @@ function Column({
         <div ref={setNodeRef} className="flex min-h-24 flex-1 flex-col gap-2">
           {stage.deals.length === 0 ? <p className="px-2 py-6 text-center text-xs text-muted-foreground">{t("emptyColumn")}</p> : null}
           {stage.deals.map((deal) => (
-            <SortableDeal key={deal.id} deal={deal} locale={locale} onEdit={() => onEdit(deal)} onWon={() => onWon(deal.id)} onLost={() => onLost(deal.id)} />
+            <SortableDeal key={deal.id} deal={deal} locale={locale} onEdit={() => onEdit(deal)} onWon={() => onWon(deal.id)} onLost={() => onLost(deal.id)} targets={targets.filter((item) => item.id !== stage.id)} onMove={(stageId) => onMove(deal.id, stageId)} />
           ))}
         </div>
       </SortableContext>
+      </div>
     </section>
   );
 }
 
-function SortableDeal({ deal, locale, onEdit, onWon, onLost }: { deal: BoardDeal; locale: AppLocale; onEdit: () => void; onWon: () => void; onLost: () => void }) {
+function SortableDeal({ deal, locale, onEdit, onWon, onLost, targets, onMove }: { deal: BoardDeal; locale: AppLocale; onEdit: () => void; onWon: () => void; onLost: () => void; targets: { id: string; name: string }[]; onMove: (stageId: string) => void }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   if (!mounted) {
-    return <DealCard deal={deal} locale={locale} onEdit={onEdit} onWon={onWon} onLost={onLost} />;
+    return <DealCard deal={deal} locale={locale} onEdit={onEdit} onWon={onWon} onLost={onLost} targets={targets} onMove={onMove} />;
   }
-  return <DraggableDeal deal={deal} locale={locale} onEdit={onEdit} onWon={onWon} onLost={onLost} />;
+  return <DraggableDeal deal={deal} locale={locale} onEdit={onEdit} onWon={onWon} onLost={onLost} targets={targets} onMove={onMove} />;
 }
 
-function DraggableDeal({ deal, locale, onEdit, onWon, onLost }: { deal: BoardDeal; locale: AppLocale; onEdit: () => void; onWon: () => void; onLost: () => void }) {
+function DraggableDeal({ deal, locale, onEdit, onWon, onLost, targets, onMove }: { deal: BoardDeal; locale: AppLocale; onEdit: () => void; onWon: () => void; onLost: () => void; targets: { id: string; name: string }[]; onMove: (stageId: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: deal.id, disabled: !deal.canEdit });
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 }} {...attributes}>
-      <DealCard deal={deal} locale={locale} listeners={listeners} onEdit={onEdit} onWon={onWon} onLost={onLost} />
+      <DealCard deal={deal} locale={locale} listeners={listeners} onEdit={onEdit} onWon={onWon} onLost={onLost} targets={targets} onMove={onMove} />
     </div>
   );
 }
@@ -431,11 +479,15 @@ function DealCard({
   onEdit,
   onWon,
   onLost,
+  targets = [],
+  onMove,
 }: {
   deal: BoardDeal;
   locale: AppLocale;
   overlay?: boolean;
   listeners?: Record<string, unknown>;
+  targets?: { id: string; name: string }[];
+  onMove?: (stageId: string) => void;
   onEdit?: () => void;
   onWon?: () => void;
   onLost?: () => void;
@@ -446,7 +498,7 @@ function DealCard({
     <article className={cn("rounded-lg border bg-card p-3 shadow-sm", deal.rotting && "border-warning bg-warning/10", overlay && "shadow-xl")}>
       <div className="flex items-start gap-2">
         {deal.canEdit && listeners ? (
-          <button className="-m-1 grid h-6 w-6 shrink-0 place-items-center rounded text-muted-foreground hover:bg-accent" aria-label={t("drag")} {...listeners}>
+          <button className="-m-1 hidden h-6 w-6 shrink-0 place-items-center rounded text-muted-foreground hover:bg-accent md:grid" aria-label={t("drag")} {...listeners}>
             <GripVertical className="h-4 w-4" />
           </button>
         ) : null}
@@ -481,6 +533,17 @@ function DealCard({
               <Button size="sm" variant="ghost" onClick={onEdit}>{tc("edit")}</Button>
               {deal.status === "open" ? <Button size="sm" variant="ghost" onClick={onWon}>{t("markWon")}</Button> : null}
               {deal.status === "open" ? <Button size="sm" variant="ghost" onClick={onLost}>{t("markLost")}</Button> : null}
+              {onMove && targets.length > 0 ? (
+                <Menu>
+                  <MenuTrigger className="ml-auto inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs hover:bg-accent" aria-label={t("moveTo")}>
+                    <ArrowRightLeft className="h-3.5 w-3.5" />
+                    <span className="md:sr-only">{t("moveTo")}</span>
+                  </MenuTrigger>
+                  <MenuContent>
+                    {targets.map((target) => <MenuItem key={target.id} className="min-h-10 md:min-h-0" onSelect={() => onMove(target.id)}>{target.name}</MenuItem>)}
+                  </MenuContent>
+                </Menu>
+              ) : null}
             </div>
           ) : null}
         </div>

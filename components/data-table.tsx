@@ -22,7 +22,30 @@ export function DataTable<T extends Record<string, unknown>>({ columns, data }: 
 
   return (
     <div className="overflow-hidden rounded-lg border bg-card">
-      <div className="overflow-x-auto">
+      <ul className="divide-y md:hidden">
+        {table.getRowModel().rows.map((row) => {
+          const cells = row.getVisibleCells();
+          const lead = cells.filter((cell) => !cell.column.columnDef.header);
+          const [title, ...rest] = cells.filter((cell) => cell.column.columnDef.header);
+          return (
+            <li key={row.id} className="grid gap-2 p-3">
+              <div className="flex items-start gap-3">
+                {lead.map((cell) => <span key={cell.id} className="pt-0.5">{renderCell(cell.column.columnDef.cell, cell.getContext())}</span>)}
+                {title ? <div className="min-w-0 flex-1 font-medium">{renderCell(title.column.columnDef.cell, title.getContext())}</div> : null}
+              </div>
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+                {rest.map((cell) => (
+                  <div key={cell.id} className="min-w-0">
+                    <dt className="text-xs text-muted-foreground">{renderHeader(cell.column.columnDef.header, cell.getContext())}</dt>
+                    <dd className="truncate">{renderCell(cell.column.columnDef.cell, cell.getContext())}</dd>
+                  </div>
+                ))}
+              </dl>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[680px] text-sm">
           <thead className="text-left text-xs text-muted-foreground">
             {table.getHeaderGroups().map((group) => (

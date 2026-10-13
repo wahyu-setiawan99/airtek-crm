@@ -12,7 +12,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 }
 
 const control =
-  "h-10 w-full rounded-md border bg-card px-3 text-sm text-foreground shadow-sm placeholder:text-muted-foreground";
+  "h-10 w-full rounded-md border bg-card px-3 text-base text-foreground shadow-sm placeholder:text-muted-foreground md:text-sm";
 
 export function Input(props: React.ComponentProps<"input">) {
   return <input {...props} className={cn(control, props.className)} />;

@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import type { ShellData } from "@/types/view";
 import mark from "@/public/brand/airtek-mark.png";
 import { BrandLogo } from "@/components/brand-logo";
+import { PwaSupport } from "@/components/pwa-register";
 import { Button } from "@/components/ui/button";
 import { MenuContent, MenuItem, Menu, MenuTrigger } from "@/components/ui/dropdown";
 
@@ -225,6 +226,9 @@ export function AppShell({
           <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobile(true)} aria-label="Menu">
             <MenuIcon className="h-4 w-4" />
           </Button>
+          <Link href="/dashboard" aria-label={t("dashboard")} className="md:hidden">
+            <Image src={mark} alt="" priority className="h-7 w-7 object-contain" />
+          </Link>
           <button
             className="hidden h-9 min-w-64 items-center gap-2 rounded-md border bg-card px-3 text-sm text-muted-foreground md:flex"
             onClick={() => setOpen(true)}
@@ -234,6 +238,9 @@ export function AppShell({
             <kbd className="ml-auto rounded border px-1.5 text-[10px]">Ctrl K</kbd>
           </button>
           <div className="ml-auto flex items-center gap-1">
+            <button type="button" className="grid h-10 w-10 place-items-center rounded-md hover:bg-accent md:hidden" aria-label={tc("search")} onClick={() => setOpen(true)}>
+              <Search className="h-4 w-4" />
+            </button>
             <Menu>
               <MenuTrigger className="hidden h-9 max-w-56 items-center gap-2 truncate rounded-md px-2 text-sm hover:bg-accent sm:flex">
                 {shell.organization.name}
@@ -366,10 +373,13 @@ export function AppShell({
         onOpenChange={setOpen}
         label={tcmd("placeholder")}
         overlayClassName="fixed inset-0 z-50 bg-black/50"
-        contentClassName="fixed left-1/2 top-[12%] z-50 w-[min(100%-1.5rem,36rem)] -translate-x-1/2 overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl"
+        contentClassName="fixed inset-0 z-50 flex flex-col overflow-hidden bg-popover pt-[env(safe-area-inset-top)] text-popover-foreground sm:inset-auto sm:left-1/2 sm:top-[12%] sm:block sm:w-[min(100%-1.5rem,36rem)] sm:-translate-x-1/2 sm:rounded-xl sm:border sm:pt-0 sm:shadow-2xl"
       >
-        <Command.Input placeholder={tcmd("placeholder")} aria-label={tcmd("placeholder")} className="h-12 w-full border-b bg-transparent px-4 text-sm outline-none" />
-        <Command.List className="max-h-80 overflow-y-auto p-2">
+        <div className="flex items-center border-b">
+          <Command.Input placeholder={tcmd("placeholder")} aria-label={tcmd("placeholder")} className="h-12 min-w-0 flex-1 bg-transparent px-4 text-base outline-none sm:text-sm" />
+          <button type="button" className="h-12 px-4 text-sm font-medium text-primary sm:hidden" onClick={() => setOpen(false)}>{tc("cancel")}</button>
+        </div>
+        <Command.List className="min-h-0 flex-1 overflow-y-auto p-2 sm:max-h-80 sm:flex-none">
           <Command.Empty className="px-3 py-8 text-center text-sm text-muted-foreground">{tcmd("empty")}</Command.Empty>
           <Command.Group heading={tcmd("actions")} className="px-2 py-1 text-[11px] uppercase tracking-wide text-muted-foreground">
             <Command.Item className="flex items-center gap-2 rounded-md px-2 py-2 text-sm aria-selected:bg-accent" onSelect={() => { setOpen(false); if (shell.pipelineId) router.push(`/pipelines/${shell.pipelineId}?new=1`); }}>
@@ -407,6 +417,7 @@ export function AppShell({
         </Command.List>
       </Command.Dialog>
       <span className="sr-only" onClick={() => toast.message(tc("search"))} />
+      <PwaSupport />
     </div>
   );
 }

@@ -50,6 +50,8 @@
     "myDeals": "My deals",
     "reset": "Reset",
     "moreFilters": "More filters",
+    "filters": "Filters",
+    "showResults": "Show results",
     "valueMin": "Min value",
     "valueMax": "Max value",
     "city": "City",
@@ -183,6 +185,7 @@
     "emptyColumn": "Drop a deal here",
     "markWon": "Won",
     "markLost": "Lost",
+    "moveTo": "Move to…",
     "lostReason": "Lost reason",
     "chooseReason": "Choose a reason",
     "confirmLost": "Mark lost",
@@ -275,6 +278,7 @@
     "schedule": "Schedule",
     "composerNote": "Note",
     "composerActivity": "Activity",
+    "quickActions": "Quick actions",
     "saveNote": "Save note",
     "sendHint": "Ctrl+Enter to save",
     "timeline": "Timeline",
@@ -513,5 +517,14 @@
     "deal_assigned": "Deal assigned",
     "activity_due": "Activity due",
     "mention": "Mentioned in a note"
+  },
+  "pwa": {
+    "updateTitle": "A new version of Airtek CRM is available",
+    "reload": "Reload",
+    "installTitle": "Install Airtek CRM",
+    "installBody": "Open the CRM from your home screen like an app.",
+    "iosBody": "Tap Share, then “Add to Home Screen”.",
+    "install": "Install",
+    "dismiss": "Dismiss"
   }
 }

@@ -20,6 +20,9 @@ import {
   Trophy,
   Users,
   XCircle,
+  ArrowLeft,
+  NotebookPen,
+  CalendarPlus,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -170,6 +173,14 @@ export function DealWorkspace({
   const [reason, setReason] = useState(deal.lostReasons[0]?.id ?? "");
   const [lostNote, setLostNote] = useState("");
   const [composer, setComposer] = useState<ComposerTab>("note");
+  const phoneNumber = deal.primaryContact?.phone ?? deal.primaryContact?.whatsapp ?? null;
+
+  function openComposer(tab: ComposerTab) {
+    setComposer(tab);
+    const node = document.getElementById("deal-composer");
+    node?.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => node?.querySelector<HTMLElement>("textarea, input:not([type=hidden])")?.focus({ preventScroll: true }), 350);
+  }
   const [description, setDescription] = useState(deal.description ?? "");
 
   useEffect(() => setDescription(deal.description ?? ""), [deal.description]);
@@ -248,13 +259,16 @@ export function DealWorkspace({
   }
 
   return (
-    <div className="-mx-3 -my-4 grid h-[calc(100dvh-3.5rem)] grid-cols-1 md:-mx-6 md:-mb-6 lg:grid-cols-[minmax(0,1fr)_minmax(340px,400px)]">
+    <div className="-mx-3 -my-4 grid grid-cols-[minmax(0,1fr)] md:-mx-6 md:-mb-6 lg:h-[calc(100dvh-3.5rem)] lg:grid-cols-[minmax(0,1fr)_minmax(340px,400px)]">
       {/* Main column */}
-      <div className="min-h-0 overflow-y-auto">
+      <div className="lg:min-h-0 lg:overflow-y-auto">
         {/* Sticky header */}
-        <header className="sticky top-0 z-20 border-b bg-background/90 px-6 py-3 backdrop-blur">
+        <header className="sticky top-14 z-20 border-b bg-background/90 px-4 py-2.5 backdrop-blur md:px-6 md:py-3 lg:top-0">
           <div className="flex items-center justify-between gap-4">
-            <nav className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
+            <Link href={`/pipelines/${deal.pipelineId}`} aria-label={`${tc("pipeline")} ${deal.pipelineName}`} className="grid h-10 w-10 shrink-0 place-items-center rounded-md hover:bg-accent sm:hidden">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <nav className="hidden min-w-0 items-center gap-1.5 text-sm text-muted-foreground sm:flex" aria-label="Breadcrumb">
               <Link href={`/pipelines/${deal.pipelineId}`} className="truncate hover:text-foreground hover:underline">
                 {tc("pipeline")} {deal.pipelineName}
               </Link>
@@ -262,7 +276,7 @@ export function DealWorkspace({
               <span className="truncate text-foreground">{deal.title}</span>
             </nav>
             <div className="flex shrink-0 items-center gap-2">
-              <span className="w-20 text-right text-xs text-muted-foreground" aria-live="polite">
+              <span className="hidden w-20 text-right text-xs text-muted-foreground sm:inline" aria-live="polite">
                 {saving === "saving" ? t("saving") : saving === "saved" ? t("saved") : ""}
               </span>
               <div className="flex items-center rounded-md border bg-card">
@@ -292,10 +306,10 @@ export function DealWorkspace({
               </div>
               {deal.canEdit && deal.status === "open" ? (
                 <>
-                  <Button size="sm" className="bg-success text-success-foreground hover:bg-success/90" onClick={() => void run(markWonAction(deal.id))}>
+                  <Button size="sm" className="hidden bg-success text-success-foreground hover:bg-success/90 md:inline-flex" onClick={() => void run(markWonAction(deal.id))}>
                     <Trophy className="h-3.5 w-3.5" /> {tc("won")}
                   </Button>
-                  <Button size="sm" variant="outline" className="border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => setLostOpen(true)}>
+                  <Button size="sm" variant="outline" className="hidden border-destructive/50 text-destructive hover:bg-destructive/10 md:inline-flex" onClick={() => setLostOpen(true)}>
                     <XCircle className="h-3.5 w-3.5" /> {tc("lost")}
                   </Button>
                 </>
@@ -307,11 +321,21 @@ export function DealWorkspace({
               ) : null}
               <Menu>
                 <MenuTrigger asChild>
-                  <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={t("more")}>
+                  <Button size="icon" variant="ghost" className="h-10 w-10 md:h-8 md:w-8" aria-label={t("more")}>
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </MenuTrigger>
                 <MenuContent>
+                  {deal.canEdit && deal.status === "open" ? (
+                    <>
+                      <MenuItem className="min-h-10 md:hidden" onSelect={() => void run(markWonAction(deal.id))}>
+                        <Trophy className="h-4 w-4 text-success" /> {tc("won")}
+                      </MenuItem>
+                      <MenuItem className="min-h-10 text-destructive md:hidden" onSelect={() => setLostOpen(true)}>
+                        <XCircle className="h-4 w-4" /> {tc("lost")}
+                      </MenuItem>
+                    </>
+                  ) : null}
                   <MenuItem onSelect={() => void copy(window.location.href, tc("copied"))}>
                     <Link2 className="h-4 w-4" /> {t("copyLink")}
                   </MenuItem>
@@ -332,7 +356,7 @@ export function DealWorkspace({
           </div>
         </header>
 
-        <div className="grid gap-5 px-6 py-5">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-5 px-4 py-4 md:px-6 md:py-5">
           {/* Title row */}
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
@@ -372,13 +396,13 @@ export function DealWorkspace({
 
           {/* Stage bar */}
           {deal.status === "open" ? (
-            <ol className="flex w-full overflow-hidden rounded-lg border bg-card" aria-label={t("stageBar")}>
+            <ol className="flex w-full overflow-x-auto rounded-lg border bg-card md:overflow-hidden" aria-label={t("stageBar")}>
               {openStages.map((stage, index) => {
                 const active = stage.id === deal.stageId;
                 const passed = index < currentIndex;
                 const time = deal.stageTimes[stage.id];
                 return (
-                  <li key={stage.id} className="relative min-w-0 flex-1">
+                  <li key={stage.id} className="relative min-w-28 flex-1 md:min-w-0">
                     <button
                       type="button"
                       disabled={!deal.canEdit || active}
@@ -829,9 +853,16 @@ export function DealWorkspace({
       </div>
 
       {/* Activity panel */}
-      <aside className="min-h-0 overflow-y-auto border-l bg-muted/20">
+      <aside className="border-t bg-muted/20 pb-20 lg:min-h-0 lg:overflow-y-auto lg:border-l lg:border-t-0 lg:pb-0">
         <DealSidebar deal={deal} locale={locale} composer={composer} onComposerChange={setComposer} />
       </aside>
+
+      <nav className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 grid grid-cols-4 border-t bg-card/95 backdrop-blur md:bottom-0 md:pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label={t("quickActions")}>
+        <QuickAction href={phoneNumber ? `tel:${phoneNumber}` : undefined} label={t("call")}><Phone className="h-4 w-4" /></QuickAction>
+        <QuickAction href={phoneNumber ? `https://wa.me/${phoneNumber.replace(/\D/g, "").replace(/^0/, "62")}` : undefined} external label="WhatsApp"><MessageCircle className="h-4 w-4" /></QuickAction>
+        <QuickAction label={t("composerActivity")} onClick={deal.canEdit ? () => openComposer("activity") : undefined}><CalendarPlus className="h-4 w-4" /></QuickAction>
+        <QuickAction label={t("composerNote")} onClick={() => openComposer("note")}><NotebookPen className="h-4 w-4" /></QuickAction>
+      </nav>
 
       <Dialog open={lostOpen} onOpenChange={setLostOpen} title={t("lostTitle")}>
         <form
@@ -861,5 +892,23 @@ export function DealWorkspace({
         </form>
       </Dialog>
     </div>
+  );
+}
+
+function QuickAction({ href, external, label, onClick, children }: { href?: string; external?: boolean; label: string; onClick?: () => void; children: React.ReactNode }) {
+  const className = "grid min-h-14 place-items-center gap-0.5 py-2 text-[11px] font-medium";
+  if (href) {
+    return (
+      <a href={href} className={className} {...(external ? { target: "_blank", rel: "noreferrer" } : {})}>
+        {children}
+        {label}
+      </a>
+    );
+  }
+  return (
+    <button type="button" disabled={!onClick} onClick={onClick} className={cn(className, "disabled:opacity-40")}>
+      {children}
+      {label}
+    </button>
   );
 }

@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/form";
 
 export type FilterValues = {
@@ -101,60 +102,130 @@ export function FilterBar({
   const hasMore = extras.some((item) => secondary.has(item));
   const moreCount = [values.party, values.project, values.priority, values.valueMin || values.valueMax, values.city, values.condition, values.closeFrom || values.closeTo, values.createdFrom || values.createdTo].filter(Boolean).length;
   const [more, setMore] = useState(moreCount > 0);
+  const [sheet, setSheet] = useState(false);
   const ownerLabel = (owner: { id: string; name: string }) => (owner.id === meId ? `${owner.name} (${t("myDeals")})` : owner.name);
+  const activeCount = chips.filter((chip) => chip.key !== "q").length;
+
+  const search = (
+    <Input className="md:w-60" type="search" value={values.q ?? ""} placeholder={t("search")} aria-label={t("search")} onChange={(event) => onChange({ ...values, q: event.target.value })} />
+  );
+
+  const main = (
+    <>
+      {owners.length > 0 && multiOwner ? (
+        <MultiPick
+          label={t("owner")}
+          options={owners.map((owner) => ({ id: owner.id, name: ownerLabel(owner) }))}
+          selected={ownerIds}
+          onChange={(next) => onChange({ ...values, owner: next.join(",") })}
+        />
+      ) : owners.length > 0 ? (
+        <Select className="md:w-44" aria-label={t("owner")} value={values.owner ?? ""} onChange={(event) => onChange({ ...values, owner: event.target.value })}>
+          <option value="">{t("owner")}: {t("all")}</option>
+          {owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
+        </Select>
+      ) : null}
+      {pipelines.length > 0 ? (
+        <Select className="md:w-40" aria-label={t("pipeline")} value={values.pipeline ?? ""} onChange={(event) => onChange({ ...values, pipeline: event.target.value })}>
+          <option value="">{t("pipeline")}</option>
+          {pipelines.map((pipeline) => <option key={pipeline.id} value={pipeline.id}>{pipeline.name}</option>)}
+        </Select>
+      ) : null}
+      {stages.length > 0 ? (
+        <MultiPick label={t("stage")} options={stages} selected={stageIds} onChange={(next) => onChange({ ...values, stage: next.join(",") })} />
+      ) : null}
+      {tags.length > 0 ? (
+        <Select className="md:w-36" aria-label={t("tags")} value={values.tag ?? ""} onChange={(event) => onChange({ ...values, tag: event.target.value })}>
+          <option value="">{t("tags")}</option>
+          {tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
+        </Select>
+      ) : null}
+      {statuses.length > 0 ? (
+        <Select className="md:w-32" aria-label={t("status")} value={values.status ?? ""} onChange={(event) => onChange({ ...values, status: event.target.value })}>
+          <option value="">{t("status")}</option>
+          {statuses.map((status) => <option key={status.id} value={status.id}>{status.name}</option>)}
+        </Select>
+      ) : null}
+      {extras.includes("client") ? (
+        <Select className="md:w-40" aria-label={tk("clientType")} value={values.client ?? ""} onChange={(event) => onChange({ ...values, client: event.target.value })}>
+          <option value="">{tk("clientType")}</option>
+          <option value="konsultan">{tk("types.konsultan")}</option>
+          <option value="kontraktor">{tk("types.kontraktor")}</option>
+          <option value="owner">{tk("types.owner")}</option>
+        </Select>
+      ) : null}
+      {showMine ? (
+        <label className="flex h-10 items-center gap-2 px-1 text-sm">
+          <input type="checkbox" className="h-4 w-4" checked={Boolean(values.mine)} onChange={(event) => onChange({ ...values, mine: event.target.checked })} />
+          {t("myDeals")}
+        </label>
+      ) : null}
+    </>
+  );
+
+  const extra = (
+    <>
+      {extras.includes("party") ? (
+        <Labeled label={t("party")}><Input value={values.party ?? ""} onChange={(event) => onChange({ ...values, party: event.target.value })} /></Labeled>
+      ) : null}
+      {extras.includes("project") ? (
+        <Labeled label={t("projectLocation")}><Input value={values.project ?? ""} onChange={(event) => onChange({ ...values, project: event.target.value })} /></Labeled>
+      ) : null}
+      {extras.includes("city") ? (
+        <Labeled label={t("city")}><Input value={values.city ?? ""} onChange={(event) => onChange({ ...values, city: event.target.value })} /></Labeled>
+      ) : null}
+      {extras.includes("priority") ? (
+        <Labeled label={t("priority")}>
+          <Select value={values.priority ?? ""} onChange={(event) => onChange({ ...values, priority: event.target.value })}>
+            <option value="">{t("all")}</option>
+            {["0", "1", "2", "3"].map((level) => <option key={level} value={level}>{"★".repeat(Number(level)) || "0"}</option>)}
+          </Select>
+        </Labeled>
+      ) : null}
+      {extras.includes("condition") ? (
+        <Labeled label={t("condition")}>
+          <Select value={values.condition ?? ""} onChange={(event) => onChange({ ...values, condition: event.target.value })}>
+            <option value="">{t("all")}</option>
+            <option value="overdue">{t("overdue")}</option>
+            <option value="none">{t("noActivity")}</option>
+            <option value="rotting">{t("rotting")}</option>
+          </Select>
+        </Labeled>
+      ) : null}
+      {extras.includes("value") ? (
+        <>
+          <Labeled label={t("valueMin")}><Input type="number" inputMode="numeric" min={0} value={values.valueMin ?? ""} onChange={(event) => onChange({ ...values, valueMin: event.target.value })} /></Labeled>
+          <Labeled label={t("valueMax")}><Input type="number" inputMode="numeric" min={0} value={values.valueMax ?? ""} onChange={(event) => onChange({ ...values, valueMax: event.target.value })} /></Labeled>
+        </>
+      ) : null}
+      {extras.includes("close") ? (
+        <>
+          <Labeled label={t("closeFrom")}><Input type="date" value={values.closeFrom ?? ""} onChange={(event) => onChange({ ...values, closeFrom: event.target.value })} /></Labeled>
+          <Labeled label={t("closeTo")}><Input type="date" value={values.closeTo ?? ""} onChange={(event) => onChange({ ...values, closeTo: event.target.value })} /></Labeled>
+        </>
+      ) : null}
+      {extras.includes("created") ? (
+        <>
+          <Labeled label={t("createdFrom")}><Input type="date" value={values.createdFrom ?? ""} onChange={(event) => onChange({ ...values, createdFrom: event.target.value })} /></Labeled>
+          <Labeled label={t("createdTo")}><Input type="date" value={values.createdTo ?? ""} onChange={(event) => onChange({ ...values, createdTo: event.target.value })} /></Labeled>
+        </>
+      ) : null}
+    </>
+  );
 
   return (
     <div className="grid gap-2">
-      <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
-        <Input className="md:w-60" value={values.q ?? ""} placeholder={t("search")} aria-label={t("search")} onChange={(event) => onChange({ ...values, q: event.target.value })} />
-        {owners.length > 0 && multiOwner ? (
-          <MultiPick
-            label={t("owner")}
-            options={owners.map((owner) => ({ id: owner.id, name: ownerLabel(owner) }))}
-            selected={ownerIds}
-            onChange={(next) => onChange({ ...values, owner: next.join(",") })}
-          />
-        ) : owners.length > 0 ? (
-          <Select className="md:w-44" aria-label={t("owner")} value={values.owner ?? ""} onChange={(event) => onChange({ ...values, owner: event.target.value })}>
-            <option value="">{t("owner")}: {t("all")}</option>
-            {owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
-          </Select>
-        ) : null}
-        {pipelines.length > 0 ? (
-          <Select className="md:w-40" aria-label={t("pipeline")} value={values.pipeline ?? ""} onChange={(event) => onChange({ ...values, pipeline: event.target.value })}>
-            <option value="">{t("pipeline")}</option>
-            {pipelines.map((pipeline) => <option key={pipeline.id} value={pipeline.id}>{pipeline.name}</option>)}
-          </Select>
-        ) : null}
-        {stages.length > 0 ? (
-          <MultiPick label={t("stage")} options={stages} selected={stageIds} onChange={(next) => onChange({ ...values, stage: next.join(",") })} />
-        ) : null}
-        {tags.length > 0 ? (
-          <Select className="md:w-36" aria-label={t("tags")} value={values.tag ?? ""} onChange={(event) => onChange({ ...values, tag: event.target.value })}>
-            <option value="">{t("tags")}</option>
-            {tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
-          </Select>
-        ) : null}
-        {statuses.length > 0 ? (
-          <Select className="md:w-32" aria-label={t("status")} value={values.status ?? ""} onChange={(event) => onChange({ ...values, status: event.target.value })}>
-            <option value="">{t("status")}</option>
-            {statuses.map((status) => <option key={status.id} value={status.id}>{status.name}</option>)}
-          </Select>
-        ) : null}
-        {extras.includes("client") ? (
-          <Select className="md:w-40" aria-label={tk("clientType")} value={values.client ?? ""} onChange={(event) => onChange({ ...values, client: event.target.value })}>
-            <option value="">{tk("clientType")}</option>
-            <option value="konsultan">{tk("types.konsultan")}</option>
-            <option value="kontraktor">{tk("types.kontraktor")}</option>
-            <option value="owner">{tk("types.owner")}</option>
-          </Select>
-        ) : null}
-        {showMine ? (
-          <label className="flex h-10 items-center gap-2 px-1 text-sm">
-            <input type="checkbox" checked={Boolean(values.mine)} onChange={(event) => onChange({ ...values, mine: event.target.checked })} />
-            {t("myDeals")}
-          </label>
-        ) : null}
+      <div className="flex gap-2 md:hidden">
+        <div className="min-w-0 flex-1">{search}</div>
+        <Button type="button" variant="outline" className="h-10 shrink-0" onClick={() => setSheet(true)}>
+          <SlidersHorizontal className="h-4 w-4" />
+          {t("filters")}
+          {activeCount > 0 ? <span className="rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">{activeCount}</span> : null}
+        </Button>
+      </div>
+      <div className="hidden md:flex md:flex-wrap md:items-center md:gap-2">
+        {search}
+        {main}
         {hasMore ? (
           <Button type="button" variant="outline" className="h-10" aria-expanded={more} onClick={() => setMore((current) => !current)}>
             <SlidersHorizontal className="h-4 w-4" />
@@ -164,64 +235,26 @@ export function FilterBar({
         ) : null}
         {chips.length > 0 ? <Button type="button" variant="ghost" className="h-10" onClick={() => onChange({})}>{t("reset")}</Button> : null}
       </div>
-      {hasMore && more ? (
-        <div className="grid gap-3 rounded-lg border bg-card/60 p-3 sm:grid-cols-2 lg:grid-cols-4">
-          {extras.includes("party") ? (
-            <Labeled label={t("party")}><Input value={values.party ?? ""} onChange={(event) => onChange({ ...values, party: event.target.value })} /></Labeled>
-          ) : null}
-          {extras.includes("project") ? (
-            <Labeled label={t("projectLocation")}><Input value={values.project ?? ""} onChange={(event) => onChange({ ...values, project: event.target.value })} /></Labeled>
-          ) : null}
-          {extras.includes("city") ? (
-            <Labeled label={t("city")}><Input value={values.city ?? ""} onChange={(event) => onChange({ ...values, city: event.target.value })} /></Labeled>
-          ) : null}
-          {extras.includes("priority") ? (
-            <Labeled label={t("priority")}>
-              <Select value={values.priority ?? ""} onChange={(event) => onChange({ ...values, priority: event.target.value })}>
-                <option value="">{t("all")}</option>
-                {["0", "1", "2", "3"].map((level) => <option key={level} value={level}>{"★".repeat(Number(level)) || "0"}</option>)}
-              </Select>
-            </Labeled>
-          ) : null}
-          {extras.includes("condition") ? (
-            <Labeled label={t("condition")}>
-              <Select value={values.condition ?? ""} onChange={(event) => onChange({ ...values, condition: event.target.value })}>
-                <option value="">{t("all")}</option>
-                <option value="overdue">{t("overdue")}</option>
-                <option value="none">{t("noActivity")}</option>
-                <option value="rotting">{t("rotting")}</option>
-              </Select>
-            </Labeled>
-          ) : null}
-          {extras.includes("value") ? (
-            <>
-              <Labeled label={t("valueMin")}><Input type="number" min={0} value={values.valueMin ?? ""} onChange={(event) => onChange({ ...values, valueMin: event.target.value })} /></Labeled>
-              <Labeled label={t("valueMax")}><Input type="number" min={0} value={values.valueMax ?? ""} onChange={(event) => onChange({ ...values, valueMax: event.target.value })} /></Labeled>
-            </>
-          ) : null}
-          {extras.includes("close") ? (
-            <>
-              <Labeled label={t("closeFrom")}><Input type="date" value={values.closeFrom ?? ""} onChange={(event) => onChange({ ...values, closeFrom: event.target.value })} /></Labeled>
-              <Labeled label={t("closeTo")}><Input type="date" value={values.closeTo ?? ""} onChange={(event) => onChange({ ...values, closeTo: event.target.value })} /></Labeled>
-            </>
-          ) : null}
-          {extras.includes("created") ? (
-            <>
-              <Labeled label={t("createdFrom")}><Input type="date" value={values.createdFrom ?? ""} onChange={(event) => onChange({ ...values, createdFrom: event.target.value })} /></Labeled>
-              <Labeled label={t("createdTo")}><Input type="date" value={values.createdTo ?? ""} onChange={(event) => onChange({ ...values, createdTo: event.target.value })} /></Labeled>
-            </>
-          ) : null}
-        </div>
-      ) : null}
+      {hasMore && more ? <div className="hidden gap-3 rounded-lg border bg-card/60 p-3 md:grid md:grid-cols-2 lg:grid-cols-4">{extra}</div> : null}
       {chips.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {chips.map((chip) => (
-            <button key={chip.key} type="button" className="rounded-full bg-accent px-2.5 py-1 text-xs text-accent-foreground" onClick={() => clear(chip.key)}>
+            <button key={chip.key} type="button" className="min-h-8 rounded-full bg-accent px-3 py-1 text-xs text-accent-foreground" onClick={() => clear(chip.key)}>
               {chip.label} ×
             </button>
           ))}
         </div>
       ) : null}
+      <Dialog open={sheet} onOpenChange={setSheet} title={t("filters")}>
+        <div className="grid gap-3">
+          {main}
+          {extra}
+          <div className="sticky bottom-0 -mx-5 mt-2 flex gap-2 border-t bg-popover px-5 pt-3">
+            {chips.length > 0 ? <Button type="button" variant="outline" className="h-11 flex-1" onClick={() => onChange({})}>{t("reset")}</Button> : null}
+            <Button type="button" className="h-11 flex-1" onClick={() => setSheet(false)}>{t("showResults")}</Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }
