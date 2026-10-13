@@ -114,7 +114,7 @@ async function main() {
   for (const account of ACCOUNTS) {
     const id = await ensureUser(admin, account.email, password, account.name);
     accountIds.set(account.key, id);
-    await admin.from("profiles").upsert({ id, full_name: account.name, email: account.email, locale: "en" });
+    await admin.from("profiles").upsert({ id, full_name: account.name, email: account.email, locale: "en", theme: "dark" });
   }
 
   // 2. Sample data from the demo seed (demo organization only), people folded into the four logins.

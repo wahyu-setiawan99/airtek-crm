@@ -251,7 +251,7 @@ export async function registerAction(input: unknown): Promise<ActionResult<{ sta
         reset_expires: null,
         email_confirmed: false,
         confirm_token: confirmToken,
-        theme: "system",
+        theme: "dark",
         created_at: timestamp,
         updated_at: timestamp,
       });

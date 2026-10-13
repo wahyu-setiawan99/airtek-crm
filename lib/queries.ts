@@ -100,7 +100,7 @@ export function buildShell(store: Store, session: Session): ShellData {
       name: session.profile.full_name,
       email: session.profile.email,
       role: session.role,
-      theme: session.profile.theme ?? "system",
+      theme: session.profile.theme ?? "dark",
     },
     organization: { id: session.organization.id, name: session.organization.name, demo: session.organization.demo },
     organizations: session.memberships
@@ -655,7 +655,7 @@ export function buildSettings(store: Store, session: Session) {
       email: session.profile.email,
       phone: session.profile.phone ?? "",
       locale: session.profile.locale,
-      theme: session.profile.theme ?? "system",
+      theme: session.profile.theme ?? "dark",
     },
     organization: session.organization,
     canAdmin: session.role === "owner" || session.role === "admin",

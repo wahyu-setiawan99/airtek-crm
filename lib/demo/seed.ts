@@ -184,7 +184,7 @@ function profile(userId: string, fullName: string, email: string, phone: string)
     reset_expires: null,
     email_confirmed: true,
     confirm_token: null,
-    theme: "system",
+    theme: "dark",
     created_at: at,
     updated_at: at,
   };

@@ -89,7 +89,7 @@ export async function loadSupabaseStore(client: SupabaseClient): Promise<Store> 
         row.reset_expires = null;
         row.email_confirmed = true;
         row.confirm_token = null;
-        row.theme = row.theme ?? "system";
+        row.theme = row.theme ?? "dark";
       });
     }
     if (table === "organizations") rows.forEach((row) => { row.demo = Boolean(row.demo); });
