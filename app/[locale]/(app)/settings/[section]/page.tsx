@@ -7,7 +7,7 @@ import { loadStore } from "@/lib/store";
 import { buildSettings } from "@/lib/queries";
 import { requireSession } from "@/lib/session";
 
-const sections = ["profile", "organization", "members", "pipelines", "tags", "lost-reasons", "custom-fields", "import", "audit"] as const;
+const sections = ["profile", "organization", "members", "targets", "pipelines", "tags", "lost-reasons", "custom-fields", "import", "audit"] as const;
 
 export default async function SettingsPage({ params }: { params: Promise<{ locale: string; section: string }> }) {
   const { locale, section } = await params;

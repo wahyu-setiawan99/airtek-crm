@@ -51,6 +51,9 @@
     "valueMin": "Min value",
     "valueMax": "Max value",
     "city": "City",
+    "party": "Party name",
+    "projectLocation": "Project location",
+    "ownedBy": "Owned by {name}",
     "condition": "Condition",
     "overdue": "Overdue",
     "noActivity": "No activity",
@@ -164,6 +167,7 @@
     "colPipeline": "Pipeline",
     "colWeighted": "Weighted",
     "colWon": "Won",
+    "colTarget": "Target",
     "colOverdue": "Overdue"
   },
   "pipeline": {
@@ -314,7 +318,14 @@
     },
     "stale": "Stale",
     "groupByOwner": "Group by salesperson",
-    "summary": "{count} deals · Value {value} · Weighted {weighted}"
+    "summary": "{count} deals · Value {value} · Weighted {weighted}",
+    "ownedBy": "Owned by {name}",
+    "presetMine": "My projects",
+    "presetClosing": "Closing this month",
+    "presetNone": "No activity",
+    "exportFiltered": "Export filtered",
+    "projectCity": "Project city",
+    "projectProvince": "Project province"
   },
   "contacts": {
     "title": "Contacts",
@@ -333,7 +344,8 @@
     "importPreview": "Preview",
     "importConfirm": "Import {count} contacts",
     "empty": "No contacts yet.",
-    "duplicate": "Duplicate"
+    "duplicate": "Duplicate",
+    "duplicateSave": "Same email or phone as {name}. Save anyway?"
   },
   "companies": {
     "title": "Companies",
@@ -352,7 +364,8 @@
     "address": "Address",
     "relatedContacts": "Contacts",
     "relatedDeals": "Deals",
-    "empty": "No companies yet."
+    "empty": "No companies yet.",
+    "duplicateSave": "Name looks like {name}. Save anyway?"
   },
   "activities": {
     "title": "My activities",
@@ -402,6 +415,10 @@
     "profile": "Profile",
     "organization": "Organization",
     "members": "Members",
+    "targets": "Targets",
+    "targetsHint": "Won-value goal for this month. Boss and Administrator only.",
+    "targetsEmpty": "No salespeople yet.",
+    "saveTarget": "Save target",
     "pipelines": "Pipelines",
     "tags": "Tags",
     "lostReasons": "Lost reasons",

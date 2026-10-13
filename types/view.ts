@@ -25,6 +25,11 @@ export type BoardDeal = {
   rotting: boolean;
   canEdit: boolean;
   stageId: string;
+  pipelineId: string;
+  partyNames: string;
+  projectCity: string | null;
+  projectProvince: string | null;
+  ownedBy: string | null;
   createdAt: string;
 };
 
@@ -85,6 +90,7 @@ export type DashboardData = {
     pipeline: number;
     weighted: number;
     won: number;
+    target: number | null;
     winRate: number | null;
     overdue: number;
     href: string;
@@ -128,6 +134,7 @@ export type DealDetailData = BoardDeal & {
   createdByName: string;
   source: string | null;
   canManage: boolean;
+  canNote: boolean;
   events: DealEvent[];
 };
 

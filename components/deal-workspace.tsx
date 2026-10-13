@@ -39,6 +39,7 @@ import {
 import { Link, useRouter } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/routing";
 import { CLIENT_TYPES, isClientType, type ClientType } from "@/lib/client-type";
+import { INDONESIA_PROVINCES } from "@/lib/provinces";
 import { daysUntil, formatCompact, formatDate, formatDateTime, formatRupiah } from "@/lib/format";
 import { cn, initials } from "@/lib/utils";
 import type { DealDetailData } from "@/types/view";
@@ -62,6 +63,8 @@ type DealPatch = {
   ownerCompanyId?: string | null;
   consultantCompanyId?: string | null;
   contractorCompanyId?: string | null;
+  projectCity?: string | null;
+  projectProvince?: string | null;
   contactId?: string | null;
   ownerId?: string;
   tagIds?: string[];
@@ -352,6 +355,7 @@ export function DealWorkspace({
                 >
                   {tc(deal.status)}
                 </span>
+                {deal.ownedBy ? <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-muted-foreground">{t("ownedBy", { name: deal.ownedBy })}</span> : null}
                 {deal.rotting ? <span className="rounded-full bg-warning/15 px-2 py-0.5 font-medium text-warning">{t("stale")}</span> : null}
                 <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-muted-foreground">
                   <Users className="h-3 w-3" /> {t("relatedDeals", { count: deal.relatedCount })}
@@ -577,6 +581,17 @@ export function DealWorkspace({
                 empty={t("notSet")}
                 onSave={(contractorCompanyId) => patch({ contractorCompanyId })}
               />
+              <InfoRow label={t("projectCity")}>
+                <InlineInput value={deal.projectCity ?? ""} canEdit={deal.canEdit} onSave={(projectCity) => patch({ projectCity: projectCity.trim() || null })} />
+              </InfoRow>
+              <InfoRow label={t("projectProvince")}>
+                <InlineSelect
+                  value={deal.projectProvince}
+                  options={INDONESIA_PROVINCES.map((name) => ({ id: name, name }))}
+                  canEdit={deal.canEdit}
+                  onSave={(projectProvince) => patch({ projectProvince })}
+                />
+              </InfoRow>
               <InfoRow label={tc("contact")}>
                 <InlineSelect value={deal.contactId} options={contactOptions} canEdit={deal.canEdit} onSave={(contactId) => patch({ contactId })} />
                 {deal.primaryContact?.jobTitle ? <p className="-mt-1 pb-1 text-xs text-muted-foreground">{deal.primaryContact.jobTitle}</p> : null}

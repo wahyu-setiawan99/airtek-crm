@@ -32,6 +32,12 @@ function personName(store: Store, userId: string | null) {
   return store.profiles.find((item) => item.id === userId)?.full_name ?? "—";
 }
 
+function visibleOwnerName(store: Store, session: Session, ownerId: string) {
+  const membership = store.memberships.find((item) => item.user_id === ownerId && item.organization_id === session.organizationId && !item.disabled_at);
+  if (session.role !== "owner" && membership?.role === "owner") return "—";
+  return personName(store, ownerId);
+}
+
 function toBoardDeal(store: Store, session: Session, dealId: string): BoardDeal | null {
   const deal = store.deals.find((item) => item.id === dealId);
   if (!deal) return null;
@@ -62,7 +68,12 @@ function toBoardDeal(store: Store, session: Session, dealId: string): BoardDeal 
     contactId: deal.primary_contact_id,
     contactName: contact ? contactName(contact) : null,
     ownerId: deal.owner_id,
-    ownerName: personName(store, deal.owner_id),
+    ownerName: visibleOwnerName(store, session, deal.owner_id),
+    ownedBy: session.userId !== deal.owner_id && visibleOwnerName(store, session, deal.owner_id) !== "—" ? visibleOwnerName(store, session, deal.owner_id).split(" ")[0] ?? null : null,
+    pipelineId: deal.pipeline_id,
+    partyNames: [ownerCompany?.name, consultant?.name, contractor?.name].filter(Boolean).join(" "),
+    projectCity: deal.project_city,
+    projectProvince: deal.project_province,
     tags,
     expectedCloseDate: deal.expected_close_date,
     lastActivityAt: deal.last_activity_at,
@@ -187,6 +198,24 @@ export function defaultPipelineId(store: Store, organizationId: string) {
   return (pipelines.find((item) => item.is_default) ?? pipelines[0])?.id ?? null;
 }
 
+function periodMonthKeys(period: "month" | "quarter" | "year", now = new Date()) {
+  const current = jakartaMonthKey(now.toISOString());
+  const [yearText, monthText] = current.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  if (period === "month") return [current];
+  if (period === "year") return Array.from({ length: 12 }, (_, index) => `${year}-${String(index + 1).padStart(2, "0")}`);
+  const start = Math.floor((month - 1) / 3) * 3 + 1;
+  return [0, 1, 2].map((offset) => `${year}-${String(start + offset).padStart(2, "0")}`);
+}
+
+function targetFor(store: Store, organizationId: string, userId: string, period: "month" | "quarter" | "year") {
+  const keys = new Set(periodMonthKeys(period));
+  const rows = store.sales_targets.filter((item) => item.organization_id === organizationId && item.user_id === userId && keys.has(item.month.slice(0, 7)));
+  if (rows.length === 0) return null;
+  return rows.reduce((sum, item) => sum + Number(item.amount), 0);
+}
+
 export function buildDashboard(
   store: Store,
   session: Session,
@@ -255,6 +284,7 @@ export function buildDashboard(
           return sum + (stage ? weightedValue(deal, stage) : 0);
         }, 0),
         won: wonMine.reduce((sum, deal) => sum + deal.value, 0),
+        target: targetFor(store, orgId, person.id, period),
         winRate: wonMine.length + lostMine.length === 0 ? null : Math.round((wonMine.length / (wonMine.length + lostMine.length)) * 100),
         overdue: store.activities.filter(
           (activity) =>
@@ -323,6 +353,8 @@ export function buildDealFilters(store: Store, session: Session) {
         .filter((item) => item.organization_id === orgId)
         .map((item) => [item.id, `${pipelineNames.get(item.pipeline_id) ?? ""} · ${item.name}`]),
     ),
+    pipelines: store.pipelines.filter((item) => item.organization_id === orgId && !item.archived).map((item) => ({ id: item.id, name: item.name })),
+    stages: store.stages.filter((item) => item.organization_id === orgId && item.type === "open").map((item) => ({ id: item.id, name: `${pipelineNames.get(item.pipeline_id) ?? ""} · ${item.name}` })),
     meId: session.userId,
   };
 }
@@ -400,6 +432,7 @@ export function buildDeal(
     createdByName: personName(store, deal.created_by),
     source: contact?.source ?? null,
     canManage: canManage(session.role),
+    canNote: canWrite(session.role),
     events: auditRows
       .filter((item) => item.entity === "deal" && item.entity_id === deal.id)
       .map((item) => ({
@@ -629,6 +662,14 @@ export function buildSettings(store: Store, session: Session) {
     canManage: canManage(session.role),
     currentUserId: session.userId,
     isOwner: session.role === "owner",
+    targetMonth: jakartaMonthKey(new Date().toISOString()),
+    targets: orgPeople(store, orgId, session.role)
+      .filter((person) => store.memberships.some((item) => item.user_id === person.id && item.organization_id === orgId && (item.role === "sales" || item.role === "presales" || item.role === "manager")))
+      .map((person) => ({
+        userId: person.id,
+        name: person.full_name,
+        amount: Number(store.sales_targets.find((item) => item.organization_id === orgId && item.user_id === person.id && item.month.slice(0, 7) === jakartaMonthKey(new Date().toISOString()))?.amount ?? 0),
+      })),
     members: store.memberships
       .filter((item) => item.organization_id === orgId)
       .filter((item) => session.role === "owner" || item.role !== "owner")

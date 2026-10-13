@@ -52,6 +52,7 @@ const TABLES: [TableName, TableSpec][] = [
   ["custom_fields", { key: ["id"], org: "organization_id" }],
   ["custom_field_values", { key: ["id"], org: "organization_id" }],
   ["import_batches", { key: ["id"], org: "organization_id", newestFirst: true }],
+  ["sales_targets", { key: ["id"], org: "organization_id" }],
 ];
 
 const PAGE = 1000;

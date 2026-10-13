@@ -6,7 +6,13 @@ import type { Store } from "@/types/crm";
 
 export type ActionResult<T = null> = { ok: true; data: T } | { ok: false; error: string; code?: string };
 
-export class ActionError extends Error {}
+export class ActionError extends Error {
+  code?: string;
+  constructor(message: string, code?: string) {
+    super(message);
+    this.code = code;
+  }
+}
 
 type Ctx = { session: Session; store: Store };
 
@@ -20,7 +26,7 @@ export async function runAction<T>(fn: (ctx: Ctx) => T): Promise<ActionResult<T>
     revalidatePath("/", "layout");
     return { ok: true, data };
   } catch (error) {
-    if (error instanceof ActionError) return { ok: false, error: error.message };
+    if (error instanceof ActionError) return { ok: false, error: error.message, code: error.code };
     console.error(error);
     return { ok: false, error: t("error") };
   }

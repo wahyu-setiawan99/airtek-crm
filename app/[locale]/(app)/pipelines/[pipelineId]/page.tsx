@@ -37,6 +37,8 @@ export default async function PipelinePage({
         valueMax: query.valueMax ?? "",
         condition: query.condition ?? "",
         client: query.client ?? "",
+        party: query.party ?? "",
+        project: query.project ?? "",
         closeFrom: query.closeFrom ?? "",
         closeTo: query.closeTo ?? "",
         createdFrom: query.createdFrom ?? "",

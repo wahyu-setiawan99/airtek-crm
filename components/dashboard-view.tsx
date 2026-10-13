@@ -91,6 +91,7 @@ export function DashboardView({ data, locale }: { data: DashboardData; locale: A
                   <th className="px-2 py-2 text-right font-medium">{t("colPipeline")}</th>
                   <th className="px-2 py-2 text-right font-medium">{t("colWeighted")}</th>
                   <th className="px-2 py-2 text-right font-medium">{t("colWon")}</th>
+                  <th className="px-2 py-2 text-right font-medium">{t("colTarget")}</th>
                   <th className="px-2 py-2 text-right font-medium">{t("winRate")}</th>
                   <th className="px-4 py-2 text-right font-medium">{t("colOverdue")}</th>
                 </tr>
@@ -108,6 +109,12 @@ export function DashboardView({ data, locale }: { data: DashboardData; locale: A
                     <td className="money px-2 py-2.5 text-right">{formatCompact(person.pipeline)}</td>
                     <td className="money px-2 py-2.5 text-right">{formatCompact(person.weighted)}</td>
                     <td className="money px-2 py-2.5 text-right font-medium">{formatCompact(person.won)}</td>
+                    <td className="px-2 py-2.5">
+                      <div className="ml-auto grid w-24 gap-1">
+                        <span className="text-right text-xs tabular-nums text-muted-foreground">{person.target == null ? "—" : formatCompact(person.target)}</span>
+                        {person.target ? <span className="h-1.5 overflow-hidden rounded-full bg-muted"><span className="block h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (person.won / person.target) * 100)}%` }} /></span> : null}
+                      </div>
+                    </td>
                     <td className="px-2 py-2.5 text-right tabular-nums">{person.winRate === null ? "—" : `${person.winRate}%`}</td>
                     <td className={cn("px-4 py-2.5 text-right tabular-nums", person.overdue > 0 && "font-medium text-destructive")}>{person.overdue}</td>
                   </tr>

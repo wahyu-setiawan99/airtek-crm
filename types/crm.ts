@@ -155,6 +155,8 @@ export type Deal = Stamp & {
   lost_at: string | null;
   position: number;
   last_activity_at: string | null;
+  project_city: string | null;
+  project_province: string | null;
   external_ref?: string | null;
   import_batch_id?: string | null;
 };
@@ -305,6 +307,17 @@ export type ImportBatch = {
   created_at: string;
 };
 
+export type SalesTarget = {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  month: string;
+  amount: number;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+};
+
 export type SavedView = {
   id: string;
   organization_id: string;
@@ -351,4 +364,5 @@ export type Store = {
   custom_fields: CustomField[];
   custom_field_values: CustomFieldValue[];
   import_batches: ImportBatch[];
+  sales_targets: SalesTarget[];
 };

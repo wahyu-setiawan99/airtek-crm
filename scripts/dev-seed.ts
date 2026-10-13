@@ -61,6 +61,7 @@ const TABLES: TableName[] = [
   "custom_field_values",
   "attachments",
   "import_batches",
+  "sales_targets",
 ];
 const STRIP: Partial<Record<TableName, string[]>> = { deal_products: ["subtotal"], deals: ["search"] };
 

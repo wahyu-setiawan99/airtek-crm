@@ -15,6 +15,7 @@ import {
   saveReasonAction,
   saveStageAction,
   saveTagAction,
+  saveSalesTargetAction,
   updateOrganizationAction,
   updateProfileAction,
 } from "@/lib/actions/crm";
@@ -34,6 +35,8 @@ type SettingsData = {
   canManage: boolean;
   currentUserId: string;
   isOwner: boolean;
+  targetMonth: string;
+  targets: { userId: string; name: string; amount: number }[];
   members: { userId: string; name: string; email: string; role: Role; disabled: boolean }[];
   invitations: { id: string; email: string; role: Role; expiresAt: string; status: "pending" | "accepted" | "expired" }[];
   customFields: { id: string; entity: "deal" | "contact" | "company"; label: string; field_type: "text" | "number" | "date" | "select"; options: string | null }[];
@@ -47,6 +50,7 @@ const sections = [
   ["profile", "/settings/profile"],
   ["organization", "/settings/organization"],
   ["members", "/settings/members"],
+  ["targets", "/settings/targets"],
   ["pipelines", "/settings/pipelines"],
   ["tags", "/settings/tags"],
   ["lostReasons", "/settings/lost-reasons"],
@@ -82,7 +86,7 @@ export function SettingsScreen({
   return (
     <div className="grid gap-6 lg:grid-cols-[200px_1fr]">
       <nav className="flex gap-2 overflow-x-auto lg:flex-col">
-        {sections.map(([key, href]) => (
+        {sections.map(([key, href]) => key === "targets" && !data.canAdmin ? null : (
           <Link key={key} href={href} className={`rounded-md px-3 py-2 text-sm ${section === key ? "bg-accent font-medium" : "text-muted-foreground"}`}>
             {t(key)}
           </Link>
@@ -146,6 +150,22 @@ export function SettingsScreen({
             isOwner={data.isOwner}
             locale={locale}
           />
+        ) : null}
+        {section === "targets" && data.canAdmin ? (
+          <div className="grid max-w-xl gap-3">
+            <p className="text-sm text-muted-foreground">{t("targetsHint")}</p>
+            {data.targets.length === 0 ? <p className="text-sm text-muted-foreground">{t("targetsEmpty")}</p> : data.targets.map((person) => (
+              <form key={person.userId} className="grid grid-cols-[minmax(0,1fr)_9rem_auto] items-center gap-2" onSubmit={(event) => {
+                event.preventDefault();
+                const amount = Number(new FormData(event.currentTarget).get("amount") ?? 0);
+                void saveSalesTargetAction({ userId: person.userId, month: data.targetMonth, amount }).then((result) => done(result));
+              }}>
+                <span className="truncate text-sm">{person.name}</span>
+                <Input name="amount" type="number" min={0} defaultValue={person.amount} aria-label={person.name} />
+                <Button type="submit" size="sm">{t("saveTarget")}</Button>
+              </form>
+            ))}
+          </div>
         ) : null}
         {section === "pipelines" && data.canManage ? (
           <div className="grid gap-4">

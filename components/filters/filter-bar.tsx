@@ -21,9 +21,13 @@ export type FilterValues = {
   closeTo?: string;
   createdFrom?: string;
   createdTo?: string;
+  pipeline?: string;
+  stage?: string;
+  party?: string;
+  project?: string;
 };
 
-const QUERY_KEYS = ["q", "owner", "tag", "status", "priority", "valueMin", "valueMax", "city", "client", "condition", "closeFrom", "closeTo", "createdFrom", "createdTo"] as const;
+const QUERY_KEYS = ["q", "owner", "tag", "status", "priority", "valueMin", "valueMax", "city", "client", "condition", "closeFrom", "closeTo", "createdFrom", "createdTo", "pipeline", "stage", "party", "project"] as const;
 
 export function filtersFromSearch(params: { get: (key: string) => string | null }): FilterValues {
   const values: FilterValues = { mine: params.get("mine") === "1" };
@@ -41,21 +45,31 @@ export function FilterBar({
   statuses = [],
   extras = [],
   showMine = true,
+  pipelines = [],
+  stages = [],
+  meId,
+  multiOwner = false,
   onChange,
 }: {
   values: FilterValues;
   owners?: { id: string; name: string }[];
   tags?: { id: string; name: string }[];
   statuses?: { id: string; name: string }[];
-  extras?: ("priority" | "value" | "condition" | "close" | "created" | "city" | "client")[];
+  pipelines?: { id: string; name: string }[];
+  stages?: { id: string; name: string }[];
+  meId?: string;
+  multiOwner?: boolean;
+  extras?: ("priority" | "value" | "condition" | "close" | "created" | "city" | "client" | "party" | "project")[];
   showMine?: boolean;
   onChange: (next: FilterValues) => void;
 }) {
   const t = useTranslations("common");
   const tk = useTranslations("companies");
+  const ownerIds = (values.owner ?? "").split(",").filter(Boolean);
+  const stageIds = (values.stage ?? "").split(",").filter(Boolean);
   const chips = [
     values.q ? { key: "q", label: values.q } : null,
-    values.owner ? { key: "owner", label: owners.find((item) => item.id === values.owner)?.name ?? values.owner } : null,
+    values.owner ? { key: "owner", label: ownerIds.map((id) => owners.find((item) => item.id === id)?.name ?? id).join(", ") } : null,
     values.tag ? { key: "tag", label: tags.find((item) => item.id === values.tag)?.name ?? values.tag } : null,
     values.status ? { key: "status", label: statuses.find((item) => item.id === values.status)?.name ?? values.status } : null,
     values.priority ? { key: "priority", label: `${t("priority")} ${values.priority}` } : null,
@@ -63,6 +77,10 @@ export function FilterBar({
     values.valueMax ? { key: "valueMax", label: `≤ ${values.valueMax}` } : null,
     values.city ? { key: "city", label: values.city } : null,
     values.client ? { key: "client", label: values.client === "konsultan" ? tk("types.konsultan") : values.client === "kontraktor" ? tk("types.kontraktor") : tk("types.owner") } : null,
+    values.pipeline ? { key: "pipeline", label: pipelines.find((item) => item.id === values.pipeline)?.name ?? values.pipeline } : null,
+    values.stage ? { key: "stage", label: stageIds.map((id) => stages.find((item) => item.id === id)?.name ?? id).join(", ") } : null,
+    values.party ? { key: "party", label: values.party } : null,
+    values.project ? { key: "project", label: values.project } : null,
     values.condition ? { key: "condition", label: t(values.condition === "none" ? "noActivity" : values.condition === "rotting" ? "rotting" : "overdue") } : null,
     values.closeFrom || values.closeTo ? { key: "closeFrom", label: `${values.closeFrom ?? "…"} – ${values.closeTo ?? "…"}` } : null,
     values.createdFrom || values.createdTo ? { key: "createdFrom", label: `${values.createdFrom ?? "…"} – ${values.createdTo ?? "…"}` } : null,
@@ -80,7 +98,23 @@ export function FilterBar({
     <div className="grid gap-2">
       <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
         <Input className="md:max-w-xs" value={values.q ?? ""} placeholder={t("search")} aria-label={t("search")} onChange={(event) => onChange({ ...values, q: event.target.value })} />
-        {owners.length > 0 ? (
+        {owners.length > 0 && multiOwner ? (
+          <fieldset className="flex max-w-xl flex-wrap gap-x-3 gap-y-1">
+            {owners.map((owner) => (
+              <label key={owner.id} className="flex items-center gap-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  checked={ownerIds.includes(owner.id)}
+                  onChange={(event) => {
+                    const next = event.target.checked ? [...ownerIds, owner.id] : ownerIds.filter((id) => id !== owner.id);
+                    onChange({ ...values, owner: next.join(",") });
+                  }}
+                />
+                {owner.id === meId ? `${owner.name} (${t("myDeals")})` : owner.name}
+              </label>
+            ))}
+          </fieldset>
+        ) : owners.length > 0 ? (
           <Select aria-label={t("owner")} value={values.owner ?? ""} onChange={(event) => onChange({ ...values, owner: event.target.value })}>
             <option value="">{t("all")}</option>
             {owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
@@ -97,6 +131,38 @@ export function FilterBar({
             <option value="">{t("status")}</option>
             {statuses.map((status) => <option key={status.id} value={status.id}>{status.name}</option>)}
           </Select>
+        ) : null}
+        {pipelines.length > 0 ? (
+          <Select aria-label={t("pipeline")} value={values.pipeline ?? ""} onChange={(event) => onChange({ ...values, pipeline: event.target.value })}>
+            <option value="">{t("pipeline")}</option>
+            {pipelines.map((pipeline) => <option key={pipeline.id} value={pipeline.id}>{pipeline.name}</option>)}
+          </Select>
+        ) : null}
+        {stages.length > 0 ? (
+          <details className="rounded-md border px-2 py-1 text-sm">
+            <summary className="cursor-pointer">{t("stage")}</summary>
+            <div className="mt-1 grid max-h-40 gap-1 overflow-auto">
+              {stages.map((stage) => (
+                <label key={stage.id} className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={stageIds.includes(stage.id)}
+                    onChange={(event) => {
+                      const next = event.target.checked ? [...stageIds, stage.id] : stageIds.filter((id) => id !== stage.id);
+                      onChange({ ...values, stage: next.join(",") });
+                    }}
+                  />
+                  {stage.name}
+                </label>
+              ))}
+            </div>
+          </details>
+        ) : null}
+        {extras.includes("party") ? (
+          <Input className="md:max-w-40" value={values.party ?? ""} placeholder={t("party")} aria-label={t("party")} onChange={(event) => onChange({ ...values, party: event.target.value })} />
+        ) : null}
+        {extras.includes("project") ? (
+          <Input className="md:max-w-40" value={values.project ?? ""} placeholder={t("projectLocation")} aria-label={t("projectLocation")} onChange={(event) => onChange({ ...values, project: event.target.value })} />
         ) : null}
         {extras.includes("priority") ? (
           <Select aria-label={t("priority")} value={values.priority ?? ""} onChange={(event) => onChange({ ...values, priority: event.target.value })}>
@@ -190,6 +256,11 @@ type DealLike = {
   activityStatus: "scheduled" | "overdue" | "none";
   rotting: boolean;
   expectedCloseDate: string | null;
+  stageId: string;
+  pipelineId?: string;
+  partyNames?: string;
+  projectCity?: string | null;
+  projectProvince?: string | null;
   createdAt?: string | null;
   clientTypes?: string[];
 };
@@ -197,7 +268,14 @@ type DealLike = {
 export function matchDeal(deal: DealLike, values: FilterValues, meId?: string) {
   const q = values.q?.trim().toLowerCase();
   if (q && !`${deal.title} ${deal.companyName ?? ""} ${deal.contactName ?? ""}`.toLowerCase().includes(q)) return false;
-  if (values.owner && deal.ownerId !== values.owner) return false;
+  if (values.owner) {
+    const ids = values.owner.split(",").filter(Boolean);
+    if (ids.length > 0 && !ids.includes(deal.ownerId)) return false;
+  }
+  if (values.pipeline && deal.pipelineId !== values.pipeline) return false;
+  if (values.stage && !values.stage.split(",").filter(Boolean).includes(deal.stageId)) return false;
+  if (values.party && !(deal.partyNames ?? "").toLowerCase().includes(values.party.trim().toLowerCase())) return false;
+  if (values.project && !`${deal.projectCity ?? ""} ${deal.projectProvince ?? ""}`.toLowerCase().includes(values.project.trim().toLowerCase())) return false;
   if (values.client && !(deal.clientTypes ?? []).includes(values.client)) return false;
   if (values.mine && meId && deal.ownerId !== meId) return false;
   if (values.tag && !deal.tags.some((item) => item.id === values.tag)) return false;

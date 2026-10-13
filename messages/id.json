@@ -51,6 +51,9 @@
     "valueMin": "Nilai min",
     "valueMax": "Nilai maks",
     "city": "Kota",
+    "party": "Nama pihak",
+    "projectLocation": "Lokasi proyek",
+    "ownedBy": "Milik {name}",
     "condition": "Kondisi",
     "overdue": "Terlambat",
     "noActivity": "Tanpa aktivitas",
@@ -163,6 +166,7 @@
     "colPipeline": "Pipeline",
     "colWeighted": "Tertimbang",
     "colWon": "Menang",
+    "colTarget": "Target",
     "colOverdue": "Terlambat"
   },
   "pipeline": {
@@ -313,7 +317,14 @@
     },
     "stale": "Basi",
     "groupByOwner": "Kelompokkan per salesperson",
-    "summary": "{count} deal · Nilai {value} · Tertimbang {weighted}"
+    "summary": "{count} deal · Nilai {value} · Tertimbang {weighted}",
+    "ownedBy": "Milik {name}",
+    "presetMine": "Proyek saya",
+    "presetClosing": "Closing bulan ini",
+    "presetNone": "Tanpa aktivitas",
+    "exportFiltered": "Ekspor sesuai filter",
+    "projectCity": "Kota proyek",
+    "projectProvince": "Provinsi proyek"
   },
   "contacts": {
     "title": "Kontak",
@@ -332,7 +343,9 @@
     "importPreview": "Pratinjau",
     "importConfirm": "Impor {count} kontak",
     "empty": "Belum ada kontak.",
-    "duplicate": "Duplikat"
+    "duplicate": "Duplikat",
+    "duplicateSave": "Email atau telepon sama dengan {name}. Simpan tetap?",
+    "duplicateSave": "Email atau telepon sama dengan {name}. Simpan tetap?"
   },
   "companies": {
     "title": "Perusahaan",
@@ -351,7 +364,8 @@
     "address": "Alamat",
     "relatedContacts": "Kontak",
     "relatedDeals": "Deal",
-    "empty": "Belum ada perusahaan."
+    "empty": "Belum ada perusahaan.",
+    "duplicateSave": "Nama mirip dengan {name}. Simpan tetap?"
   },
   "activities": {
     "title": "Aktivitas saya",
@@ -401,6 +415,10 @@
     "profile": "Profil",
     "organization": "Organisasi",
     "members": "Anggota",
+    "targets": "Target",
+    "targetsHint": "Target nilai menang bulan ini. Hanya Boss dan Administrator.",
+    "targetsEmpty": "Belum ada salesperson.",
+    "saveTarget": "Simpan target",
     "pipelines": "Pipeline",
     "tags": "Tag",
     "lostReasons": "Alasan kalah",

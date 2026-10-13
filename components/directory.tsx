@@ -127,6 +127,7 @@ function PersonDialog({ open, onOpenChange, title, companies, owners, contact, o
 }) {
   const t = useTranslations("contacts");
   const tc = useTranslations("common");
+  const [forceSave, setForceSave] = useState(false);
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title={title}>
       <form className="grid gap-3" onSubmit={(event) => {
@@ -143,9 +144,15 @@ function PersonDialog({ open, onOpenChange, title, companies, owners, contact, o
           whatsapp: String(form.get("whatsapp") ?? "") || null,
           source: String(form.get("source") ?? "") || null,
           ownerId: String(form.get("ownerId") ?? owners[0]?.id ?? ""),
+          force: forceSave,
         }).then((result) => {
+          if (!result.ok && result.code === "duplicate") {
+            setForceSave(true);
+            toast.error(t("duplicateSave", { name: result.error }));
+            return;
+          }
           if (!result.ok) toast.error(result.error);
-          else onSaved();
+          else { setForceSave(false); onSaved(); }
         });
       }}>
         <Field label={t("firstName")}><Input name="firstName" required defaultValue={contact?.name.split(" ")[0] ?? ""} /></Field>
@@ -176,6 +183,7 @@ export function CompaniesScreen({ rows, owners, canCreate, openNew }: { rows: Co
   const router = useRouter();
   const [open, setOpen] = useState(openNew);
   const [editing, setEditing] = useState<CompanyRow | null>(null);
+  const [forceSave, setForceSave] = useState(false);
   const params = useSearchParams();
   const apply = useFilterQuery();
   const values = filtersFromSearch(params);
@@ -198,7 +206,7 @@ export function CompaniesScreen({ rows, owners, canCreate, openNew }: { rows: Co
   return (
     <Screen title={t("title")} subtitle={t("subtitle")} actions={
       <>
-        <Button variant="outline" onClick={() => downloadCsv("perusahaan.csv", [["name", "city", "phone"], ...rows.map((row) => [row.name, row.city ?? "", row.phone ?? ""])])}>{tc("export")}</Button>
+        <Button variant="outline" onClick={() => downloadCsv("perusahaan.csv", [["name", "client_type", "city", "phone"], ...visible.map((row) => [row.name, row.clientType, row.city ?? "", row.phone ?? ""])])}>{tc("export")}</Button>
         {canCreate ? <Button onClick={() => { setEditing(null); setOpen(true); }}>{t("new")}</Button> : null}
       </>
     }>
@@ -220,9 +228,15 @@ export function CompaniesScreen({ rows, owners, canCreate, openNew }: { rows: Co
             npwp: String(form.get("npwp") ?? "") || null,
             address: String(form.get("address") ?? "") || null,
             ownerId: String(form.get("ownerId") ?? owners[0]?.id ?? ""),
+            force: forceSave,
           }).then((result) => {
+            if (!result.ok && result.code === "duplicate") {
+              setForceSave(true);
+              toast.error(t("duplicateSave", { name: result.error }));
+              return;
+            }
             if (!result.ok) toast.error(result.error);
-            else { setOpen(false); router.refresh(); }
+            else { setForceSave(false); setOpen(false); router.refresh(); }
           });
         }}>
           <Field label={tc("name")}><Input name="name" required defaultValue={editing?.name ?? ""} /></Field>

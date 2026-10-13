@@ -25,6 +25,7 @@ export function readStore(): Store {
     parsed.custom_fields ??= [];
     parsed.custom_field_values ??= [];
     parsed.import_batches ??= [];
+    parsed.sales_targets ??= [];
     return parsed;
   } catch {
     const fresh = createSeed();

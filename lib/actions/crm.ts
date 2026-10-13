@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { revalidatePath } from "next/cache";
 import { ActionError, runAction, touch } from "@/lib/action";
 import { isClientType, setParty, slotPrimaryCompany, type ClientType } from "@/lib/client-type";
+import { companyNamesSimilar, phonesMatch } from "@/lib/duplicates";
 import { cookieOptions, ORG_COOKIE } from "@/lib/constants";
 import { subtotal } from "@/lib/domain";
 import { addMembership, duplicatePipeline } from "@/lib/demo/onboarding";
@@ -35,6 +36,7 @@ import {
   profileSchema,
   quickDealSchema,
   reasonSchema,
+  salesTargetSchema,
   savedViewSchema,
   stageSchema,
   tagSchema,
@@ -219,6 +221,8 @@ export async function saveDealAction(input: unknown) {
       position: 0,
       last_activity_at: null,
       description: parsed.data.description ?? null,
+      project_city: null,
+      project_province: null,
       created_at: timestamp,
       updated_at: timestamp,
       created_by: session.userId,
@@ -333,6 +337,14 @@ export async function updateDealAction(dealId: string, input: unknown) {
     applyParty("owner", patch.ownerCompanyId);
     applyParty("konsultan", patch.consultantCompanyId);
     applyParty("kontraktor", patch.contractorCompanyId);
+    if (patch.projectCity !== undefined) {
+      track("projectCity", deal.project_city, patch.projectCity);
+      deal.project_city = patch.projectCity;
+    }
+    if (patch.projectProvince !== undefined) {
+      track("projectProvince", deal.project_province, patch.projectProvince);
+      deal.project_province = patch.projectProvince;
+    }
     if (patch.contactId !== undefined) {
       if (patch.contactId && !store.contacts.some((item) => item.id === patch.contactId && item.organization_id === orgId)) {
         throw new ActionError(t("error"));
@@ -480,6 +492,13 @@ export async function saveContactAction(input: unknown) {
     if (!canWrite(session.role)) throw new ActionError(t("forbidden"));
     const parsed = contactSchema.safeParse(input);
     if (!parsed.success) throw new ActionError(t("error"));
+    if (!parsed.data.force) {
+      const email = parsed.data.email?.toLowerCase() ?? "";
+      const match = store.contacts.find((item) => item.organization_id === session.organizationId && item.id !== parsed.data.id && (
+        (email && item.email?.toLowerCase() === email) || phonesMatch(item.phone, parsed.data.phone) || phonesMatch(item.whatsapp, parsed.data.whatsapp)
+      ));
+      if (match) throw new ActionError(`${match.first_name} ${match.last_name}`.trim(), "duplicate");
+    }
     const ownerId = canManage(session.role) ? parsed.data.ownerId : session.userId;
     const timestamp = new Date().toISOString();
     if (parsed.data.id) {
@@ -604,6 +623,10 @@ export async function saveCompanyAction(input: unknown) {
     if (!canWrite(session.role)) throw new ActionError(t("forbidden"));
     const parsed = companySchema.safeParse(input);
     if (!parsed.success) throw new ActionError(t("error"));
+    if (!parsed.data.force) {
+      const similar = store.companies.find((item) => item.organization_id === session.organizationId && item.id !== parsed.data.id && companyNamesSimilar(item.name, parsed.data.name));
+      if (similar) throw new ActionError(similar.name, "duplicate");
+    }
     const ownerId = canManage(session.role) ? parsed.data.ownerId : session.userId;
     const timestamp = new Date().toISOString();
     if (parsed.data.id) {
@@ -655,6 +678,38 @@ export async function saveCompanyAction(input: unknown) {
       created_by: session.userId,
     });
     return companyId;
+  });
+}
+
+export async function saveSalesTargetAction(input: unknown) {
+  const t = await getTranslations("common");
+  return runAction(({ session, store }) => {
+    if (session.role !== "owner" && session.role !== "admin") throw new ActionError(t("forbidden"));
+    const parsed = salesTargetSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError(t("error"));
+    if (!store.memberships.some((item) => item.organization_id === session.organizationId && item.user_id === parsed.data.userId && !item.disabled_at)) {
+      throw new ActionError(t("error"));
+    }
+    const month = `${parsed.data.month}-01`;
+    const existing = store.sales_targets.find((item) => item.organization_id === session.organizationId && item.user_id === parsed.data.userId && item.month.slice(0, 7) === parsed.data.month);
+    const timestamp = new Date().toISOString();
+    if (existing) {
+      existing.amount = parsed.data.amount;
+      existing.updated_at = timestamp;
+      return existing.id;
+    }
+    const id = createId();
+    store.sales_targets.push({
+      id,
+      organization_id: session.organizationId,
+      user_id: parsed.data.userId,
+      month,
+      amount: parsed.data.amount,
+      created_at: timestamp,
+      updated_at: timestamp,
+      created_by: session.userId,
+    });
+    return id;
   });
 }
 

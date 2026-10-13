@@ -9,7 +9,7 @@ User memberi **satu perintah yang sama** setiap sesi: *"Baca AGENTS.md dan lanju
 ### 0.1 Antrian kerja (kerjakan berurutan, item teratas yang belum ✅ dan tidak 🔒)
 1. [x] **§15.0 Langkah 3** — Speed Insights + Analytics, ukur ulang, isi tabel §15.1.
 2. [x] **§16.1–16.2** — jenis klien Konsultan/Kontraktor/Owner (hapus "Industri") + pihak proyek di deal. *(butuh migration `0005`)*
-3. [ ] **§16.3–16.4** — filter lintas sales di daftar Deal (pipeline, tahap, jenis klien, lokasi, target closing, nilai), badge "Milik {nama}", target sales per bulan, cek duplikat, lokasi proyek. *(kemungkinan migration `0006`)*
+3. [x] **§16.3–16.4** — filter lintas sales di daftar Deal (pipeline, tahap, jenis klien, lokasi, target closing, nilai), badge "Milik {nama}", target sales per bulan, cek duplikat, lokasi proyek. *(migration `0006`)*
 4. [ ] **§19** — URL tanpa `/id`/`/en` (bahasa dari pengaturan, default English) + halaman depan statis di `/` (tombol Masuk / Buka Dashboard). Prioritas user: cepat, minim redirect, ringan.
 5. [ ] **§13.8** — QA: Lighthouse desktop ≥ 90, aksesibilitas, nol hydration warning, uji alur lengkap di lokal.
 6. [ ] 🔒 **§14 Impor Odoo** — TERKUNCI sampai user menulis di chat bahwa direktur & semua sales sudah aktif di CRM.
@@ -223,8 +223,8 @@ Aturan DB:
 - [x] Lingkungan dev lokal (Docker) + akun testing + masuk cepat (§18)
 - [ ] Impor data dari Odoo CRM (§14) — **hanya setelah semua sales sudah diundang & aktif** (§14.0)
 - [x] Jenis klien Konsultan/Kontraktor/Owner + pihak proyek (§16.1–16.2)
-- [ ] Visibilitas & filter proyek lintas sales (§16.3)
-- [ ] Fitur sederhana dari riset CRM lain: target sales, cek duplikat, lokasi proyek (§16.4)
+- [x] Visibilitas & filter proyek lintas sales (§16.3)
+- [x] Fitur sederhana dari riset CRM lain: target sales, cek duplikat, lokasi proyek (§16.4)
 
 ### Fase 7 — Mobile PWA (menyusul, JANGAN dikerjakan sebelum Fase 0–6, 8, dan 9 selesai)
 - [ ] Web App Manifest (nama, ikon 192/512, theme color), installable di Android/iOS
@@ -711,15 +711,15 @@ Di proyek MEP biasanya ada tiga pihak: **Owner** (pemilik gedung), **Konsultan**
 
   | Filter | Kanban Pipeline | Daftar Deal | Status |
   |---|---|---|---|
-  | Salesperson (multi, termasuk "Saya") | ✅ ada | ✅ ada | ubah ke multi-select |
-  | Pipeline (Sales/Presales/…) | via dropdown judul | ❌ **belum** | tambah |
-  | Tahap / stage proyek | kolom kanban | ❌ **belum** | tambah (multi) |
+  | Salesperson (multi, termasuk "Saya") | ✅ multi | ✅ multi | — |
+  | Pipeline (Sales/Presales/…) | via dropdown judul | ✅ | — |
+  | Tahap / stage proyek | kolom kanban | ✅ multi | — |
   | Status Open/Won/Lost | — | ✅ ada | — |
   | Tag / kategori (Lift, Pompa, AC, …) | ✅ ada | ✅ ada | — |
-  | Jenis klien & nama Owner/Konsultan/Kontraktor | ✅ jenis klien | ✅ jenis klien | nama pihak menyusul §16.3 |
-  | Lokasi proyek (kota/provinsi) | ❌ | ❌ | tambah (§16.4) |
-  | Target closing (bulan/kuartal/rentang) | ❌ | ❌ | tambah |
-  | Nilai min–maks | ❌ | ❌ | tambah |
+  | Jenis klien & nama Owner/Konsultan/Kontraktor | ✅ | ✅ | — |
+  | Lokasi proyek (kota/provinsi) | ✅ | ✅ | — |
+  | Target closing (bulan/kuartal/rentang) | ✅ | ✅ | — |
+  | Nilai min–maks | ✅ | ✅ | — |
 
 - Tombol cepat di daftar Deal: **"Proyek saya"**, **"Closing bulan ini"**, **"Tanpa aktivitas"** (preset filter).
 

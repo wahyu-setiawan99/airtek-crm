@@ -283,10 +283,10 @@ export function DealSidebar({
       </section>
 
       {/* Composer */}
-      {deal.canEdit ? (
+      {deal.canEdit || deal.canNote ? (
         <section id="deal-composer" className="rounded-lg border bg-card">
           <div className="flex border-b text-sm">
-            {(["note", "activity"] as const).map((tab) => (
+            {(deal.canEdit ? (["note", "activity"] as const) : (["note"] as const)).map((tab) => (
               <button
                 key={tab}
                 type="button"

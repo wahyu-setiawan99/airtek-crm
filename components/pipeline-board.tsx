@@ -76,7 +76,7 @@ export function PipelineBoard({
     const params = new URLSearchParams();
     const merged = { ...filters, ...next };
     if (merged.view && merged.view !== "kanban") params.set("view", merged.view);
-    const keys = ["q", "owner", "tag", "priority", "valueMin", "valueMax", "condition", "client", "closeFrom", "closeTo", "createdFrom", "createdTo"] as const;
+    const keys = ["q", "owner", "tag", "priority", "valueMin", "valueMax", "condition", "client", "party", "project", "closeFrom", "closeTo", "createdFrom", "createdTo"] as const;
     for (const key of keys) {
       const value = merged[key];
       if (typeof value === "string" && value) params.set(key, value);
@@ -169,7 +169,9 @@ export function PipelineBoard({
           values={filters}
           owners={data.owners}
           tags={data.tags}
-          extras={["priority", "value", "condition", "close", "created", "client"]}
+          extras={["priority", "value", "condition", "close", "created", "client", "party", "project"]}
+          meId={data.me.id}
+          multiOwner
           onChange={(next) => pushFilters({
             q: next.q ?? "",
             owner: next.owner ?? "",
@@ -450,6 +452,7 @@ function DealCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <Link href={`/deals/${deal.id}`} className="truncate text-sm font-medium hover:underline">{deal.title}</Link>
+            {deal.ownedBy ? <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{tc("ownedBy", { name: deal.ownedBy })}</span> : null}
             <span className={cn("mt-1 h-2 w-2 shrink-0 rounded-full", deal.activityStatus === "scheduled" && "bg-success", deal.activityStatus === "overdue" && "bg-destructive", deal.activityStatus === "none" && "bg-muted-foreground/40")} />
           </div>
           <p className="money mt-1 text-sm font-semibold">{formatCompact(deal.value)}</p>

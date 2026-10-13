@@ -10,6 +10,7 @@ import { useRouter } from "@/i18n/navigation";
 import { Link } from "@/i18n/navigation";
 import type { AppLocale } from "@/i18n/routing";
 import { formatCompact, formatDate } from "@/lib/format";
+import { downloadCsv } from "@/lib/csv";
 import { cn, initials } from "@/lib/utils";
 import type { BoardDeal, TagChip } from "@/types/view";
 import { DataTable } from "@/components/data-table";
@@ -21,6 +22,8 @@ type DealFilters = {
   owners: { id: string; name: string }[];
   tags: TagChip[];
   stageNames: Record<string, string>;
+  pipelines: { id: string; name: string }[];
+  stages: { id: string; name: string }[];
   meId: string;
 };
 
@@ -64,7 +67,12 @@ export function DealsTable({ rows, filters, locale, canManage = false }: { rows:
           />
         ),
       } satisfies LegacyColumnDef<BoardDeal>] : []),
-      { accessorKey: "title", header: tc("name"), cell: ({ row }) => <Link className="font-medium hover:underline" href={`/deals/${row.original.id}`}>{row.original.title}</Link> },
+      { accessorKey: "title", header: tc("name"), cell: ({ row }) => (
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <Link className="font-medium hover:underline" href={`/deals/${row.original.id}`}>{row.original.title}</Link>
+          {row.original.ownedBy ? <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{t("ownedBy", { name: row.original.ownedBy })}</span> : null}
+        </span>
+      ) },
       { accessorKey: "companyName", header: tc("company"), cell: ({ row }) => row.original.companyName ?? "—" },
       { accessorKey: "stageId", header: tc("stage"), cell: ({ row }) => <span className="text-muted-foreground">{filters.stageNames[row.original.stageId] ?? "—"}</span> },
       {
@@ -136,10 +144,25 @@ export function DealsTable({ rows, filters, locale, canManage = false }: { rows:
           values={values}
           owners={filters.owners}
           tags={filters.tags}
+          pipelines={filters.pipelines}
+          stages={filters.stages}
+          meId={filters.meId}
+          multiOwner
           statuses={(["open", "won", "lost"] as const).map((status) => ({ id: status, name: tc(status) }))}
-          extras={["priority", "value", "condition", "close", "created", "client"]}
+          extras={["priority", "value", "condition", "close", "created", "client", "party", "project"]}
           onChange={(next) => applyQuery(next, { group: grouped ? "owner" : "" })}
         />
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => applyQuery({ mine: true })}>{t("presetMine")}</Button>
+          <Button size="sm" variant="outline" onClick={() => {
+            const key = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit" }).format(new Date());
+            const [year, month] = key.split("-").map(Number);
+            const last = new Date(Date.UTC(year ?? 2026, month ?? 1, 0)).getUTCDate();
+            applyQuery({ closeFrom: `${key}-01`, closeTo: `${key}-${String(last).padStart(2, "0")}` });
+          }}>{t("presetClosing")}</Button>
+          <Button size="sm" variant="outline" onClick={() => applyQuery({ condition: "none" })}>{t("presetNone")}</Button>
+          <Button size="sm" variant="outline" onClick={() => downloadCsv("deals.csv", [["title", "company", "owner", "value", "city", "province"], ...filtered.map((deal) => [deal.title, deal.companyName ?? "", deal.ownerName, String(deal.value), deal.projectCity ?? "", deal.projectProvince ?? ""])])}>{t("exportFiltered")}</Button>
+        </div>
         {canManage ? (
           <div className="flex flex-wrap items-center gap-2">
             <Select aria-label={t("salesperson")} value={ownerId} onChange={(event) => setOwnerId(event.target.value)}>

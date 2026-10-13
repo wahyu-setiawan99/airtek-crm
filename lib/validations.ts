@@ -66,6 +66,7 @@ export const contactSchema = z.object({
   whatsapp: z.string().max(30).nullable(),
   source: z.string().max(80).nullable(),
   ownerId: z.string().min(1),
+  force: z.boolean().optional(),
 });
 
 export const companySchema = z.object({
@@ -80,6 +81,7 @@ export const companySchema = z.object({
   npwp: z.string().max(40).nullable(),
   address: z.string().max(240).nullable(),
   ownerId: z.string().min(1),
+  force: z.boolean().optional(),
 });
 
 export const activitySchema = z.object({
@@ -209,6 +211,14 @@ export const dealPatchSchema = z.object({
   tagIds: z.array(z.string()).optional(),
   description: z.string().max(8000).nullable().optional(),
   stageId: z.string().min(1).optional(),
+  projectCity: z.string().max(80).nullable().optional(),
+  projectProvince: z.string().max(80).nullable().optional(),
+});
+
+export const salesTargetSchema = z.object({
+  userId: z.string().min(1),
+  month: z.string().regex(/^\d{4}-\d{2}$/),
+  amount: z.number().nonnegative(),
 });
 
 export const dealContactRoleSchema = z.object({

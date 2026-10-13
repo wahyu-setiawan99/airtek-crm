@@ -8,7 +8,7 @@ import type { Activity, ActivityType, Deal, DealProduct, Profile, Role, Stage, S
  * Customer names and the top eight deals come from the old Odoo pipeline; the sales team
  * (except Fajrul) is fictional. Dates are relative to today so the demo always looks current.
  */
-export const STORE_VERSION = 5;
+export const STORE_VERSION = 6;
 
 /** Deterministic UUID: group (record kind) + number. */
 const u = (group: number, n: number) => `${String(group).padStart(8, "0")}-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -263,6 +263,8 @@ export function createSeed(): Store {
       lost_at: type === "lost" ? closedAt : null,
       position,
       last_activity_at: jakartaDate(def.last, 11),
+      project_city: companyDefs.find((item) => company[item[0]] === linkedCompanyId)?.[3] ?? null,
+      project_province: companyDefs.find((item) => company[item[0]] === linkedCompanyId)?.[4] ?? null,
       created_at: jakartaDate(createdAgo, 9),
       updated_at: jakartaDate(def.last, 11),
       created_by: people[def.owner],
@@ -517,6 +519,10 @@ export function createSeed(): Store {
     custom_fields: [],
     custom_field_values: [],
     import_batches: [],
+    sales_targets: [
+      { id: u(95, 1), organization_id: ORG, user_id: people.taufik, month: `${new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit" }).format(new Date())}-01`, amount: 2_000_000_000, created_at: stamp.created_at, updated_at: stamp.updated_at, created_by: people.admin },
+      { id: u(95, 2), organization_id: ORG, user_id: people.rani, month: `${new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit" }).format(new Date())}-01`, amount: 1_500_000_000, created_at: stamp.created_at, updated_at: stamp.updated_at, created_by: people.admin },
+    ],
   };
 }
 
