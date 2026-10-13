@@ -54,7 +54,8 @@ function audit(store: Store, session: Session, entity: string, entityId: string,
     user_id: session.userId,
     created_at: new Date().toISOString(),
   });
-  store.audit_logs = store.audit_logs.slice(0, 200);
+  // Demo mode keeps a short window in its JSON file; in Supabase the log is append-only.
+  if (!supabaseEnabled) store.audit_logs = store.audit_logs.slice(0, 200);
 }
 
 function assertDeal(store: Store, session: Session, dealId: string) {
@@ -150,7 +151,7 @@ export async function moveDealAction(input: unknown) {
       audit(store, session, "deal", deal.id, "move", { to: stage.name });
     }
     return null;
-  });
+  }, ["deals", "stages"]);
 }
 
 export async function saveDealAction(input: unknown) {
@@ -252,7 +253,7 @@ export async function saveDealAction(input: unknown) {
     }
     audit(store, session, "deal", dealId, "create", { title: deal.title });
     return dealId;
-  });
+  }, ["deals", "stages", "companies", "deal_tags", "deal_contacts"]);
 }
 
 export async function quickDealAction(input: unknown) {
@@ -409,7 +410,7 @@ export async function updateDealAction(dealId: string, input: unknown) {
     touch(deal);
     changes.forEach((change) => audit(store, session, "deal", deal.id, "field", change));
     return null;
-  });
+  }, ["deals", "stages", "companies", "contacts", "deal_tags", "deal_contacts", "tags"]);
 }
 
 export async function deleteDealAction(dealId: string) {
@@ -423,7 +424,7 @@ export async function deleteDealAction(dealId: string) {
     store.notes = store.notes.filter((item) => item.deal_id !== dealId);
     audit(store, session, "deal", dealId, "delete");
     return null;
-  }).catch(() => ({ ok: false as const, error: t("error") }));
+  }, ["deals", "deal_tags", "deal_contacts", "deal_products", "notes"]).catch(() => ({ ok: false as const, error: t("error") }));
 }
 
 export async function markLostAction(dealId: string, lostReasonId: string) {
@@ -443,7 +444,7 @@ export async function markLostAction(dealId: string, lostReasonId: string) {
     });
     audit(store, session, "deal", deal.id, "lost", { reason: lostReasonId });
     return null;
-  });
+  }, ["deals", "stages"]);
 }
 
 export async function markWonAction(dealId: string) {
@@ -463,7 +464,7 @@ export async function markWonAction(dealId: string) {
     });
     audit(store, session, "deal", deal.id, "won");
     return null;
-  });
+  }, ["deals", "stages"]);
 }
 
 export async function restoreDealAction(dealId: string) {
@@ -484,7 +485,7 @@ export async function restoreDealAction(dealId: string) {
       changed_at: new Date().toISOString(),
     });
     return null;
-  });
+  }, ["deals", "stages"]);
 }
 
 export async function saveContactAction(input: unknown) {
@@ -540,7 +541,7 @@ export async function saveContactAction(input: unknown) {
     });
     audit(store, session, "contact", contactId, "create");
     return contactId;
-  });
+  }, ["contacts", "companies"]);
 }
 
 export async function deleteContactAction(contactId: string) {
@@ -679,7 +680,7 @@ export async function saveCompanyAction(input: unknown) {
       created_by: session.userId,
     });
     return companyId;
-  });
+  }, ["companies"]);
 }
 
 export async function saveSalesTargetAction(input: unknown) {
@@ -786,7 +787,7 @@ export async function saveActivityAction(input: unknown) {
       if (deal) deal.last_activity_at = timestamp;
     }
     return activityId;
-  });
+  }, ["activities", "deals"]);
 }
 
 export async function completeActivityAction(activityId: string, resultNote: string) {
@@ -804,7 +805,7 @@ export async function completeActivityAction(activityId: string, resultNote: str
       if (deal) deal.last_activity_at = timestamp;
     }
     return null;
-  });
+  }, ["activities", "deals"]);
 }
 
 export async function addNoteAction(input: unknown) {
@@ -832,7 +833,7 @@ export async function addNoteAction(input: unknown) {
       if (deal) deal.last_activity_at = timestamp;
     }
     return noteId;
-  });
+  }, ["deals"]);
 }
 
 export async function saveLineAction(input: unknown) {
@@ -855,7 +856,7 @@ export async function saveLineAction(input: unknown) {
       store.deal_tags.push({ deal_id: parsed.data.dealId, tag_id: product.tag_id });
     }
     return null;
-  });
+  }, ["deals", "deal_products", "products", "deal_tags"]);
 }
 
 export async function deleteLineAction(lineId: string) {
@@ -1406,6 +1407,24 @@ export async function saveViewAction(input: unknown) {
 }
 
 export async function markNotificationsReadAction() {
+  if (supabaseEnabled) {
+    // One update for every unread row, not just the window the store loads.
+    const t = await getTranslations("common");
+    const session = await getSession();
+    if (!session) return { ok: false as const, error: t("forbidden") };
+    const { error } = await createAdminClient()
+      .from("notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("user_id", session.userId)
+      .eq("organization_id", session.organizationId)
+      .is("read_at", null);
+    if (error) {
+      console.error("mark notifications read", error);
+      return { ok: false as const, error: t("error") };
+    }
+    revalidatePath("/", "layout");
+    return { ok: true as const, data: null };
+  }
   return runAction(({ session, store }) => {
     const timestamp = new Date().toISOString();
     store.notifications.forEach((item) => {
@@ -1414,7 +1433,7 @@ export async function markNotificationsReadAction() {
       }
     });
     return null;
-  });
+  }, ["notifications"]);
 }
 
 export async function resetDemoAction() {

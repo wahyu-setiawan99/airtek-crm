@@ -6,7 +6,7 @@ import { createId } from "@/lib/demo/store";
 import { siteUrl, supabaseEnabled } from "@/lib/env";
 import { canAdmin, canEditOwned, canManage, canWrite } from "@/lib/permissions";
 import { getSession, type Session } from "@/lib/session";
-import { loadStore } from "@/lib/store";
+import { withStore } from "@/lib/store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Store } from "@/types/crm";
 
@@ -21,7 +21,8 @@ function audit(store: Store, session: Session, entity: string, entityId: string,
     user_id: session.userId,
     created_at: new Date().toISOString(),
   });
-  store.audit_logs = store.audit_logs.slice(0, 200);
+  // Demo mode keeps a short window in its JSON file; in Supabase the log is append-only.
+  if (!supabaseEnabled) store.audit_logs = store.audit_logs.slice(0, 200);
 }
 
 async function sendInviteEmail(input: { email: string; fullName: string; invitationId: string; invitedBy: string; organization: string; role: string }) {
@@ -114,11 +115,12 @@ export async function deleteMemberAccountAction(userId: string) {
   const ts = await getTranslations("settings");
   const session = await getSession();
   if (!session || !canAdmin(session.role) || userId === session.userId) return { ok: false as const, error: t("forbidden") };
-  const store = await loadStore();
-  const membership = store.memberships.find((item) => item.user_id === userId && item.organization_id === session.organizationId);
+  const { membership, email, otherOrgs } = await withStore(["memberships", "profiles"], (store) => ({
+    membership: store.memberships.find((item) => item.user_id === userId && item.organization_id === session.organizationId),
+    email: store.profiles.find((item) => item.id === userId)?.email ?? "",
+    otherOrgs: store.memberships.some((item) => item.user_id === userId && item.organization_id !== session.organizationId && !item.disabled_at),
+  }));
   if (!membership || membership.role === "owner") return { ok: false as const, error: t("forbidden") };
-  const email = store.profiles.find((item) => item.id === userId)?.email ?? "";
-  const otherOrgs = store.memberships.some((item) => item.user_id === userId && item.organization_id !== session.organizationId && !item.disabled_at);
   const released = retiredEmail(userId);
 
   if (supabaseEnabled && !otherOrgs && email) {
