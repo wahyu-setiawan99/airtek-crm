@@ -1,11 +1,6 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { ArrowRight, Check, Moon, SunMedium } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Check } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
-import { SIGNED_IN_COOKIE } from "@/lib/constants";
+import { LandingCta, LandingThemeToggle } from "@/components/landing-actions";
 
 const points = [
   "Weighted forecast per stage and per salesperson",
@@ -48,8 +43,8 @@ const columns: { name: string; total: string; weighted: string; cards: PreviewCa
 function PipelinePreview() {
   return (
     <div aria-hidden className="relative select-none">
-      <div className="pointer-events-none absolute -inset-10 rounded-[3rem] bg-[radial-gradient(closest-side,color-mix(in_oklch,var(--color-primary)_26%,transparent),transparent)] blur-2xl" />
-      <div className="relative overflow-hidden rounded-2xl border bg-card/90 shadow-2xl shadow-primary/10 backdrop-blur">
+      <div className="pointer-events-none absolute -inset-12 bg-[radial-gradient(closest-side,color-mix(in_oklch,var(--color-primary)_22%,transparent),transparent)]" />
+      <div className="relative overflow-hidden rounded-2xl border bg-card shadow-2xl shadow-primary/10">
         <div className="flex items-center gap-2 border-b px-4 py-3">
           <span className="h-2.5 w-2.5 rounded-full bg-red-400/80" />
           <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80" />
@@ -111,15 +106,8 @@ function PipelinePreview() {
   );
 }
 
+/** Static home page; only the theme button and the sign-in link run on the client. */
 export function LandingHome() {
-  const [signedIn, setSignedIn] = useState(false);
-  const { resolvedTheme, setTheme } = useTheme();
-
-  useEffect(() => {
-    const match = document.cookie.split("; ").find((item) => item.startsWith(`${SIGNED_IN_COOKIE}=`));
-    setSignedIn(match?.slice(SIGNED_IN_COOKIE.length + 1) === "1");
-  }, []);
-
   return (
     <div className="relative min-h-dvh overflow-hidden bg-background">
       <div
@@ -128,17 +116,7 @@ export function LandingHome() {
       />
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
         <BrandLogo priority className="h-9 sm:h-10" />
-        <button
-          type="button"
-          aria-label="Switch light or dark theme"
-          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-          className="inline-flex h-9 items-center gap-2 rounded-lg border bg-card px-3 text-xs font-medium text-muted-foreground shadow-sm hover:bg-accent hover:text-foreground"
-        >
-          <Moon className="h-3.5 w-3.5 dark:hidden" />
-          <SunMedium className="hidden h-3.5 w-3.5 dark:block" />
-          <span className="dark:hidden">Dark</span>
-          <span className="hidden dark:inline">Light</span>
-        </button>
+        <LandingThemeToggle />
       </header>
 
       <main className="relative z-10 mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-6 sm:px-6 lg:min-h-[calc(100dvh-10rem)] lg:grid-cols-[1fr_1.15fr] lg:gap-16 lg:pb-24">
@@ -164,14 +142,7 @@ export function LandingHome() {
             ))}
           </ul>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
-            <Link
-              href={signedIn ? "/dashboard" : "/login"}
-              prefetch
-              className="group inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-primary px-7 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition hover:bg-primary/90"
-            >
-              {signedIn ? "Open dashboard" : "Sign in"}
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
+            <LandingCta />
             <p className="text-center text-xs text-muted-foreground sm:text-left">Access by invitation from your administrator.</p>
           </div>
         </section>

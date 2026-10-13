@@ -13,7 +13,7 @@ User memberi **satu perintah yang sama** setiap sesi: *"Baca AGENTS.md dan lanju
 4. [x] **§19** — URL tanpa `/id`/`/en` (bahasa dari pengaturan, default English) + halaman depan statis di `/` (tombol Masuk / Buka Dashboard). *(migration `0007`: default `profiles.locale` = `en`)*
 5. [x] **§13.8** — QA: Lighthouse desktop ≥ 90, aksesibilitas, nol hydration warning, uji alur lengkap di lokal.
 6. [ ] 🔒 **§14 Impor Odoo** — TERKUNCI sampai user menulis di chat bahwa direktur & semua sales sudah aktif di CRM.
-7. [ ] **§20 Mobile-friendly & PWA** — dasar sudah ada (manifest, ikon, service worker aset, safe area menu bawah); kerjakan sisanya per §20.2–20.6.
+7. [x] **§20 Mobile-friendly & PWA** — selesai 13 Okt 2026 (kecuali 🔒 web push). Sisa: user mencoba pasang di HP Android & iPhone lalu melapor.
 8. [ ] **§15.3, §15.5, §15.6, §15.7** — optimasi besar (query per halaman, revalidasi sempit, bundle, index). Setelah item 7, atau lebih dulu bila user meminta.
 9. [ ] 🔒 **Fase 11 AI Gemini** (§17) — TERKUNCI sampai user memberikan `GEMINI_API_KEY` di Vercel/`.env.local`.
 
@@ -230,11 +230,11 @@ Aturan DB:
 - [x] Web App Manifest (nama, ikon 192/512 + maskable, theme color), installable — dibuat Cursor 13 Okt 2026, verifikasi §20.6
 - [x] Service worker aset statis (hanya produksi) — tanpa cache halaman/data user (§20.5)
 - [x] Menu bawah dengan safe area iPhone; tabel produk detail deal bisa digeser horizontal
-- [ ] Audit & perbaikan semua halaman di 360–768px (§20.2)
-- [ ] Kanban mobile 1 kolom + tab/geser antar tahap + pindah tahap via menu (§20.3)
-- [ ] Detail deal mobile 1 kolom + bar aksi bawah (telepon/WA/aktivitas/catatan) (§20.4)
-- [ ] Daftar → kartu, filter jadi panel bawah, dialog jadi sheet layar penuh (§20.2)
-- [ ] Ajakan pasang aplikasi (Android prompt + petunjuk iOS), halaman offline, notifikasi versi baru (§20.5)
+- [x] Audit & perbaikan semua halaman di 360–768px (§20.2)
+- [x] Kanban mobile 1 kolom + tab/geser antar tahap + pindah tahap via menu (§20.3)
+- [x] Detail deal mobile 1 kolom + bar aksi bawah (telepon/WA/aktivitas/catatan) (§20.4)
+- [x] Daftar → kartu, filter jadi panel bawah, dialog jadi sheet layar penuh (§20.2)
+- [x] Ajakan pasang aplikasi (Android prompt + petunjuk iOS), halaman offline, notifikasi versi baru (§20.5)
 - [ ] 🔒 Web push notification — tunggu keputusan user (§20.5)
 
 ### Fase 10 — Optimasi kecepatan — detail di §15 (**§15.0 langkah 1–3 DIKERJAKAN SEKARANG**, sisanya setelah Fase 9)
@@ -931,4 +931,13 @@ Uji di 360, 390, 414 dan 768px (Chrome DevTools device mode: iPhone SE, iPhone 1
 - Lokal (§18): login sebagai `sales1` di DevTools device mode — buka pipeline (geser antar tahap, pindah tahap via menu), detail deal (bar aksi, tambah aktivitas), daftar Deal/Kontak (kartu + filter sheet), dashboard, pengaturan. Tidak ada scroll horizontal halaman.
 - Produksi (setelah push): Chrome DevTools → Application → Manifest "Installable" tanpa error; Lighthouse **mobile** ≥ 85 untuk halaman depan & login; uji pasang di HP Android (Chrome) & iPhone (Safari) bila memungkinkan — minta user mencoba dan melapor.
 - Desktop 1280 & 1920px tidak berubah (cek ulang kanban, detail deal, dashboard).
+
+### 20.7 Hasil (13 Okt 2026)
+- **Komponen bersama:** `Dialog` = layar penuh di < 640px; input 16px di HP; `DataTable` = kartu di < 768px (kolom pertama jadi judul, sisanya label/nilai); `TabsList` bisa digeser; topbar HP: logo kecil + ikon cari (command palette layar penuh dengan tombol Batal).
+- **Filter:** HP = kotak cari + tombol **Filter (n)** → sheet berisi semua filter + Reset / Tampilkan hasil. Desktop = satu baris + **Filter lainnya**.
+- **Kanban:** satu kolom selebar layar (scroll-snap), chip tahap di atas (nama · jumlah) yang mengikuti posisi geser; handle drag disembunyikan di HP; menu **Pindah ke…** di kartu (semua ukuran layar) memakai alur yang sama dengan drag (Kalah → dialog alasan).
+- **Detail deal:** satu halaman bergulir di < 1024px (panel aktivitas di bawah), header ringkas (kembali, ‹ n/N ›, ⋯ berisi Menang/Kalah), stage bar bisa digeser, **bar aksi bawah**: Telepon · WhatsApp · Aktivitas · Catatan (membuka & memfokuskan composer).
+- **PWA:** `components/pwa-register.tsx` (`PwaSupport` di `AppShell`): daftar `public/sw.js` hanya di produksi; toast **Versi baru tersedia → Muat ulang** (SW menunggu `SKIP_WAITING`); banner pasang sekali di HP (Android `beforeinstallprompt`, iOS petunjuk Bagikan → Tambahkan ke Layar Utama; ditutup = `localStorage airtek_install_dismissed`). Halaman offline = `public/offline.html` (HTML statis tanpa JS, dipre-cache; navigasi gagal → halaman ini). `theme-color` terang/gelap lewat `viewport`. Cache `airtek-static-v2`.
+- **Diuji lokal:** 390px tanpa scroll horizontal di dashboard, pipeline, deal, detail deal, aktivitas; pindah tahap via menu tersimpan di DB; Chrome headless: SW aktif & mengontrol halaman, server dimatikan → halaman offline tampil. Lighthouse mobile: halaman depan 87–88 (halaman depan kini Server Component, hanya tombol tema & Sign in yang client), login 91, a11y 100. Halaman setelah login mobile 56–65 (dibatasi §15.3 muat-semua-tabel & §15.6 bundle — dikerjakan di item 8).
+- **Belum:** uji pasang di HP sungguhan (user), 🔒 web push.
 
