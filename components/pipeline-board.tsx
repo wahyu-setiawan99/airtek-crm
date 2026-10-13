@@ -108,7 +108,7 @@ export function PipelineBoard({
       if (!result.ok) {
         toast.error(result.error);
         setStages(data.stages);
-      } else router.refresh();
+      }
     },
   });
 
@@ -275,14 +275,12 @@ export function PipelineBoard({
                   if (!result.ok) toast.error(result.error);
                   else {
                     setQuick(null);
-                    router.refresh();
                   }
                 }}
                 onEdit={setEditing}
                 onWon={async (dealId) => {
                   const result = await markWonAction(dealId);
                   if (!result.ok) toast.error(result.error);
-                  else router.refresh();
                 }}
                 onLost={(dealId) => {
                   const next = relocate(stages, dealId, `stage:${stages.find((item) => item.type === "lost")?.id ?? stage.id}`);
@@ -306,7 +304,6 @@ export function PipelineBoard({
           onDelete={async () => {
             for (const id of selected) await deleteDealAction(id);
             setSelected([]);
-            router.refresh();
           }}
         />
       ) : null}
@@ -325,7 +322,6 @@ export function PipelineBoard({
             if (!result.ok) toast.error(result.error);
             else {
               setViewName("");
-              router.refresh();
             }
           });
         }}
@@ -371,6 +367,8 @@ export function PipelineBoard({
   );
 }
 
+const COLUMN_PAGE = 30;
+
 function Column({
   stage,
   locale,
@@ -401,6 +399,9 @@ function Column({
   const t = useTranslations("pipeline");
   const tc = useTranslations("common");
   const { setNodeRef, isOver } = useDroppable({ id: `stage:${stage.id}` });
+  // Long columns render in pages so a pipeline with thousands of deals stays responsive.
+  const [limit, setLimit] = useState(COLUMN_PAGE);
+  const shown = stage.deals.length > limit ? stage.deals.slice(0, limit) : stage.deals;
   const total = stage.deals.reduce((sum, deal) => sum + deal.value, 0);
   const weighted = stage.deals.reduce((sum, deal) => sum + (stage.type === "open" ? deal.weighted : deal.value), 0);
   return (
@@ -446,12 +447,17 @@ function Column({
           </button>
         )
       ) : null}
-      <SortableContext items={stage.deals.map((deal) => deal.id)} strategy={verticalListSortingStrategy}>
+      <SortableContext items={shown.map((deal) => deal.id)} strategy={verticalListSortingStrategy}>
         <div ref={setNodeRef} className="flex min-h-24 flex-1 flex-col gap-2">
           {stage.deals.length === 0 ? <p className="px-2 py-6 text-center text-xs text-muted-foreground">{t("emptyColumn")}</p> : null}
-          {stage.deals.map((deal) => (
+          {shown.map((deal) => (
             <SortableDeal key={deal.id} deal={deal} locale={locale} onEdit={() => onEdit(deal)} onWon={() => onWon(deal.id)} onLost={() => onLost(deal.id)} targets={targets.filter((item) => item.id !== stage.id)} onMove={(stageId) => onMove(deal.id, stageId)} />
           ))}
+          {stage.deals.length > shown.length ? (
+            <button type="button" className="h-9 rounded-md border border-dashed text-xs font-medium text-muted-foreground hover:bg-card hover:text-foreground" onClick={() => setLimit((current) => current + COLUMN_PAGE)}>
+              {t("showMore", { count: Math.min(COLUMN_PAGE, stage.deals.length - shown.length) })}
+            </button>
+          ) : null}
         </div>
       </SortableContext>
       </div>

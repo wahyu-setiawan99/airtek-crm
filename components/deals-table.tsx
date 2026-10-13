@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { reassignDealsAction } from "@/lib/actions/phase9";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { AppLocale } from "@/i18n/locale";
 import { formatCompact, formatDate } from "@/lib/format";
@@ -45,7 +44,6 @@ export function DealsTable({ rows, filters, locale, canManage = false }: { rows:
   const tc = useTranslations("common");
   const params = useSearchParams();
   const applyQuery = useFilterQuery();
-  const router = useRouter();
   const values = filtersFromSearch(params);
   const grouped = params.get("group") === "owner";
   const [selected, setSelected] = useState<string[]>([]);
@@ -176,7 +174,6 @@ export function DealsTable({ rows, filters, locale, canManage = false }: { rows:
                 void reassignDealsAction({ dealIds: selected, ownerId }).then((result) => {
                   if (!result.ok) return toast.error(result.error);
                   setSelected([]);
-                  router.refresh();
                 });
               }}
             >

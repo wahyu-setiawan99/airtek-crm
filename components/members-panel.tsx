@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { inviteMemberAction, setMemberRoleAction } from "@/lib/actions/crm";
 import { cancelInvitationAction, deleteMemberAccountAction, resendInvitationAction, setMemberActiveAction } from "@/lib/actions/phase9";
-import { useRouter } from "next/navigation";
 import type { AppLocale } from "@/i18n/locale";
 import { formatDateTime } from "@/lib/format";
 import { cn, initials } from "@/lib/utils";
@@ -43,7 +42,6 @@ export function MembersPanel({
 }) {
   const t = useTranslations("settings");
   const tc = useTranslations("common");
-  const router = useRouter();
   const [removing, setRemoving] = useState<Member | null>(null);
   const [busy, setBusy] = useState(false);
   const waiting = invitations.filter((item) => item.status !== "accepted");
@@ -58,7 +56,6 @@ export function MembersPanel({
       toast.error(result.error ?? tc("error"));
       return;
     }
-    router.refresh();
   }
 
   return (
@@ -187,7 +184,6 @@ export function MembersPanel({
               if (!result.ok) return toast.error(result.error);
               toast.success(t("inviteSent", { email }));
               formElement.reset();
-              router.refresh();
             });
           }}
         >
@@ -225,7 +221,6 @@ export function MembersPanel({
                 setBusy(false);
                 if (!result.ok) return toast.error(result.error);
                 setRemoving(null);
-                router.refresh();
               });
             }}
           >

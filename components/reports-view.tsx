@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import dynamic from "next/dynamic";
 import { downloadCsv } from "@/lib/csv";
 import { useRouter } from "next/navigation";
 import type { AppLocale } from "@/i18n/locale";
@@ -11,6 +11,11 @@ import type { ReportData } from "@/types/view";
 import { FilterBar, type FilterValues } from "@/components/filters/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/form";
+
+const SimpleBarChart = dynamic(() => import("@/components/charts/bar-chart"), {
+  ssr: false,
+  loading: () => <div className="h-full w-full animate-pulse rounded-md bg-muted" />,
+});
 
 export function ReportsView({
   data,
@@ -108,15 +113,7 @@ function Chart({ title, data, dataKey, empty }: { title: string; data: { name: s
       <h2 className="text-sm font-semibold">{title}</h2>
       <div className="mt-3 h-56">
         {data.length === 0 || !ready ? <p className="text-sm text-muted-foreground">{data.length === 0 ? empty : ""}</p> : (
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Bar dataKey={dataKey} fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <SimpleBarChart data={data} xKey="name" bars={[{ key: dataKey, color: "var(--color-primary)" }]} />
         )}
       </div>
     </article>

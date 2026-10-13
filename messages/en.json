@@ -202,7 +202,8 @@
     "legendOverdue": "Overdue",
     "legendRotting": "Rotting",
     "drag": "Drag deal",
-    "noClose": "No close date"
+    "noClose": "No close date",
+    "showMore": "Show {count} more"
   },
   "deals": {
     "title": "Deals",

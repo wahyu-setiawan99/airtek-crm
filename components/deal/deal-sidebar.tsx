@@ -18,7 +18,6 @@ import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { addNoteAction, completeActivityAction, saveActivityAction } from "@/lib/actions/crm";
-import { useRouter } from "next/navigation";
 import type { AppLocale } from "@/i18n/locale";
 import { formatDate, formatDateTime, formatRupiah, formatTime, jakartaParts } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -79,7 +78,6 @@ export function DealSidebar({
   const t = useTranslations("deals");
   const ta = useTranslations("activities");
   const tc = useTranslations("common");
-  const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [pending, setPending] = useState(false);
@@ -98,7 +96,7 @@ export function DealSidebar({
       return false;
     }
     if (success) toast.success(success);
-    router.refresh();
+    // The action revalidates; its response already carries the refreshed page.
     return true;
   }
 

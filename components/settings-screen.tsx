@@ -23,7 +23,6 @@ import {
 import { deleteCustomFieldAction, saveCustomFieldAction } from "@/lib/actions/phase9";
 import { MembersPanel } from "@/components/members-panel";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { AppLocale } from "@/i18n/locale";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -75,14 +74,12 @@ export function SettingsScreen({
 }) {
   const t = useTranslations("settings");
   const tc = useTranslations("common");
-  const router = useRouter();
 
   async function done(result: { ok: boolean; error?: string }) {
     if (!result.ok) {
       toast.error(result.error ?? tc("error"));
       return;
     }
-    router.refresh();
   }
 
   return (
@@ -128,7 +125,6 @@ export function SettingsScreen({
                     onClick={() => {
                       void updateLocaleAction(value).then((result) => {
                         if (!result.ok) return toast.error(result.error);
-                        router.refresh();
                       });
                     }}
                     className={cn(

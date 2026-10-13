@@ -4,7 +4,6 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { saveDealAction } from "@/lib/actions/crm";
-import { useRouter } from "next/navigation";
 import type { BoardDeal, PipelineData } from "@/types/view";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -24,7 +23,6 @@ export function DealDialog({
   const t = useTranslations("deals");
   const tp = useTranslations("pipeline");
   const tc = useTranslations("common");
-  const router = useRouter();
   const [pipelineId, setPipelineId] = useState(deal?.stageId ? data.pipeline.id : data.pipeline.id);
   const stages = data.stages;
   const [pending, setPending] = useState(false);
@@ -53,7 +51,6 @@ export function DealDialog({
       return;
     }
     onOpenChange(false);
-    router.refresh();
   }
 
   return (

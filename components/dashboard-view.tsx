@@ -2,14 +2,19 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { AppLocale } from "@/i18n/locale";
-import { formatCompact, formatDate, formatMonth, formatRupiah } from "@/lib/format";
+import { formatCompact, formatDate, formatMonth } from "@/lib/format";
 import { cn, initials } from "@/lib/utils";
 import type { DashboardData } from "@/types/view";
 import { Select } from "@/components/ui/form";
+
+const SimpleBarChart = dynamic(() => import("@/components/charts/bar-chart"), {
+  ssr: false,
+  loading: () => <div className="h-full w-full animate-pulse rounded-md bg-muted" />,
+});
 
 export function DashboardView({ data, locale }: { data: DashboardData; locale: AppLocale }) {
   const t = useTranslations("dashboard");
@@ -55,27 +60,10 @@ export function DashboardView({ data, locale }: { data: DashboardData; locale: A
       </section>
       <section className="grid gap-3 xl:grid-cols-5">
         <ChartCard title={t("funnel")} className="xl:col-span-3" empty={funnel.every((item) => item.total === 0)} emptyLabel={t("noChart")}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={funnel}>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} interval={0} />
-              <YAxis tickFormatter={(value) => formatCompact(Number(value))} width={78} tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(value) => formatRupiah(Number(value ?? 0))} />
-              <Bar dataKey="total" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="weighted" fill="var(--color-success)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <SimpleBarChart data={funnel} xKey="label" money allXTicks bars={[{ key: "total", color: "var(--color-primary)" }, { key: "weighted", color: "var(--color-success)" }]} />
         </ChartCard>
         <ChartCard title={t("forecast")} className="xl:col-span-2" empty={forecast.every((item) => item.weighted === 0)} emptyLabel={t("noChart")}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={forecast}>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-              <YAxis tickFormatter={(value) => formatCompact(Number(value))} width={78} tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(value) => formatRupiah(Number(value ?? 0))} />
-              <Bar dataKey="weighted" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <SimpleBarChart data={forecast} xKey="label" money bars={[{ key: "weighted", color: "var(--color-primary)" }]} />
         </ChartCard>
       </section>
       <section className="grid gap-3 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">

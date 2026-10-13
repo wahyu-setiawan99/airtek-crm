@@ -3,7 +3,6 @@
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { setOwnerAction } from "@/lib/actions/phase9";
-import { useRouter } from "next/navigation";
 import { Select } from "@/components/ui/form";
 
 export function OwnerPicker({
@@ -20,7 +19,6 @@ export function OwnerPicker({
   canEdit: boolean;
 }) {
   const t = useTranslations("common");
-  const router = useRouter();
   return (
     <label className="grid max-w-xs gap-1 text-sm">
       <span className="text-muted-foreground">{t("owner")}</span>
@@ -31,7 +29,6 @@ export function OwnerPicker({
         onChange={(event) => {
           void setOwnerAction({ kind, id, ownerId: event.target.value }).then((result) => {
             if (!result.ok) toast.error(result.error);
-            else router.refresh();
           });
         }}
       >

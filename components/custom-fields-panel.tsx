@@ -3,7 +3,6 @@
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { saveCustomValueAction } from "@/lib/actions/phase9";
-import { useRouter } from "next/navigation";
 import { Input, Select } from "@/components/ui/form";
 
 export type ExtraField = {
@@ -16,7 +15,6 @@ export type ExtraField = {
 
 export function CustomFieldsPanel({ entityId, fields, canEdit }: { entityId: string; fields: ExtraField[]; canEdit: boolean }) {
   const tc = useTranslations("common");
-  const router = useRouter();
   if (fields.length === 0) return <p className="text-sm text-muted-foreground">{tc("empty")}</p>;
   return (
     <div className="grid gap-3 rounded-lg border bg-card p-4">
@@ -31,7 +29,6 @@ export function CustomFieldsPanel({ entityId, fields, canEdit }: { entityId: str
               onChange={(event) => {
                 void saveCustomValueAction({ fieldId: field.id, entityId, value: event.target.value }).then((result) => {
                   if (!result.ok) toast.error(result.error);
-                  else router.refresh();
                 });
               }}
             >

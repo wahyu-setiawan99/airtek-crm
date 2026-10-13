@@ -201,7 +201,8 @@
     "legendOverdue": "Terlambat",
     "legendRotting": "Basi",
     "drag": "Geser deal",
-    "noClose": "Tanpa tanggal"
+    "noClose": "Tanpa tanggal",
+    "showMore": "Tampilkan {count} lagi"
   },
   "deals": {
     "title": "Deal",

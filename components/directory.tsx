@@ -35,7 +35,6 @@ export function ContactsScreen({
 }) {
   const t = useTranslations("contacts");
   const tc = useTranslations("common");
-  const router = useRouter();
   const [open, setOpen] = useState(openNew);
   const [editing, setEditing] = useState<ContactRow | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -81,7 +80,7 @@ export function ContactsScreen({
         owners={owners}
         contact={editing}
         onOpenChange={setOpen}
-        onSaved={() => { setOpen(false); router.refresh(); }}
+        onSaved={() => { setOpen(false); }}
       />
       <Dialog open={importOpen} onOpenChange={setImportOpen} title={tc("import")} description={t("importHint")} wide>
         <Textarea aria-label={t("importHint")} onChange={(event) => {
@@ -109,7 +108,7 @@ export function ContactsScreen({
         <Button className="mt-3" disabled={preview.length === 0} onClick={() => {
           void importContactsAction({ rows: preview.filter((row) => !row.duplicate) }).then((result) => {
             if (!result.ok) toast.error(result.error);
-            else { setImportOpen(false); router.refresh(); }
+            else { setImportOpen(false); }
           });
         }}>{t("importConfirm", { count: preview.filter((row) => !row.duplicate).length })}</Button>
       </Dialog>
@@ -181,7 +180,6 @@ function PersonDialog({ open, onOpenChange, title, companies, owners, contact, o
 export function CompaniesScreen({ rows, owners, canCreate, openNew }: { rows: CompanyRow[]; owners: Option[]; canCreate: boolean; openNew: boolean }) {
   const t = useTranslations("companies");
   const tc = useTranslations("common");
-  const router = useRouter();
   const [open, setOpen] = useState(openNew);
   const [editing, setEditing] = useState<CompanyRow | null>(null);
   const [forceSave, setForceSave] = useState(false);
@@ -237,7 +235,7 @@ export function CompaniesScreen({ rows, owners, canCreate, openNew }: { rows: Co
               return;
             }
             if (!result.ok) toast.error(result.error);
-            else { setForceSave(false); setOpen(false); router.refresh(); }
+            else { setForceSave(false); setOpen(false); }
           });
         }}>
           <Field label={tc("name")}><Input name="name" required defaultValue={editing?.name ?? ""} /></Field>
@@ -259,7 +257,7 @@ export function CompaniesScreen({ rows, owners, canCreate, openNew }: { rows: Co
             <Select name="ownerId" defaultValue={editing?.ownerId}>{owners.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</Select>
           </Field>
           <div className="flex justify-between sm:col-span-2">
-            {editing?.canEdit ? <Button type="button" variant="destructive" onClick={() => void deleteCompanyAction(editing.id).then(() => { setOpen(false); router.refresh(); })}>{tc("delete")}</Button> : <span />}
+            {editing?.canEdit ? <Button type="button" variant="destructive" onClick={() => void deleteCompanyAction(editing.id).then(() => { setOpen(false); })}>{tc("delete")}</Button> : <span />}
             <Button type="submit">{tc("save")}</Button>
           </div>
         </form>
@@ -325,7 +323,7 @@ export function ActivitiesScreen({
                   <p className="text-xs text-muted-foreground">{t(item.type)} · {formatDateTime(item.dueAt, locale)}</p>
                   {item.dealTitle ? <Link href={`/deals/${item.dealId}`} className="text-xs text-primary">{item.dealTitle}</Link> : null}
                   <div className="mt-2">
-                    <Button size="sm" variant="outline" onClick={() => void completeActivityAction(item.id, "").then((result) => { if (!result.ok) toast.error(result.error); else router.refresh(); })}>{t("markDone")}</Button>
+                    <Button size="sm" variant="outline" onClick={() => void completeActivityAction(item.id, "").then((result) => { if (!result.ok) toast.error(result.error); })}>{t("markDone")}</Button>
                   </div>
                 </article>
               ))}
@@ -349,7 +347,7 @@ export function ActivitiesScreen({
             companyId: null,
           }).then((result) => {
             if (!result.ok) toast.error(result.error);
-            else { setOpen(false); router.refresh(); }
+            else { setOpen(false); }
           });
         }}>
           <Field label={t("type")}>
@@ -373,7 +371,6 @@ export function ActivitiesScreen({
 export function ProductsScreen({ products, tags, canCreate }: { products: Product[]; tags: { id: string; name: string; color: string }[]; canCreate: boolean }) {
   const t = useTranslations("products");
   const tc = useTranslations("common");
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const params = useSearchParams();
@@ -421,7 +418,7 @@ export function ProductsScreen({ products, tags, canCreate }: { products: Produc
             tagId: String(form.get("tagId") ?? ""),
           }).then((result) => {
             if (!result.ok) toast.error(result.error);
-            else { setOpen(false); router.refresh(); }
+            else { setOpen(false); }
           });
         }}>
           <Field label={tc("name")}><Input name="name" required defaultValue={editing?.name ?? ""} /></Field>
@@ -434,7 +431,7 @@ export function ProductsScreen({ products, tags, canCreate }: { products: Produc
             </Select>
           </Field>
           <div className="flex justify-between">
-            {editing ? <Button type="button" variant="destructive" onClick={() => void deleteProductAction(editing.id).then(() => { setOpen(false); router.refresh(); })}>{tc("delete")}</Button> : <span />}
+            {editing ? <Button type="button" variant="destructive" onClick={() => void deleteProductAction(editing.id).then(() => { setOpen(false); })}>{tc("delete")}</Button> : <span />}
             <Button type="submit">{tc("save")}</Button>
           </div>
         </form>

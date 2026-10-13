@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { addAttachmentAction, attachmentUrlAction, deleteAttachmentAction, signAttachmentUploadAction } from "@/lib/actions/phase9";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export type FileRow = { id: string; fileName: string; size: number; mime: string };
@@ -24,7 +23,6 @@ export function AttachmentsPanel({
 }) {
   const t = useTranslations("settings");
   const tc = useTranslations("common");
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
 
   async function onFile(file: File) {
@@ -62,7 +60,6 @@ export function AttachmentsPanel({
     setBusy(false);
     if (!saved.ok) return toast.error(saved.error);
     if (!signed.data.token) toast.message(t("demoFile"));
-    router.refresh();
   }
 
   return (
@@ -101,7 +98,7 @@ export function AttachmentsPanel({
                 {t("download")}
               </button>
               {canEdit ? (
-                <button type="button" className="text-destructive" onClick={() => void deleteAttachmentAction(file.id).then(() => router.refresh())}>
+                <button type="button" className="text-destructive" onClick={() => void deleteAttachmentAction(file.id)}>
                   {tc("delete")}
                 </button>
               ) : null}

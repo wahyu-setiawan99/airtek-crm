@@ -197,7 +197,6 @@ export function DealWorkspace({
     if (undo) {
       toast.success(message ?? t("saved"), { action: { label: t("undo"), onClick: () => void patch(undo) } });
     }
-    router.refresh();
     return true;
   }
 
@@ -206,7 +205,6 @@ export function DealWorkspace({
     const result = await action;
     setSaving(result.ok ? "saved" : "idle");
     if (!result.ok) toast.error(result.error ?? tc("error"));
-    else router.refresh();
     return result.ok;
   }
 
