@@ -1,12 +1,31 @@
+import { cookies } from "next/headers";
 import { getRequestConfig } from "next-intl/server";
-import { routing, type AppLocale } from "./routing";
+import { cache } from "react";
+import { LOCALE_COOKIE } from "@/lib/constants";
+import { getUserId } from "@/lib/session";
+import { isLocale, type AppLocale } from "./locale";
 
-export default getRequestConfig(async ({ requestLocale }) => {
-  const requested = await requestLocale;
-  const locale: AppLocale = routing.locales.includes(requested as AppLocale)
-    ? (requested as AppLocale)
-    : routing.defaultLocale;
+/** Logged-in language wins over the cookie. Guests use the cookie, then English. */
+const profileLocale = cache(async (): Promise<AppLocale | null> => {
+  const userId = await getUserId();
+  if (!userId) return null;
+  const { supabaseEnabled } = await import("@/lib/env");
+  if (supabaseEnabled) {
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+    if (!supabase) return null;
+    const { data } = await supabase.from("profiles").select("locale").eq("id", userId).maybeSingle();
+    return isLocale(data?.locale) ? data.locale : null;
+  }
+  const { readStore } = await import("@/lib/demo/store");
+  const locale = readStore().profiles.find((item) => item.id === userId)?.locale;
+  return isLocale(locale) ? locale : null;
+});
 
+export default getRequestConfig(async () => {
+  const fromProfile = await profileLocale();
+  const saved = (await cookies()).get(LOCALE_COOKIE)?.value;
+  const locale = fromProfile ?? (isLocale(saved) ? saved : "en");
   return {
     locale,
     messages: (await import(`../messages/${locale}.json`)).default,

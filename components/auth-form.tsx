@@ -5,8 +5,10 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { devLoginAction, forgotAction, loginAction, registerAction, resendConfirmationAction, resetAction } from "@/lib/actions/auth";
 import { DEMO_PASSWORD } from "@/lib/constants";
-import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
+import { LocaleSwitch } from "@/components/locale-switch";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/form";
@@ -48,9 +50,7 @@ export function AuthScreen({
   devAccounts?: readonly { email: string; role: string }[];
 }) {
   const t = useTranslations("auth");
-  const tc = useTranslations("common");
   const locale = useLocale();
-  const pathname = usePathname();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -143,15 +143,10 @@ export function AuthScreen({
       </section>
       <section className="relative grid place-items-center px-4 py-16">
         <div className="absolute right-4 top-4 flex items-center gap-2">
-          <Link
-            href={pathname}
-            locale={locale === "id" ? "en" : "id"}
-            aria-label={tc("language")}
-            className="inline-flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
+          <LocaleSwitch className="inline-flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground">
             <Languages className="h-3.5 w-3.5" />
             {locale === "id" ? "EN" : "ID"}
-          </Link>
+          </LocaleSwitch>
           <ThemeSwitch />
         </div>
         <div className="w-full max-w-md">

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { addAttachmentAction, attachmentUrlAction, deleteAttachmentAction, signAttachmentUploadAction } from "@/lib/actions/phase9";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export type FileRow = { id: string; fileName: string; size: number; mime: string };

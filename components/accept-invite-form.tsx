@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { acceptInviteAction } from "@/lib/actions/auth";
-import { Link, useRouter } from "@/i18n/navigation";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { BrandLogo } from "@/components/brand-logo";
 import { ThemeSwitch } from "@/components/theme-switch";

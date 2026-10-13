@@ -1,10 +1,11 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import { revalidatePath } from "next/cache";
 import { ActionError, type ActionResult } from "@/lib/action";
 import { cookieOptions, ORG_COOKIE, SESSION_COOKIE } from "@/lib/constants";
+import { clearSignedIn, markSignedIn } from "@/lib/session-flags";
 import { addMembership, provisionOrganization } from "@/lib/demo/onboarding";
 import { createId, mutateStore, readStore } from "@/lib/demo/store";
 import { DEV_ACCOUNTS, isBootstrapAdmin, isLocalDevSupabase, siteUrl, supabaseEnabled } from "@/lib/env";
@@ -48,6 +49,8 @@ export async function loginAction(input: unknown): Promise<ActionResult<{ next: 
       .eq("user_id", data.user.id)
       .order("created_at")
       .limit(5);
+    const { data: profileRow } = await supabase.from("profiles").select("locale").eq("id", data.user.id).maybeSingle();
+    await markSignedIn(typeof profileRow?.locale === "string" ? profileRow.locale : "en");
     const organizationId = memberships?.find((row) => !row.disabled_at)?.organization_id as string | undefined;
     if (!organizationId) {
       await setOrg("");
@@ -67,6 +70,7 @@ export async function loginAction(input: unknown): Promise<ActionResult<{ next: 
   if (!profile.email_confirmed) return { ok: false, error: t("emailNotConfirmed"), code: "unconfirmed" as const };
   const jar = await cookies();
   jar.set(SESSION_COOKIE, profile.id, cookieOptions);
+  await markSignedIn(profile.locale);
   const membership = store.memberships.find((item) => item.user_id === profile.id && !item.disabled_at);
   if (!membership) {
     revalidatePath("/", "layout");
@@ -113,7 +117,7 @@ async function registerWithSupabase(data: {
     email,
     password: data.password,
     options: {
-      emailRedirectTo: `${siteUrl()}/auth/callback?next=/id/onboarding`,
+      emailRedirectTo: `${siteUrl()}/auth/callback?next=/onboarding`,
       data: { full_name: data.fullName },
     },
   });
@@ -138,7 +142,7 @@ export async function resendConfirmationAction(email: string): Promise<ActionRes
     const { error } = await supabase.auth.resend({
       type: "signup",
       email: normalized,
-      options: { emailRedirectTo: `${siteUrl()}/auth/callback?next=/id/onboarding` },
+      options: { emailRedirectTo: `${siteUrl()}/auth/callback?next=/onboarding` },
     });
     if (error) return { ok: false, error: t("invalidInput") };
   }
@@ -190,6 +194,7 @@ export async function completeOnboardingAction(): Promise<ActionResult> {
 
     if (!organizationId) return { ok: false, error: t("inviteOnly") };
     await setOrg(organizationId);
+    await markSignedIn();
     revalidatePath("/", "layout");
     return { ok: true, data: null };
   } catch (error) {
@@ -239,7 +244,7 @@ export async function registerAction(input: unknown): Promise<ActionResult<{ sta
         full_name: parsed.data.fullName,
         avatar_url: null,
         phone: null,
-        locale: "id",
+        locale: "en",
         email,
         password: parsed.data.password,
         reset_token: null,
@@ -267,8 +272,7 @@ export async function forgotAction(input: unknown): Promise<ActionResult<string 
 
   if (supabaseEnabled) {
     const supabase = await requireSupabase();
-    const locale = await getLocale();
-    const next = encodeURIComponent(`/${locale}/reset-password`);
+    const next = encodeURIComponent("/reset-password");
     const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email.toLowerCase(), {
       redirectTo: `${siteUrl()}/auth/callback?next=${next}`,
     });
@@ -328,5 +332,6 @@ export async function logoutAction() {
   const jar = await cookies();
   jar.delete(SESSION_COOKIE);
   jar.delete(ORG_COOKIE);
+  await clearSignedIn();
   revalidatePath("/", "layout");
 }

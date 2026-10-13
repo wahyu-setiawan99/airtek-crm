@@ -114,7 +114,7 @@ async function main() {
   for (const account of ACCOUNTS) {
     const id = await ensureUser(admin, account.email, password, account.name);
     accountIds.set(account.key, id);
-    await admin.from("profiles").upsert({ id, full_name: account.name, email: account.email, locale: "id" });
+    await admin.from("profiles").upsert({ id, full_name: account.name, email: account.email, locale: "en" });
   }
 
   // 2. Sample data from the demo seed (demo organization only), people folded into the four logins.
@@ -178,7 +178,7 @@ async function main() {
   console.log(`\nOrganisasi: ${ORG_NAME}`);
   console.log(`Kata sandi semua akun: ${password === DEFAULT_PASSWORD ? `${DEFAULT_PASSWORD} (default, ubah via DEV_TEST_PASSWORD)` : "nilai DEV_TEST_PASSWORD"}`);
   for (const account of ACCOUNTS) console.log(`  ${account.role.padEnd(6)} ${account.email}`);
-  console.log("\nBuka http://localhost:3000/id/login → tombol \"Masuk cepat (dev)\" atau isi email di atas.");
+  console.log("\nBuka http://localhost:3000/login → tombol \"Masuk cepat (dev)\" atau isi email di atas.");
 }
 
 main().catch((error: unknown) => {

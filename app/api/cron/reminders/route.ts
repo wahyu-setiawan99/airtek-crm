@@ -48,7 +48,7 @@ async function sendDigest(messages: { email: string; name: string; overdue: numb
         from: "Airtek CRM <noreply@airtek.my.id>",
         to: message.email,
         subject: "Pengingat aktivitas Airtek CRM",
-        html: `<p>Halo ${message.name},</p><p>Aktivitas terlambat: <strong>${message.overdue}</strong>. Aktivitas hari ini: <strong>${message.today}</strong>.</p><p><a href="${siteUrl()}/id/activities">Buka aktivitas</a></p>`,
+        html: `<p>Halo ${message.name},</p><p>Aktivitas terlambat: <strong>${message.overdue}</strong>. Aktivitas hari ini: <strong>${message.today}</strong>.</p><p><a href="${siteUrl()}/activities">Buka aktivitas</a></p>`,
       }),
     });
     if (response.ok) sent += 1;

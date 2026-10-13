@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
-import { getLocale } from "next-intl/server";
 import { cache } from "react";
-import { redirect } from "@/i18n/navigation";
+import { redirect } from "next/navigation";
 import { ORG_COOKIE, SESSION_COOKIE } from "@/lib/constants";
 import { readStore } from "@/lib/demo/store";
 import { supabaseEnabled } from "@/lib/env";
@@ -87,15 +86,14 @@ export function sessionScope(session: Session): CommitScope {
 
 /** App pages. Onboarding is only for a signed-in user who still has no organization. */
 export async function requireSession(): Promise<Session> {
-  const locale = await getLocale();
   const userId = await getUserId();
   if (!userId) {
-    redirect({ href: "/login", locale });
+    redirect("/login");
     throw new Error("Unauthenticated");
   }
   const session = await getSession();
   if (!session) {
-    redirect({ href: "/onboarding", locale });
+    redirect("/onboarding");
     throw new Error("Unauthenticated");
   }
   return session;

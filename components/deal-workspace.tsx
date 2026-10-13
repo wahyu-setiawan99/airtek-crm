@@ -36,8 +36,9 @@ import {
   setDealContactRoleAction,
   updateDealAction,
 } from "@/lib/actions/crm";
-import { Link, useRouter } from "@/i18n/navigation";
-import type { AppLocale } from "@/i18n/routing";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { AppLocale } from "@/i18n/locale";
 import { CLIENT_TYPES, isClientType, type ClientType } from "@/lib/client-type";
 import { INDONESIA_PROVINCES } from "@/lib/provinces";
 import { daysUntil, formatCompact, formatDate, formatDateTime, formatRupiah } from "@/lib/format";
@@ -104,7 +105,6 @@ function PartyRow({
   companyId,
   companies,
   canEdit,
-  locale,
   empty,
   onSave,
 }: {
@@ -113,7 +113,6 @@ function PartyRow({
   companyId: string | null;
   companies: { id: string; name: string; clientType: ClientType }[];
   canEdit: boolean;
-  locale: string;
   empty: string;
   onSave: (companyId: string | null) => Promise<boolean>;
 }) {
@@ -125,7 +124,7 @@ function PartyRow({
           <InlineSelect value={companyId} options={options} canEdit={canEdit} onSave={onSave} />
         </div>
         {companyId ? (
-          <IconLink href={`/${locale}/companies/${companyId}`} label={label}>
+          <IconLink href={`/companies/${companyId}`} label={label}>
             <Building2 className="h-3.5 w-3.5" />
           </IconLink>
         ) : (
@@ -557,7 +556,6 @@ export function DealWorkspace({
                 companyId={deal.ownerCompanyId}
                 companies={deal.companies}
                 canEdit={deal.canEdit}
-                locale={locale}
                 empty={t("notSet")}
                 onSave={(ownerCompanyId) => patch({ ownerCompanyId })}
               />
@@ -567,7 +565,6 @@ export function DealWorkspace({
                 companyId={deal.consultantCompanyId}
                 companies={deal.companies}
                 canEdit={deal.canEdit}
-                locale={locale}
                 empty={t("notSet")}
                 onSave={(consultantCompanyId) => patch({ consultantCompanyId })}
               />
@@ -577,7 +574,6 @@ export function DealWorkspace({
                 companyId={deal.contractorCompanyId}
                 companies={deal.companies}
                 canEdit={deal.canEdit}
-                locale={locale}
                 empty={t("notSet")}
                 onSave={(contractorCompanyId) => patch({ contractorCompanyId })}
               />
@@ -694,7 +690,8 @@ export function DealWorkspace({
             </TabsContent>
 
             <TabsContent value="products" className="mt-3 overflow-hidden rounded-lg border bg-card">
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-sm">
                 <thead className="border-b bg-muted/50 text-xs text-muted-foreground">
                   <tr>
                     <th className="px-4 py-2 text-left font-medium">{t("products")}</th>
@@ -729,9 +726,10 @@ export function DealWorkspace({
                   ))}
                 </tbody>
               </table>
+              </div>
               {deal.canEdit && deal.catalog.length > 0 ? (
                 <form
-                  className="grid grid-cols-[minmax(0,1fr)_5rem_10rem_6rem_auto] items-center gap-2 border-t bg-muted/30 px-4 py-2.5"
+                  className="grid grid-cols-1 items-center gap-2 border-t bg-muted/30 px-4 py-2.5 sm:grid-cols-[minmax(0,1fr)_5rem_10rem_6rem_auto]"
                   onSubmit={(event) => {
                     event.preventDefault();
                     const form = event.currentTarget;

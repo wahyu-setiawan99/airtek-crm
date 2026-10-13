@@ -1,4 +1,4 @@
-import type { AppLocale } from "@/i18n/routing";
+import type { AppLocale } from "@/i18n/locale";
 
 export function formatRupiah(value: number) {
   const formatted = new Intl.NumberFormat("id-ID", {

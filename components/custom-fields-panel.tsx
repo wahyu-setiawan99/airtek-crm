@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { saveCustomValueAction } from "@/lib/actions/phase9";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "next/navigation";
 import { Input, Select } from "@/components/ui/form";
 
 export type ExtraField = {

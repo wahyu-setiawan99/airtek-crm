@@ -28,7 +28,7 @@ async function sendInviteEmail(input: { email: string; fullName: string; invitat
   if (!supabaseEnabled) return;
   const admin = createAdminClient();
   await admin.auth.admin.inviteUserByEmail(input.email, {
-    redirectTo: `${siteUrl()}/auth/callback?next=/id/accept-invite`,
+    redirectTo: `${siteUrl()}/auth/callback?next=/accept-invite`,
     data: {
       full_name: input.fullName,
       invitation_id: input.invitationId,

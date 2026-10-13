@@ -24,14 +24,14 @@
                 <p style="margin:0 0 8px;font-size:14px;">Setelah diterima, Anda dapat masuk melalui:</p>
                 <p style="margin:0 0 20px;font-size:14px;line-height:1.6;">
                   • Login: {{ .Email }}<br />
-                  • Tautan: {{ .SiteURL }}/id/login
+                  • Tautan: {{ .SiteURL }}/login
                 </p>
                 <p style="margin:0 0 24px;">
-                  <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/id/accept-invite" style="display:inline-block;background:#9a1b4b;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:6px;">Terima undangan</a>
+                  <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/accept-invite" style="display:inline-block;background:#9a1b4b;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:6px;">Terima undangan</a>
                 </p>
-                <p style="margin:0 0 20px;font-size:12px;line-height:1.5;color:#78716c;">Jika tombol tidak berfungsi, salin tautan berikut ke browser:<br /><a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/id/accept-invite" style="color:#9a1b4b;word-break:break-all;">{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/id/accept-invite</a></p>
+                <p style="margin:0 0 20px;font-size:12px;line-height:1.5;color:#78716c;">Jika tombol tidak berfungsi, salin tautan berikut ke browser:<br /><a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/accept-invite" style="color:#9a1b4b;word-break:break-all;">{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&amp;type=invite&amp;next=/accept-invite</a></p>
                 <p style="margin:0 0 8px;font-size:12px;line-height:1.5;color:#78716c;">Anda menerima email ini karena {{ .Data.invited_by }} dari {{ .Data.organization }} mengundang {{ .Email }} ke Airtek CRM. Jika Anda tidak merasa mengenal pengundang, abaikan email ini.</p>
-                <p style="margin:0;font-size:12px;color:#78716c;">Airtek CRM · PT. Airtek Solusi Nusantara · <a href="https://airtek.my.id/id" style="color:#78716c;">airtek.my.id</a></p>
+                <p style="margin:0;font-size:12px;color:#78716c;">Airtek CRM · PT. Airtek Solusi Nusantara · <a href="https://airtek.my.id/" style="color:#78716c;">airtek.my.id</a></p>
               </td>
             </tr>
           </table>

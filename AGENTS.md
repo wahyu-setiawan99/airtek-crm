@@ -10,7 +10,7 @@ User memberi **satu perintah yang sama** setiap sesi: *"Baca AGENTS.md dan lanju
 1. [x] **§15.0 Langkah 3** — Speed Insights + Analytics, ukur ulang, isi tabel §15.1.
 2. [x] **§16.1–16.2** — jenis klien Konsultan/Kontraktor/Owner (hapus "Industri") + pihak proyek di deal. *(butuh migration `0005`)*
 3. [x] **§16.3–16.4** — filter lintas sales di daftar Deal (pipeline, tahap, jenis klien, lokasi, target closing, nilai), badge "Milik {nama}", target sales per bulan, cek duplikat, lokasi proyek. *(migration `0006`)*
-4. [ ] **§19** — URL tanpa `/id`/`/en` (bahasa dari pengaturan, default English) + halaman depan statis di `/` (tombol Masuk / Buka Dashboard). Prioritas user: cepat, minim redirect, ringan.
+4. [x] **§19** — URL tanpa `/id`/`/en` (bahasa dari pengaturan, default English) + halaman depan statis di `/` (tombol Masuk / Buka Dashboard). *(migration `0007`: default `profiles.locale` = `en`)*
 5. [ ] **§13.8** — QA: Lighthouse desktop ≥ 90, aksesibilitas, nol hydration warning, uji alur lengkap di lokal.
 6. [ ] 🔒 **§14 Impor Odoo** — TERKUNCI sampai user menulis di chat bahwa direktur & semua sales sudah aktif di CRM.
 7. [ ] **§20 Mobile-friendly & PWA** — dasar sudah ada (manifest, ikon, service worker aset, safe area menu bawah); kerjakan sisanya per §20.2–20.6.

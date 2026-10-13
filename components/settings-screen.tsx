@@ -21,8 +21,9 @@ import {
 } from "@/lib/actions/crm";
 import { deleteCustomFieldAction, saveCustomFieldAction } from "@/lib/actions/phase9";
 import { MembersPanel } from "@/components/members-panel";
-import { Link, useRouter } from "@/i18n/navigation";
-import type { AppLocale } from "@/i18n/routing";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { AppLocale } from "@/i18n/locale";
 import { formatDateTime } from "@/lib/format";
 import type { Role } from "@/types/crm";
 import { Button } from "@/components/ui/button";
@@ -74,12 +75,11 @@ export function SettingsScreen({
   const tc = useTranslations("common");
   const router = useRouter();
 
-  async function done(result: { ok: boolean; error?: string }, localeChange?: AppLocale) {
+  async function done(result: { ok: boolean; error?: string }) {
     if (!result.ok) {
       toast.error(result.error ?? tc("error"));
       return;
     }
-    if (localeChange) router.push("/settings/profile", { locale: localeChange });
     router.refresh();
   }
 
@@ -104,7 +104,7 @@ export function SettingsScreen({
                 fullName: String(form.get("fullName")),
                 phone: String(form.get("phone")) || null,
                 locale: localeValue,
-              }).then((result) => done(result, localeValue));
+              }).then((result) => done(result));
             }}>
               <Field label={tc("name")}><Input name="fullName" required defaultValue={data.profile.fullName} /></Field>
               <Field label={tc("email")}><Input value={data.profile.email} disabled /></Field>
@@ -340,7 +340,7 @@ export function SettingsScreen({
           <div className="max-w-lg rounded-lg border border-destructive/30 p-4">
             <h2 className="text-sm font-semibold">{t("danger")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("dangerBody")}</p>
-            <Button className="mt-3" variant="destructive" onClick={() => void resetDemoAction().then(() => { window.location.href = "/id/login"; })}>{t("resetDemo")}</Button>
+            <Button className="mt-3" variant="destructive" onClick={() => void resetDemoAction().then(() => { window.location.href = "/login"; })}>{t("resetDemo")}</Button>
           </div>
         ) : null}
       </div>

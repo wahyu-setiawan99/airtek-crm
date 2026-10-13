@@ -29,13 +29,15 @@ import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { markNotificationsReadAction, switchOrgAction, updateThemeAction } from "@/lib/actions/crm";
-import { Link, usePathname, useRouter } from "@/i18n/navigation";
-import type { AppLocale } from "@/i18n/routing";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import type { AppLocale } from "@/i18n/locale";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { ShellData } from "@/types/view";
 import mark from "@/public/brand/airtek-mark.png";
 import { BrandLogo } from "@/components/brand-logo";
+import { LocaleSwitch } from "@/components/locale-switch";
 import { Button } from "@/components/ui/button";
 import { MenuContent, MenuItem, Menu, MenuTrigger } from "@/components/ui/dropdown";
 
@@ -284,14 +286,9 @@ export function AppShell({
                 ))}
               </MenuContent>
             </Menu>
-            <Link
-              href={pathname}
-              locale={locale === "id" ? "en" : "id"}
-              className="grid h-9 w-9 place-items-center rounded-md hover:bg-accent"
-              aria-label={tc("language")}
-            >
+            <LocaleSwitch className="grid h-9 w-9 place-items-center rounded-md hover:bg-accent">
               <Languages className="h-4 w-4" />
-            </Link>
+            </LocaleSwitch>
             <button
               type="button"
               onClick={toggleTheme}
@@ -321,10 +318,10 @@ export function AppShell({
             </Menu>
           </div>
         </header>
-        <main className="px-3 py-4 pb-24 md:px-6 md:pb-6">{children}</main>
+        <main className="px-3 py-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:px-6 md:pb-6">{children}</main>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-card md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-card pb-[env(safe-area-inset-bottom)] md:hidden">
         {[
           { href: "/dashboard", key: "dashboard" as const, icon: LayoutDashboard },
           { href: pipelineHref, key: "pipeline" as const, icon: Columns3 },
@@ -333,13 +330,13 @@ export function AppShell({
         ].map((item) => {
           const Icon = item.icon;
           return (
-            <Link key={item.key} href={item.href} className={cn("grid place-items-center gap-1 py-2 text-[10px]", active(item.key === "pipeline" ? "/pipelines" : item.href) && "text-primary")}>
+            <Link key={item.key} href={item.href} className={cn("grid min-h-14 place-items-center gap-1 py-2 text-[11px]", active(item.key === "pipeline" ? "/pipelines" : item.href) && "text-primary")}>
               <Icon className="h-4 w-4" />
               {t(item.key)}
             </Link>
           );
         })}
-        <button className="grid place-items-center gap-1 py-2 text-[10px]" onClick={() => setMore(true)}>
+        <button className="grid min-h-14 place-items-center gap-1 py-2 text-[11px]" onClick={() => setMore(true)}>
           <MenuIcon className="h-4 w-4" />
           {tc("all")}
         </button>

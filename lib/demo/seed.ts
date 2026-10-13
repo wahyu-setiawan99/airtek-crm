@@ -177,7 +177,7 @@ function profile(userId: string, fullName: string, email: string, phone: string)
     full_name: fullName,
     avatar_url: null,
     phone,
-    locale: "id",
+    locale: "en",
     email,
     password: DEMO_PASSWORD,
     reset_token: null,

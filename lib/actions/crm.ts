@@ -7,6 +7,7 @@ import { ActionError, runAction, touch } from "@/lib/action";
 import { isClientType, setParty, slotPrimaryCompany, type ClientType } from "@/lib/client-type";
 import { companyNamesSimilar, phonesMatch } from "@/lib/duplicates";
 import { cookieOptions, ORG_COOKIE } from "@/lib/constants";
+import { rememberLocale } from "@/lib/session-flags";
 import { subtotal } from "@/lib/domain";
 import { addMembership, duplicatePipeline } from "@/lib/demo/onboarding";
 import { resetStore, createId } from "@/lib/demo/store";
@@ -926,7 +927,7 @@ export async function deleteProductAction(productId: string) {
 
 export async function updateProfileAction(input: unknown) {
   const t = await getTranslations("settings");
-  return runAction(({ session, store }) => {
+  const result = await runAction(({ session, store }) => {
     const parsed = profileSchema.safeParse(input);
     if (!parsed.success) throw new ActionError(t("savedProfile"));
     const profile = store.profiles.find((item) => item.id === session.userId);
@@ -938,6 +939,8 @@ export async function updateProfileAction(input: unknown) {
     profile.updated_at = new Date().toISOString();
     return parsed.data.locale;
   });
+  if (result.ok && typeof result.data === "string") await rememberLocale(result.data);
+  return result;
 }
 
 export async function updateThemeAction(theme: "light" | "dark" | "system") {
@@ -1061,7 +1064,7 @@ export async function inviteMemberAction(input: unknown) {
     try {
       const admin = createAdminClient();
       await admin.auth.admin.inviteUserByEmail(result.data.email, {
-        redirectTo: `${siteUrl()}/auth/callback?next=/id/accept-invite`,
+        redirectTo: `${siteUrl()}/auth/callback?next=/accept-invite`,
         // Available to the Supabase invite email template as {{ .Data.<key> }} (AGENTS.md §12).
         data: {
           full_name: result.data.fullName ?? "",

@@ -3,8 +3,9 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Link, useRouter } from "@/i18n/navigation";
-import type { AppLocale } from "@/i18n/routing";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { AppLocale } from "@/i18n/locale";
 import { formatCompact, formatDate, formatMonth, formatRupiah } from "@/lib/format";
 import { cn, initials } from "@/lib/utils";
 import type { DashboardData } from "@/types/view";

@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { saveDealAction } from "@/lib/actions/crm";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "next/navigation";
 import type { BoardDeal, PipelineData } from "@/types/view";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
