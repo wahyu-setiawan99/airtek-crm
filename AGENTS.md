@@ -10,11 +10,12 @@ User memberi **satu perintah yang sama** setiap sesi: *"Baca AGENTS.md dan lanju
 1. [x] **§15.0 Langkah 3** — Speed Insights + Analytics, ukur ulang, isi tabel §15.1.
 2. [x] **§16.1–16.2** — jenis klien Konsultan/Kontraktor/Owner (hapus "Industri") + pihak proyek di deal. *(butuh migration `0005`)*
 3. [ ] **§16.3–16.4** — filter lintas sales di daftar Deal (pipeline, tahap, jenis klien, lokasi, target closing, nilai), badge "Milik {nama}", target sales per bulan, cek duplikat, lokasi proyek. *(kemungkinan migration `0006`)*
-4. [ ] **§13.8** — QA: Lighthouse desktop ≥ 90, aksesibilitas, nol hydration warning, uji alur lengkap di lokal.
-5. [ ] 🔒 **§14 Impor Odoo** — TERKUNCI sampai user menulis di chat bahwa direktur & semua sales sudah aktif di CRM.
-6. [ ] **§15.3, §15.5, §15.6, §15.7** — optimasi besar (query per halaman, revalidasi sempit, bundle, index). Setelah item 5, atau lebih dulu bila user meminta.
-7. [ ] **Fase 7 PWA** (§5).
-8. [ ] 🔒 **Fase 11 AI Gemini** (§17) — TERKUNCI sampai user memberikan `GEMINI_API_KEY` di Vercel/`.env.local`.
+4. [ ] **§19** — URL tanpa `/id`/`/en` (bahasa dari pengaturan, default English) + halaman depan statis di `/` (tombol Masuk / Buka Dashboard). Prioritas user: cepat, minim redirect, ringan.
+5. [ ] **§13.8** — QA: Lighthouse desktop ≥ 90, aksesibilitas, nol hydration warning, uji alur lengkap di lokal.
+6. [ ] 🔒 **§14 Impor Odoo** — TERKUNCI sampai user menulis di chat bahwa direktur & semua sales sudah aktif di CRM.
+7. [ ] **§15.3, §15.5, §15.6, §15.7** — optimasi besar (query per halaman, revalidasi sempit, bundle, index). Setelah item 6, atau lebih dulu bila user meminta.
+8. [ ] **Fase 7 PWA** (§5).
+9. [ ] 🔒 **Fase 11 AI Gemini** (§17) — TERKUNCI sampai user memberikan `GEMINI_API_KEY` di Vercel/`.env.local`.
 
 Saat item selesai: centang di sini **dan** di checklist fasenya (§5), perbarui status di §13 bila relevan.
 
@@ -820,4 +821,51 @@ Untuk Cursor/Claude/developer: database **lokal di Docker** (Supabase lokal), bi
 - `scripts/dev-seed.ts` **menolak** URL selain localhost — jangan dihapus pengamannya.
 - Jangan menyimpan kredensial produksi di repo, jangan membuat akun di Supabase produksi, jangan login ke `airtek.my.id` untuk testing.
 - Migration baru: tulis di `supabase/migrations/000N_*.sql`, uji dengan `pnpm db:reset` + `pnpm dev:seed`, baru minta user menjalankannya di produksi.
+
+## 19. URL Tanpa Locale, Bahasa dari Pengaturan, Halaman Depan Statis
+
+Keputusan user (13 Okt 2026): **website cepat, minim redirect, ringan.** (1) Tidak ada lagi `/id` atau `/en` di URL — bahasa diatur di Pengaturan, **default English**. (2) `https://airtek.my.id/` adalah **halaman depan statis** (bukan redirect ke login/dashboard) dengan tombol **Sign in** atau **Open dashboard** bila sesi masih aktif.
+
+### 19.1 Target redirect (wajib tercapai)
+
+| Buka | Hasil | Redirect |
+|---|---|---|
+| `https://airtek.my.id/` | halaman depan statis | **0** |
+| `http://airtek.my.id/`, `https://www.airtek.my.id/` | → `https://airtek.my.id/` (Vercel, tidak bisa dihilangkan) | 1 |
+| `/login` (belum login) / `/dashboard` (sudah login) | tampil langsung | **0** |
+| `/dashboard` atau halaman app lain (belum login) | → `/login?next=/dashboard` | 1 |
+| `/login`, `/register`, `/forgot-password` (sudah login) | → `/dashboard` | 1 |
+| URL lama `/id/...` atau `/en/...` (bookmark, email lama) | → path yang sama tanpa prefix (308) + simpan cookie bahasa | 1 |
+
+### 19.2 Bahasa tanpa routing (next-intl "without i18n routing")
+- Pindahkan semua route dari `app/[locale]/...` ke `app/...` (grup `(app)`, `(auth)`, `onboarding`, `accept-invite`, `not-found` tetap). Hapus segmen `[locale]`, `generateStaticParams` locale, dan `setRequestLocale`.
+- `i18n/request.ts` menentukan bahasa per request dengan urutan: **`profiles.locale`** (user login) → cookie **`NEXT_LOCALE`** → default **`en`**. Tidak ada deteksi `Accept-Language` (user minta default English).
+- Ganti `Link`/`redirect`/`useRouter`/`usePathname` dari `@/i18n/navigation` dengan versi `next/link` & `next/navigation`; hapus `i18n/routing.ts` & `createMiddleware` next-intl.
+- **Pengaturan → Profil → Bahasa** (English / Bahasa Indonesia): server action menyimpan `profiles.locale` **dan** cookie `NEXT_LOCALE` (1 tahun), lalu `router.refresh()` — tanpa navigasi ke URL lain.
+- Halaman login/register/landing: tombol bahasa kecil (EN | ID) yang hanya mengubah cookie `NEXT_LOCALE` + refresh (pengganti tombol bahasa sign-in dari commit `8a0c7ca`).
+- Migration baru: `alter table public.profiles alter column locale set default 'en';` (baris lama tidak diubah — user yang sudah memilih ID tetap ID). Sesuaikan `provisionOrganization`/seed agar user baru `locale = 'en'`.
+- `<html lang>` mengikuti bahasa aktif; format tanggal/uang (`lib/format.ts`) mengikuti bahasa aktif (Rupiah tetap).
+
+### 19.3 Halaman depan statis `/`
+- `app/page.tsx` **statis penuh** (`export const dynamic = "force-static"`, tanpa `cookies()`/`headers()`/query DB) → disajikan dari CDN Vercel, tanpa middleware.
+- Isi ringkas & ringan: logo Airtek, judul (EN default, ID via cookie di client — atau teks EN saja + tombol bahasa), 1–2 kalimat nilai CRM, satu tombol utama, footer "PT. Airtek Solusi Nusantara". Tanpa gambar besar, tanpa library grafik, JS seminimal mungkin (satu komponen client kecil untuk tombol).
+- Tombol: default **Sign in** → `/login`. Bila browser punya cookie penanda sesi (lihat 19.4) → **Open dashboard** → `/dashboard` (prefetch saat hover). Bila sesi ternyata sudah kedaluwarsa, middleware mengarahkan `/dashboard` → `/login` (1 redirect, dapat diterima).
+- Tidak ada redirect otomatis dari `/`.
+
+### 19.4 Penanda sesi ringan (tanpa query di halaman depan)
+- Saat login sukses (semua jalur: password, undangan, onboarding, dev quick login): set cookie **`airtek_signed_in=1`** (bukan httpOnly, tanpa data rahasia, `SameSite=Lax`, `Secure`, umur = umur sesi). Hapus saat logout/sign-out/hapus akun.
+- Halaman depan membaca cookie ini di client (`document.cookie`) hanya untuk memilih label/tujuan tombol. Keamanan tetap di middleware & server (cookie ini bukan bukti login).
+
+### 19.5 Middleware & link
+- `middleware.ts` hanya untuk halaman app & auth: matcher mengecualikan `/` (landing), `/_next`, `/api`, `/auth`, aset bertitik, `/brand`. Tidak ada lagi logika locale kecuali **redirect 308 URL lama `/id|/en/...`** ke path tanpa prefix (+ set `NEXT_LOCALE`).
+- Cek login tetap `getClaims()` (§15.0 Langkah 2), hanya untuk path yang butuh keputusan (app = wajib login; `/login`,`/register`,`/forgot-password` = kirim ke dashboard bila sudah login). `/reset-password`, `/accept-invite` publik tanpa cek.
+- Ganti semua path ber-prefix di kode: `/auth/callback` default & error (`/id/onboarding`, `/id/login`), `/auth/sign-out`, `/auth/onboarding`, `next=` di `inviteMemberAction`/`forgotAction`/`resendConfirmation`, cron email (`https://airtek.my.id/activities`), notifikasi `href`, `revalidatePath`.
+- **Template email** (`supabase/templates/*.html`): `next=/accept-invite`, `next=/onboarding`, `next=/reset-password`. ⚠️ Ini kondisi berhenti: user harus menempel ulang 3 template di Supabase → Email Templates (link lama `/id/...` tetap jalan berkat redirect 308).
+- Supabase Redirect URLs tidak berubah (tetap `/auth/callback`).
+
+### 19.6 Uji & definisi selesai
+- Lokal (§18) sebagai belum login dan `sales1`: `/` = 0 redirect & tombol benar; `/dashboard` belum login = 1 redirect; `/id/login` lama = 1 redirect ke `/login`; ganti bahasa di Pengaturan → teks berubah tanpa URL berubah; login page EN default, toggle ID bekerja; undangan (Mailpit), onboarding Boss, reset password, cron 401 tetap jalan.
+- `curl -sL -o /dev/null -w "%{num_redirects} %{time_total}
+"` untuk tabel 19.1 di produksi setelah deploy; catat di §15.1.
+- Lighthouse desktop halaman depan ≥ 95 (statis), halaman login ≥ 90.
 
