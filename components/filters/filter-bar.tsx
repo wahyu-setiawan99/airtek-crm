@@ -1,6 +1,9 @@
 "use client";
 
+import * as Popover from "@radix-ui/react-popover";
+import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/form";
@@ -94,137 +97,178 @@ export function FilterBar({
     else onChange({ ...values, [key]: "" });
   }
 
+  const secondary = new Set(["party", "project", "priority", "value", "city", "condition", "close", "created"]);
+  const hasMore = extras.some((item) => secondary.has(item));
+  const moreCount = [values.party, values.project, values.priority, values.valueMin || values.valueMax, values.city, values.condition, values.closeFrom || values.closeTo, values.createdFrom || values.createdTo].filter(Boolean).length;
+  const [more, setMore] = useState(moreCount > 0);
+  const ownerLabel = (owner: { id: string; name: string }) => (owner.id === meId ? `${owner.name} (${t("myDeals")})` : owner.name);
+
   return (
     <div className="grid gap-2">
       <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
-        <Input className="md:max-w-xs" value={values.q ?? ""} placeholder={t("search")} aria-label={t("search")} onChange={(event) => onChange({ ...values, q: event.target.value })} />
+        <Input className="md:w-60" value={values.q ?? ""} placeholder={t("search")} aria-label={t("search")} onChange={(event) => onChange({ ...values, q: event.target.value })} />
         {owners.length > 0 && multiOwner ? (
-          <fieldset className="flex max-w-xl flex-wrap gap-x-3 gap-y-1">
-            {owners.map((owner) => (
-              <label key={owner.id} className="flex items-center gap-1.5 text-sm">
-                <input
-                  type="checkbox"
-                  checked={ownerIds.includes(owner.id)}
-                  onChange={(event) => {
-                    const next = event.target.checked ? [...ownerIds, owner.id] : ownerIds.filter((id) => id !== owner.id);
-                    onChange({ ...values, owner: next.join(",") });
-                  }}
-                />
-                {owner.id === meId ? `${owner.name} (${t("myDeals")})` : owner.name}
-              </label>
-            ))}
-          </fieldset>
+          <MultiPick
+            label={t("owner")}
+            options={owners.map((owner) => ({ id: owner.id, name: ownerLabel(owner) }))}
+            selected={ownerIds}
+            onChange={(next) => onChange({ ...values, owner: next.join(",") })}
+          />
         ) : owners.length > 0 ? (
-          <Select aria-label={t("owner")} value={values.owner ?? ""} onChange={(event) => onChange({ ...values, owner: event.target.value })}>
-            <option value="">{t("all")}</option>
+          <Select className="md:w-44" aria-label={t("owner")} value={values.owner ?? ""} onChange={(event) => onChange({ ...values, owner: event.target.value })}>
+            <option value="">{t("owner")}: {t("all")}</option>
             {owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
           </Select>
         ) : null}
-        {tags.length > 0 ? (
-          <Select aria-label={t("tags")} value={values.tag ?? ""} onChange={(event) => onChange({ ...values, tag: event.target.value })}>
-            <option value="">{t("tags")}</option>
-            {tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
-          </Select>
-        ) : null}
-        {statuses.length > 0 ? (
-          <Select aria-label={t("status")} value={values.status ?? ""} onChange={(event) => onChange({ ...values, status: event.target.value })}>
-            <option value="">{t("status")}</option>
-            {statuses.map((status) => <option key={status.id} value={status.id}>{status.name}</option>)}
-          </Select>
-        ) : null}
         {pipelines.length > 0 ? (
-          <Select aria-label={t("pipeline")} value={values.pipeline ?? ""} onChange={(event) => onChange({ ...values, pipeline: event.target.value })}>
+          <Select className="md:w-40" aria-label={t("pipeline")} value={values.pipeline ?? ""} onChange={(event) => onChange({ ...values, pipeline: event.target.value })}>
             <option value="">{t("pipeline")}</option>
             {pipelines.map((pipeline) => <option key={pipeline.id} value={pipeline.id}>{pipeline.name}</option>)}
           </Select>
         ) : null}
         {stages.length > 0 ? (
-          <details className="rounded-md border px-2 py-1 text-sm">
-            <summary className="cursor-pointer">{t("stage")}</summary>
-            <div className="mt-1 grid max-h-40 gap-1 overflow-auto">
-              {stages.map((stage) => (
-                <label key={stage.id} className="flex items-center gap-1.5">
-                  <input
-                    type="checkbox"
-                    checked={stageIds.includes(stage.id)}
-                    onChange={(event) => {
-                      const next = event.target.checked ? [...stageIds, stage.id] : stageIds.filter((id) => id !== stage.id);
-                      onChange({ ...values, stage: next.join(",") });
-                    }}
-                  />
-                  {stage.name}
-                </label>
-              ))}
-            </div>
-          </details>
+          <MultiPick label={t("stage")} options={stages} selected={stageIds} onChange={(next) => onChange({ ...values, stage: next.join(",") })} />
         ) : null}
-        {extras.includes("party") ? (
-          <Input className="md:max-w-40" value={values.party ?? ""} placeholder={t("party")} aria-label={t("party")} onChange={(event) => onChange({ ...values, party: event.target.value })} />
-        ) : null}
-        {extras.includes("project") ? (
-          <Input className="md:max-w-40" value={values.project ?? ""} placeholder={t("projectLocation")} aria-label={t("projectLocation")} onChange={(event) => onChange({ ...values, project: event.target.value })} />
-        ) : null}
-        {extras.includes("priority") ? (
-          <Select aria-label={t("priority")} value={values.priority ?? ""} onChange={(event) => onChange({ ...values, priority: event.target.value })}>
-            <option value="">{t("priority")}</option>
-            {["0", "1", "2", "3"].map((level) => <option key={level} value={level}>{level}</option>)}
+        {tags.length > 0 ? (
+          <Select className="md:w-36" aria-label={t("tags")} value={values.tag ?? ""} onChange={(event) => onChange({ ...values, tag: event.target.value })}>
+            <option value="">{t("tags")}</option>
+            {tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
           </Select>
         ) : null}
-        {extras.includes("value") ? (
-          <>
-            <Input className="md:max-w-32" type="number" min={0} value={values.valueMin ?? ""} placeholder={t("valueMin")} aria-label={t("valueMin")} onChange={(event) => onChange({ ...values, valueMin: event.target.value })} />
-            <Input className="md:max-w-32" type="number" min={0} value={values.valueMax ?? ""} placeholder={t("valueMax")} aria-label={t("valueMax")} onChange={(event) => onChange({ ...values, valueMax: event.target.value })} />
-          </>
-        ) : null}
-        {extras.includes("city") ? (
-          <Input className="md:max-w-40" value={values.city ?? ""} placeholder={t("city")} aria-label={t("city")} onChange={(event) => onChange({ ...values, city: event.target.value })} />
+        {statuses.length > 0 ? (
+          <Select className="md:w-32" aria-label={t("status")} value={values.status ?? ""} onChange={(event) => onChange({ ...values, status: event.target.value })}>
+            <option value="">{t("status")}</option>
+            {statuses.map((status) => <option key={status.id} value={status.id}>{status.name}</option>)}
+          </Select>
         ) : null}
         {extras.includes("client") ? (
-          <Select aria-label={tk("clientType")} value={values.client ?? ""} onChange={(event) => onChange({ ...values, client: event.target.value })}>
+          <Select className="md:w-40" aria-label={tk("clientType")} value={values.client ?? ""} onChange={(event) => onChange({ ...values, client: event.target.value })}>
             <option value="">{tk("clientType")}</option>
             <option value="konsultan">{tk("types.konsultan")}</option>
             <option value="kontraktor">{tk("types.kontraktor")}</option>
             <option value="owner">{tk("types.owner")}</option>
           </Select>
         ) : null}
-        {extras.includes("condition") ? (
-          <Select aria-label={t("condition")} value={values.condition ?? ""} onChange={(event) => onChange({ ...values, condition: event.target.value })}>
-            <option value="">{t("condition")}</option>
-            <option value="overdue">{t("overdue")}</option>
-            <option value="none">{t("noActivity")}</option>
-            <option value="rotting">{t("rotting")}</option>
-          </Select>
-        ) : null}
-        {extras.includes("close") ? (
-          <>
-            <Input type="date" value={values.closeFrom ?? ""} aria-label={t("closeFrom")} onChange={(event) => onChange({ ...values, closeFrom: event.target.value })} />
-            <Input type="date" value={values.closeTo ?? ""} aria-label={t("closeTo")} onChange={(event) => onChange({ ...values, closeTo: event.target.value })} />
-          </>
-        ) : null}
-        {extras.includes("created") ? (
-          <>
-            <Input type="date" value={values.createdFrom ?? ""} aria-label={t("createdFrom")} onChange={(event) => onChange({ ...values, createdFrom: event.target.value })} />
-            <Input type="date" value={values.createdTo ?? ""} aria-label={t("createdTo")} onChange={(event) => onChange({ ...values, createdTo: event.target.value })} />
-          </>
-        ) : null}
         {showMine ? (
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex h-10 items-center gap-2 px-1 text-sm">
             <input type="checkbox" checked={Boolean(values.mine)} onChange={(event) => onChange({ ...values, mine: event.target.checked })} />
             {t("myDeals")}
           </label>
         ) : null}
-        {chips.length > 0 ? <Button type="button" size="sm" variant="ghost" onClick={() => onChange({})}>{t("reset")}</Button> : null}
+        {hasMore ? (
+          <Button type="button" variant="outline" className="h-10" aria-expanded={more} onClick={() => setMore((current) => !current)}>
+            <SlidersHorizontal className="h-4 w-4" />
+            {t("moreFilters")}
+            {moreCount > 0 ? <span className="rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">{moreCount}</span> : null}
+          </Button>
+        ) : null}
+        {chips.length > 0 ? <Button type="button" variant="ghost" className="h-10" onClick={() => onChange({})}>{t("reset")}</Button> : null}
       </div>
+      {hasMore && more ? (
+        <div className="grid gap-3 rounded-lg border bg-card/60 p-3 sm:grid-cols-2 lg:grid-cols-4">
+          {extras.includes("party") ? (
+            <Labeled label={t("party")}><Input value={values.party ?? ""} onChange={(event) => onChange({ ...values, party: event.target.value })} /></Labeled>
+          ) : null}
+          {extras.includes("project") ? (
+            <Labeled label={t("projectLocation")}><Input value={values.project ?? ""} onChange={(event) => onChange({ ...values, project: event.target.value })} /></Labeled>
+          ) : null}
+          {extras.includes("city") ? (
+            <Labeled label={t("city")}><Input value={values.city ?? ""} onChange={(event) => onChange({ ...values, city: event.target.value })} /></Labeled>
+          ) : null}
+          {extras.includes("priority") ? (
+            <Labeled label={t("priority")}>
+              <Select value={values.priority ?? ""} onChange={(event) => onChange({ ...values, priority: event.target.value })}>
+                <option value="">{t("all")}</option>
+                {["0", "1", "2", "3"].map((level) => <option key={level} value={level}>{"★".repeat(Number(level)) || "0"}</option>)}
+              </Select>
+            </Labeled>
+          ) : null}
+          {extras.includes("condition") ? (
+            <Labeled label={t("condition")}>
+              <Select value={values.condition ?? ""} onChange={(event) => onChange({ ...values, condition: event.target.value })}>
+                <option value="">{t("all")}</option>
+                <option value="overdue">{t("overdue")}</option>
+                <option value="none">{t("noActivity")}</option>
+                <option value="rotting">{t("rotting")}</option>
+              </Select>
+            </Labeled>
+          ) : null}
+          {extras.includes("value") ? (
+            <>
+              <Labeled label={t("valueMin")}><Input type="number" min={0} value={values.valueMin ?? ""} onChange={(event) => onChange({ ...values, valueMin: event.target.value })} /></Labeled>
+              <Labeled label={t("valueMax")}><Input type="number" min={0} value={values.valueMax ?? ""} onChange={(event) => onChange({ ...values, valueMax: event.target.value })} /></Labeled>
+            </>
+          ) : null}
+          {extras.includes("close") ? (
+            <>
+              <Labeled label={t("closeFrom")}><Input type="date" value={values.closeFrom ?? ""} onChange={(event) => onChange({ ...values, closeFrom: event.target.value })} /></Labeled>
+              <Labeled label={t("closeTo")}><Input type="date" value={values.closeTo ?? ""} onChange={(event) => onChange({ ...values, closeTo: event.target.value })} /></Labeled>
+            </>
+          ) : null}
+          {extras.includes("created") ? (
+            <>
+              <Labeled label={t("createdFrom")}><Input type="date" value={values.createdFrom ?? ""} onChange={(event) => onChange({ ...values, createdFrom: event.target.value })} /></Labeled>
+              <Labeled label={t("createdTo")}><Input type="date" value={values.createdTo ?? ""} onChange={(event) => onChange({ ...values, createdTo: event.target.value })} /></Labeled>
+            </>
+          ) : null}
+        </div>
+      ) : null}
       {chips.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {chips.map((chip) => (
-            <button key={chip.key} type="button" className="rounded-full bg-accent px-2 py-1 text-xs" onClick={() => clear(chip.key)}>
+            <button key={chip.key} type="button" className="rounded-full bg-accent px-2.5 py-1 text-xs text-accent-foreground" onClick={() => clear(chip.key)}>
               {chip.label} ×
             </button>
           ))}
         </div>
       ) : null}
     </div>
+  );
+}
+
+function Labeled({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+      {label}
+      {children}
+    </label>
+  );
+}
+
+/** Compact multi-select: a select-looking button that opens a checkbox list. */
+function MultiPick({
+  label,
+  options,
+  selected,
+  onChange,
+}: {
+  label: string;
+  options: { id: string; name: string }[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const summary = selected.length === 0 ? label : selected.length === 1 ? options.find((item) => item.id === selected[0])?.name ?? label : `${label} (${selected.length})`;
+  return (
+    <Popover.Root>
+      <Popover.Trigger className="flex h-10 w-full items-center justify-between gap-2 rounded-md border bg-card px-3 text-sm shadow-sm md:w-48">
+        <span className={selected.length === 0 ? "truncate text-muted-foreground" : "truncate"}>{summary}</span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content align="start" sideOffset={6} className="z-50 grid max-h-72 min-w-56 gap-0.5 overflow-auto rounded-md border bg-popover p-1.5 text-sm text-popover-foreground shadow-lg">
+          {options.map((option) => (
+            <label key={option.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-accent">
+              <input
+                type="checkbox"
+                checked={selected.includes(option.id)}
+                onChange={(event) => onChange(event.target.checked ? [...selected, option.id] : selected.filter((id) => id !== option.id))}
+              />
+              {option.name}
+            </label>
+          ))}
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
 
