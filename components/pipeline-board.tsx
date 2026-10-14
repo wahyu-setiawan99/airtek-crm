@@ -182,7 +182,7 @@ export function PipelineBoard({
               {t(item)}
             </Button>
           ))}
-          {data.me.canCreate ? <Button size="sm" onClick={() => setCreating(true)}><Plus className="h-4 w-4" />{t("addDeal")}</Button> : null}
+          {data.me.canCreate ? <Button size="sm" onClick={() => setCreating(true)}><Plus className="h-4 w-4" />{t("addDealIn", { pipeline: data.pipeline.name })}</Button> : null}
         </div>
       </div>
 

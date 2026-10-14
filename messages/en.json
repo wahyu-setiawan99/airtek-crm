@@ -216,7 +216,11 @@
     "legendRotting": "Rotting",
     "drag": "Drag deal",
     "noClose": "No close date",
-    "showMore": "Show {count} more"
+    "showMore": "Show {count} more",
+    "addDealIn": "New {pipeline} deal",
+    "editDealIn": "Edit {pipeline} deal",
+    "salesFormHint": "{pipeline} pipeline · projects with a contractor and owner",
+    "presalesFormHint": "{pipeline} pipeline · projects with a consultant and owner"
   },
   "deals": {
     "title": "Deals",

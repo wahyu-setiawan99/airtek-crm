@@ -20,7 +20,7 @@ export default async function DashboardPage({
   const session = await requireSession();
   const period = parsePeriod(query);
   const data = await withStore(TABLES, (store) => {
-    const pipeline = query.pipeline ?? defaultPipelineId(store, session.organizationId) ?? "all";
+    const pipeline = query.pipeline ?? defaultPipelineId(store, session.organizationId, session.role) ?? "all";
     return buildDashboard(store, session, pipeline, period);
   });
   return <DashboardView data={data} locale={locale as AppLocale} />;

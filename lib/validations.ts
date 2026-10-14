@@ -140,7 +140,7 @@ export const organizationSchema = z.object({
 export const inviteSchema = z.object({
   email: z.email(),
   fullName: z.string().trim().min(2).max(80),
-  role: z.enum(["admin", "sales"]),
+  role: z.enum(["admin", "sales", "presales"]),
   teamId: z.string().nullable(),
 });
 

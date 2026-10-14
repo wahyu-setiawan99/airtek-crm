@@ -76,7 +76,10 @@ export function DealDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} title={deal ? tc("edit") : tp("addDeal")} wide>
+    <Dialog open={open} onOpenChange={onOpenChange} title={tp(deal ? "editDealIn" : "addDealIn", { pipeline: data.pipeline.name })}
+      description={tp(isSales ? "salesFormHint" : "presalesFormHint", { pipeline: data.pipeline.name })}
+      wide
+    >
       <form
         onSubmit={(event) => {
           // Not a form action: a failed save must keep what the user typed.

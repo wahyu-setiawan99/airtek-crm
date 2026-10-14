@@ -4,7 +4,7 @@ import { inPeriodFilter, periodMonthKeys, type PeriodFilter } from "@/lib/period
 import { canEditOwned, canManage, canWrite } from "@/lib/permissions";
 import type { Session } from "@/lib/session";
 import { contactName } from "@/lib/utils";
-import type { Store } from "@/types/crm";
+import type { Role, Store } from "@/types/crm";
 import { pipelineKind } from "@/lib/client-type";
 import type {
   ActivityRow,
@@ -165,13 +165,7 @@ function presalesOptions(store: Store, organizationId: string): PresalesOption[]
 
 export function buildShell(store: Store, session: Session): ShellData {
   const orgId = session.organizationId;
-  const pipelines = store.pipelines
-    .filter((item) => item.organization_id === orgId && !item.archived)
-    .sort((a, b) => a.position - b.position);
-  const defaultPipeline = pipelines.find((item) => item.is_default) ?? pipelines[0];
-  const homePipeline = session.role === "presales"
-    ? pipelines.find((item) => item.name === "Presales") ?? defaultPipeline
-    : defaultPipeline;
+  const homePipelineId = defaultPipelineId(store, orgId, session.role);
   return {
     user: {
       id: session.userId,
@@ -185,7 +179,7 @@ export function buildShell(store: Store, session: Session): ShellData {
       .map((item) => store.organizations.find((org) => org.id === item.organization_id))
       .filter((org): org is NonNullable<typeof org> => Boolean(org))
       .map((org) => ({ id: org.id, name: org.name })),
-    pipelineId: homePipeline?.id ?? null,
+    pipelineId: homePipelineId,
     notifications: store.notifications
       .filter((item) => item.user_id === session.userId && item.organization_id === orgId)
       .sort((a, b) => b.created_at.localeCompare(a.created_at))
@@ -272,9 +266,18 @@ export function buildPipeline(store: Store, session: Session, pipelineId: string
   };
 }
 
-export function defaultPipelineId(store: Store, organizationId: string) {
-  const pipelines = store.pipelines.filter((item) => item.organization_id === organizationId && !item.archived);
-  return (pipelines.find((item) => item.is_default) ?? pipelines[0])?.id ?? null;
+/**
+ * The pipeline a person lands on: Presales accounts open the Presales pipeline, Sales accounts
+ * a Sales pipeline, everyone else the organization default (user decision 14 Oct 2026).
+ */
+export function defaultPipelineId(store: Store, organizationId: string, role?: Role) {
+  const pipelines = store.pipelines
+    .filter((item) => item.organization_id === organizationId && !item.archived)
+    .sort((a, b) => a.position - b.position);
+  const fallback = pipelines.find((item) => item.is_default) ?? pipelines[0];
+  const want = role === "presales" ? "presales" : role === "sales" ? "sales" : null;
+  if (!want || (fallback && pipelineKind(fallback.name) === want)) return fallback?.id ?? null;
+  return (pipelines.find((item) => pipelineKind(item.name) === want) ?? fallback)?.id ?? null;
 }
 
 function targetFor(store: Store, organizationId: string, userId: string, period: PeriodFilter) {

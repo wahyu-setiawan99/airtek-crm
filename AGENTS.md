@@ -15,7 +15,7 @@ User memberi **satu perintah yang sama** setiap sesi: *"Baca AGENTS.md dan lanju
 6. [ ] 🔒 **§14 Impor Odoo** — TERKUNCI sampai user menulis di chat bahwa direktur & semua sales sudah aktif di CRM.
 7. [x] **§20 Mobile-friendly & PWA** — selesai 13 Okt 2026 (kecuali 🔒 web push). Sisa: user mencoba pasang di HP Android & iPhone lalu melapor.
 8. [x] **§15.3, §15.5, §15.6, §15.7** — optimasi besar selesai 13 Okt 2026 (hasil di §15.9). Migration `0008` & `0009` sudah dijalankan user di produksi (13 Okt 2026).
-   - ⚠️ 14 Okt 2026: produksi ternyata tidak punya `deals.description` & `profiles.email` (isi `0002` tidak pernah lengkap) → `0011_repair_server_writes.sql`. Menunggu user menjalankan **0010, 0011, 0012**. Cek skema produksi: bandingkan kolom tiap tabel lokal vs `GET /rest/v1/<tabel>?select=<kolom>&limit=0` dengan anon key (kolom hilang → error 42703).
+   - ⚠️ 14 Okt 2026: produksi ternyata tidak punya `deals.description` & `profiles.email` (isi `0002` tidak pernah lengkap) → `0011_repair_server_writes.sql`. 0010 sudah dijalankan; menunggu user menjalankan **0011, 0012** (commit lokal belum di-push sampai user membalas). Cek skema produksi: bandingkan kolom tiap tabel lokal vs `GET /rest/v1/<tabel>?select=<kolom>&limit=0` dengan anon key (kolom hilang → error 42703).
 9. [ ] 🔒 **Fase 11 AI Gemini** (§17) — TERKUNCI sampai user memberikan `GEMINI_API_KEY` di Vercel/`.env.local`.
 
 Saat item selesai: centang di sini **dan** di checklist fasenya (§5), perbarui status di §13 bila relevan.
@@ -404,7 +404,7 @@ Langkah deploy:
   1. **Boss** = `owner` = main administrator (`BOOTSTRAP_ADMIN_EMAIL`). Akses penuh dan **tersembunyi**: tidak muncul di daftar anggota, pilihan salesperson, maupun Performa Sales bagi non-owner (`orgPeople()` di `lib/queries.ts`). Hanya owner yang bisa mengubah/mengeluarkan baris owner atau memberi role owner.
   2. **Administrator** = `admin` (direktur). Bisa semua hal termasuk mengundang & mengatur sales. Boss menaikkan seseorang ke Administrator di Pengaturan → Anggota.
   3. **Sales** = `sales`, diundang via email oleh Administrator/Boss.
-  - Form undangan dan pemilih role hanya menawarkan Administrator & Sales. Role `manager`/`presales`/`viewer` masih ada di DB/izin tapi tidak ditawarkan di UI.
+  - Form undangan dan pemilih role menawarkan **Administrator, Sales, Presales** (Presales ditambahkan atas keputusan user 14 Okt 2026). Role `manager`/`viewer` masih ada di DB/izin tapi tidak ditawarkan di UI.
 - Hanya `owner`/`admin` yang bisa mengundang (Pengaturan → Anggota → **Undang anggota**).
 - Form: **Email**, **Nama lengkap**, **Role**, **Tim** (opsional).
 - Role yang bisa dipilih:
@@ -441,7 +441,8 @@ Langkah deploy:
 - **Pihak proyek per pipeline** (keputusan user 14 Okt 2026): **Presales = Konsultan + Owner**, **Sales = Kontraktor + Owner** (`PIPELINE_PARTIES` di `lib/client-type.ts`, pipeline dikenali dari nama "Presales"). Pilihan perusahaan di form deal & quick-add difilter sesuai pipeline; detail deal hanya menampilkan baris pihak pipeline itu (pihak lain yang sudah terisi tetap terlihat); server menolak pihak yang tidak sesuai (`common.partyNotAllowed`).
 - Pipeline custom tetap bisa ditambah di Pengaturan → Pipeline; tambahkan tombol **Duplikat pipeline** (salin stage).
 - Aksi **Kirim ke pipeline Sales** di detail deal Presales: pindah ke stage pertama pipeline Sales, catat riwayat, opsional ganti salesperson.
-- Pipeline default per role: `presales` → Presales, lainnya → Sales.
+- Pipeline default per role (`defaultPipelineId(store, org, role)` di `lib/queries.ts`, dipakai menu Pipeline, `/pipelines`, dashboard): `presales` → pipeline jenis Presales, `sales` → pipeline jenis Sales, lainnya → pipeline default organisasi.
+- Form deal menulis jelas pipeline tujuannya (keputusan user 14 Okt 2026): judul "New Sales deal" / "New Presales deal" (ID "Deal Sales baru"), keterangan "… · projects with a contractor and owner" (Sales) atau "… consultant and owner" (Presales); tombol di halaman pipeline memakai label yang sama.
 
 ### 11.6 Filter seragam
 - Satu komponen `components/filters/filter-bar.tsx` untuk Pipeline (kanban/list/kalender/forecast), Deal, Kontak, Perusahaan, Aktivitas, Produk, Dashboard, Laporan.

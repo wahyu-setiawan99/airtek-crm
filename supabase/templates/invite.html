@@ -19,7 +19,7 @@
                 <p style="margin:0 0 16px;font-size:15px;line-height:1.5;">
                   <strong>{{ .Data.organization }}</strong> uses <strong>Airtek CRM</strong> to manage its sales pipeline.
                   <strong>{{ .Data.invited_by }}</strong> invited you as
-                  <strong>{{ if eq .Data.role "admin" }}Administrator{{ else }}Sales{{ end }}</strong>.
+                  <strong>{{ if eq .Data.role "admin" }}Administrator{{ else if eq .Data.role "presales" }}Presales{{ else }}Sales{{ end }}</strong>.
                 </p>
                 <p style="margin:0 0 8px;font-size:14px;">After you accept, sign in with:</p>
                 <p style="margin:0 0 20px;font-size:14px;line-height:1.6;">

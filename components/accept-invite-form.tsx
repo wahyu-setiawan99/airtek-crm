@@ -84,7 +84,7 @@ export function AcceptInviteForm() {
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">{t("acceptTitle")}</h1>
               <p className="mt-2 text-sm text-muted-foreground">{t("acceptSubtitle", { email: state.email })}</p>
-              {state.organization ? <p className="mt-1 text-sm">{t("acceptOrg", { organization: state.organization, role: tc(`roles.${state.role === "admin" ? "admin" : "sales"}`) })}</p> : null}
+              {state.organization ? <p className="mt-1 text-sm">{t("acceptOrg", { organization: state.organization, role: tc(`roles.${state.role === "admin" || state.role === "presales" ? state.role : "sales"}`) })}</p> : null}
             </div>
             <Field label={t("fullName")}><Input name="fullName" required minLength={2} defaultValue={state.name} autoComplete="name" /></Field>
             <Field label={t("newPassword")}><Input name="password" type="password" required minLength={8} autoComplete="new-password" /></Field>

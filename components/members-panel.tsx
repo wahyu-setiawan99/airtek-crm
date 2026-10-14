@@ -110,7 +110,7 @@ export function MembersPanel({
                           aria-label={tc("role")}
                           onChange={(event) => void setMemberRoleAction(member.userId, event.target.value as Role).then(done)}
                         >
-                          {(["admin", "sales"] as const).map((role) => <option key={role} value={role}>{tc(`roles.${role}`)}</option>)}
+                          {(["admin", "sales", "presales"] as const).map((role) => <option key={role} value={role}>{tc(`roles.${role}`)}</option>)}
                         </Select>
                       )}
                       {canRemove ? (
@@ -194,6 +194,7 @@ export function MembersPanel({
             <Field label={tc("role")}>
               <Select name="role" defaultValue="sales">
                 <option value="sales">{tc("roles.sales")}</option>
+                <option value="presales">{tc("roles.presales")}</option>
                 <option value="admin">{tc("roles.admin")}</option>
               </Select>
             </Field>

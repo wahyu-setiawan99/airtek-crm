@@ -215,7 +215,11 @@
     "legendRotting": "Basi",
     "drag": "Geser deal",
     "noClose": "Tanpa tanggal",
-    "showMore": "Tampilkan {count} lagi"
+    "showMore": "Tampilkan {count} lagi",
+    "addDealIn": "Deal {pipeline} baru",
+    "editDealIn": "Ubah deal {pipeline}",
+    "salesFormHint": "Pipeline {pipeline} · proyek dengan kontraktor & owner",
+    "presalesFormHint": "Pipeline {pipeline} · proyek dengan konsultan & owner"
   },
   "deals": {
     "title": "Deal",

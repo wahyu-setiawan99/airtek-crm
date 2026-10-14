@@ -5,7 +5,7 @@ import { requireSession } from "@/lib/session";
 
 export default async function PipelinesIndex() {
   const session = await requireSession();
-  const pipelineId = await withStore(["pipelines"], (store) => defaultPipelineId(store, session.organizationId));
+  const pipelineId = await withStore(["pipelines"], (store) => defaultPipelineId(store, session.organizationId, session.role));
   if (!pipelineId) redirect("/settings/pipelines");
   redirect(`/pipelines/${pipelineId}`);
 }
