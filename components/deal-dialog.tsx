@@ -30,6 +30,13 @@ export function DealDialog({
   const stages = data.stages;
   const allowed = PIPELINE_PARTIES[pipelineKind(data.pipeline.name)];
   const companies = data.companies.filter((company) => allowed.includes(company.clientType) || company.id === deal?.companyId);
+  const [companyId, setCompanyId] = useState(deal?.companyId ?? "");
+  // Presales works with consultants and owners, Sales with contractors and owners: contacts follow
+  // their company, and once a company is picked only its people are offered.
+  const companyIds = new Set(companies.map((company) => company.id));
+  const contacts = data.contacts.filter((contact) =>
+    contact.id === deal?.contactId || (companyId ? contact.companyId === companyId : !contact.companyId || companyIds.has(contact.companyId)),
+  );
   const [pending, setPending] = useState(false);
 
   async function onSubmit(formData: FormData) {
@@ -58,7 +65,14 @@ export function DealDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title={deal ? tc("edit") : tp("addDeal")} wide>
-      <form action={onSubmit} className="grid gap-3 sm:grid-cols-2">
+      <form
+        onSubmit={(event) => {
+          // Not a form action: a failed save must keep what the user typed.
+          event.preventDefault();
+          void onSubmit(new FormData(event.currentTarget));
+        }}
+        className="grid gap-3 sm:grid-cols-2"
+      >
         <Field label={tc("name")}>
           <Input name="title" required defaultValue={deal?.title ?? ""} />
         </Field>
@@ -76,7 +90,7 @@ export function DealDialog({
           </Select>
         </Field>
         <Field label={tc("company")}>
-          <Select name="companyId" defaultValue={deal?.companyId ?? ""}>
+          <Select name="companyId" value={companyId} onChange={(event) => setCompanyId(event.target.value)}>
             <option value="">—</option>
             {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
           </Select>
@@ -84,7 +98,7 @@ export function DealDialog({
         <Field label={tc("contact")}>
           <Select name="contactId" defaultValue={deal?.contactId ?? ""}>
             <option value="">—</option>
-            {data.contacts.map((contact) => <option key={contact.id} value={contact.id}>{contact.name}</option>)}
+            {contacts.map((contact) => <option key={contact.id} value={contact.id}>{contact.name}</option>)}
           </Select>
         </Field>
         <Field label={t("expectedClose")}>
