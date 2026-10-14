@@ -15,7 +15,7 @@ User memberi **satu perintah yang sama** setiap sesi: *"Baca AGENTS.md dan lanju
 6. [ ] 🔒 **§14 Impor Odoo** — TERKUNCI sampai user menulis di chat bahwa direktur & semua sales sudah aktif di CRM.
 7. [x] **§20 Mobile-friendly & PWA** — selesai 13 Okt 2026 (kecuali 🔒 web push). Sisa: user mencoba pasang di HP Android & iPhone lalu melapor.
 8. [x] **§15.3, §15.5, §15.6, §15.7** — optimasi besar selesai 13 Okt 2026 (hasil di §15.9). Migration `0008` & `0009` sudah dijalankan user di produksi (13 Okt 2026).
-   - ⚠️ 14 Okt 2026: produksi ternyata tidak punya `deals.description` & `profiles.email` (isi `0002` tidak pernah lengkap) → `0011_repair_server_writes.sql`. 0010 sudah dijalankan; menunggu user menjalankan **0011, 0012** (commit lokal belum di-push sampai user membalas). Cek skema produksi: bandingkan kolom tiap tabel lokal vs `GET /rest/v1/<tabel>?select=<kolom>&limit=0` dengan anon key (kolom hilang → error 42703).
+   - ⚠️ 14 Okt 2026: produksi ternyata tidak punya `deals.description` & `profiles.email` (isi `0002` tidak pernah lengkap) → `0011_repair_server_writes.sql`. **0010, 0011, 0012 sudah dijalankan user (14 Okt 2026)**; skema produksi dicek sama dengan lokal di semua tabel. Cek skema produksi: bandingkan kolom tiap tabel lokal vs `GET /rest/v1/<tabel>?select=<kolom>&limit=0` dengan anon key (kolom hilang → error 42703).
 9. [ ] 🔒 **Fase 11 AI Gemini** (§17) — TERKUNCI sampai user memberikan `GEMINI_API_KEY` di Vercel/`.env.local`.
 
 Saat item selesai: centang di sini **dan** di checklist fasenya (§5), perbarui status di §13 bila relevan.
