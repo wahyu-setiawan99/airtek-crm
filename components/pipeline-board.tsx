@@ -410,15 +410,15 @@ function Column({
   return (
     <section className={cn("flex w-full shrink-0 snap-start flex-col px-3 md:w-[300px] md:rounded-xl md:bg-muted/70 md:p-2", isOver && "ring-2 ring-primary")}>
       <div className="flex flex-1 flex-col rounded-xl bg-muted/70 p-2 md:contents">
-      <header className="px-1 pb-2">
+      <header className="px-1 pb-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="truncate text-sm font-semibold">{stage.name}</h2>
           <span className="text-xs text-muted-foreground">{stage.type === "lost" ? "0%" : `${stage.probability}%`}</span>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">{t("dealCount", { count: stage.deals.length })}</p>
-        <p className="money text-sm font-semibold">{formatCompact(total)}</p>
-        <p className="money text-xs text-primary">{tc("weighted")} {formatCompact(stage.type === "lost" ? 0 : weighted)}</p>
-        <div className="mt-2 h-1 overflow-hidden rounded-full bg-border">
+        <p className="mt-1.5 text-xs text-muted-foreground">{t("dealCount", { count: stage.deals.length })}</p>
+        <p className="money mt-1.5 text-sm font-semibold">{formatCompact(total)}</p>
+        <p className="money mt-1 text-xs text-primary">{tc("weighted")} {formatCompact(stage.type === "lost" ? 0 : weighted)}</p>
+        <div className="mt-3 h-1 overflow-hidden rounded-full bg-border">
           <div className={cn("h-full", stage.type === "won" ? "bg-success" : stage.type === "lost" ? "bg-destructive" : "bg-primary")} style={{ width: `${stage.type === "lost" ? 8 : stage.probability}%` }} />
         </div>
       </header>
