@@ -47,7 +47,7 @@ export type PipelineData = {
   pipeline: { id: string; name: string; color: string };
   pipelines: Option[];
   stages: BoardStage[];
-  companies: Option[];
+  companies: { id: string; name: string; clientType: ClientType }[];
   contacts: { id: string; name: string; companyId: string | null }[];
   owners: Option[];
   tags: TagChip[];

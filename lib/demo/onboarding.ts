@@ -23,14 +23,17 @@ const SALES_STAGES: StageDef[] = [
   ["Lost", 0, null, "lost"],
 ];
 
+/** Presales follows the project from approach to tender (user decision 14 Oct 2026). */
 const PRESALES_STAGES: StageDef[] = [
-  ["Lead Masuk", 10, 7, "open"],
-  ["Survey Lokasi", 25, 14, "open"],
-  ["Desain & BOQ", 40, 14, "open"],
-  ["Estimasi Biaya", 60, 14, "open"],
-  ["Serah ke Sales", 80, 10, "open"],
-  ["Won", 100, null, "won"],
-  ["Lost", 0, null, "lost"],
+  ["Approach", 10, 14, "open"],
+  ["Design", 25, 14, "open"],
+  ["Submitted", 40, 14, "open"],
+  ["Ready Tender", 55, 14, "open"],
+  ["On Tender", 65, 14, "open"],
+  ["On Negotiation", 80, 10, "open"],
+  ["Deal", 100, null, "won"],
+  ["Closed", 100, null, "won"],
+  ["Loss", 0, null, "lost"],
 ];
 
 function addPipeline(

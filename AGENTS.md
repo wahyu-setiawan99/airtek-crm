@@ -330,6 +330,7 @@ Referensi: form opportunity Odoo, tapi lebih rapi, informatif, dan cepat. Layout
 - Pilihan **tag** di form = pill berwarna (kelas `.tag-option` di `globals.css`), bukan checkbox biasa.
 - Pengaturan: nav tab ada di `app/(app)/settings/layout.tsx` (`components/settings-nav.tsx`) agar posisi gulir tab di HP tidak di-reset saat pindah tab. Baris Tag/Alasan kalah: tombol Save+Delete lebar tetap, tombol "Tambah" selebar keduanya. Toggle bahasa dua kolom sama lebar.
 - Nama aplikasi terpasang (PWA) = **AirtekCRM**.
+- Halaman Kontak & Perusahaan: tombol utama (**Kontak baru** / **Perusahaan baru**) paling depan, lalu Ekspor/Impor.
 
 ## 8. Environment & Deploy
 `.env.example`:
@@ -435,7 +436,8 @@ Langkah deploy:
 ### 11.5 Pipeline default Sales & Presales + custom
 - Organisasi baru otomatis punya 2 pipeline:
   - **Sales** (default): Kualifikasi 10% → Analisa Kebutuhan 25% → Penawaran 50% → Negosiasi 70% → Closing 90% → Won → Lost.
-  - **Presales**: Lead Masuk 10% → Survey Lokasi 25% → Desain & BOQ 40% → Estimasi Biaya 60% → Serah ke Sales 80% → Won → Lost.
+  - **Presales** (keputusan user 14 Okt 2026): Approach 10% → Design 25% → Submitted 40% → Ready Tender 55% → On Tender 65% → On Negotiation 80% → **Deal** (won) → **Closed** (won) → **Loss** (lost). Migration `0010` mengubah pipeline Presales yang sudah ada (nama lama diganti di tempat, deal tetap di tahapnya).
+- **Pihak proyek per pipeline** (keputusan user 14 Okt 2026): **Presales = Konsultan + Owner**, **Sales = Kontraktor + Owner** (`PIPELINE_PARTIES` di `lib/client-type.ts`, pipeline dikenali dari nama "Presales"). Pilihan perusahaan di form deal & quick-add difilter sesuai pipeline; detail deal hanya menampilkan baris pihak pipeline itu (pihak lain yang sudah terisi tetap terlihat); server menolak pihak yang tidak sesuai (`common.partyNotAllowed`).
 - Pipeline custom tetap bisa ditambah di Pengaturan → Pipeline; tambahkan tombol **Duplikat pipeline** (salin stage).
 - Aksi **Kirim ke pipeline Sales** di detail deal Presales: pindah ke stage pertama pipeline Sales, catat riwayat, opsional ganti salesperson.
 - Pipeline default per role: `presales` → Presales, lainnya → Sales.

@@ -56,6 +56,7 @@ import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/dropdo
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AttachmentsPanel, type FileRow } from "@/components/attachments-panel";
 import { CustomFieldsPanel, type ExtraField } from "@/components/custom-fields-panel";
+import { partyAllowed, pipelineKind } from "@/lib/client-type";
 
 type DealPatch = {
   title?: string;
@@ -173,6 +174,8 @@ export function DealWorkspace({
   const [reason, setReason] = useState(deal.lostReasons[0]?.id ?? "");
   const [lostNote, setLostNote] = useState("");
   const [composer, setComposer] = useState<ComposerTab>("note");
+  // Presales handles consultants and owners, Sales handles contractors and owners.
+  const kind = pipelineKind(deal.pipelineName);
   const phoneNumber = deal.primaryContact?.phone ?? deal.primaryContact?.whatsapp ?? null;
 
   function openComposer(tab: ComposerTab) {
@@ -582,7 +585,7 @@ export function DealWorkspace({
                 empty={t("notSet")}
                 onSave={(ownerCompanyId) => patch({ ownerCompanyId })}
               />
-              <PartyRow
+              {partyAllowed(kind, "konsultan") || deal.consultantCompanyId ? <PartyRow
                 label={tk("types.konsultan")}
                 type="konsultan"
                 companyId={deal.consultantCompanyId}
@@ -590,8 +593,8 @@ export function DealWorkspace({
                 canEdit={deal.canEdit}
                 empty={t("notSet")}
                 onSave={(consultantCompanyId) => patch({ consultantCompanyId })}
-              />
-              <PartyRow
+              /> : null}
+              {partyAllowed(kind, "kontraktor") || deal.contractorCompanyId ? <PartyRow
                 label={tk("types.kontraktor")}
                 type="kontraktor"
                 companyId={deal.contractorCompanyId}
@@ -599,7 +602,7 @@ export function DealWorkspace({
                 canEdit={deal.canEdit}
                 empty={t("notSet")}
                 onSave={(contractorCompanyId) => patch({ contractorCompanyId })}
-              />
+              /> : null}
               <InfoRow label={t("projectCity")}>
                 <InlineInput value={deal.projectCity ?? ""} canEdit={deal.canEdit} onSave={(projectCity) => patch({ projectCity: projectCity.trim() || null })} />
               </InfoRow>

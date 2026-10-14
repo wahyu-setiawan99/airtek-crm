@@ -27,6 +27,7 @@ import { formatCompact, formatDate, formatMonth, jakartaParts } from "@/lib/form
 import { cn, initials } from "@/lib/utils";
 import type { BoardDeal, BoardStage, PipelineData } from "@/types/view";
 import { DealDialog } from "@/components/deal-dialog";
+import { PIPELINE_PARTIES, pipelineKind } from "@/lib/client-type";
 import { FilterBar, matchDeal, type FilterValues } from "@/components/filters/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -268,7 +269,7 @@ export function PipelineBoard({
                 stage={stage}
                 locale={locale}
                 canCreate={data.me.canCreate}
-                companies={data.companies}
+                companies={data.companies.filter((company) => PIPELINE_PARTIES[pipelineKind(data.pipeline.name)].includes(company.clientType))}
                 quickOpen={quick === stage.id}
                 onQuick={() => setQuick(quick === stage.id ? null : stage.id)}
                 onCreate={async (title, value, companyId) => {

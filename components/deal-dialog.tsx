@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { saveDealAction } from "@/lib/actions/crm";
+import { PIPELINE_PARTIES, pipelineKind } from "@/lib/client-type";
 import type { BoardDeal, PipelineData } from "@/types/view";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -27,6 +28,8 @@ export function DealDialog({
   const tc = useTranslations("common");
   const [pipelineId, setPipelineId] = useState(deal?.stageId ? data.pipeline.id : data.pipeline.id);
   const stages = data.stages;
+  const allowed = PIPELINE_PARTIES[pipelineKind(data.pipeline.name)];
+  const companies = data.companies.filter((company) => allowed.includes(company.clientType) || company.id === deal?.companyId);
   const [pending, setPending] = useState(false);
 
   async function onSubmit(formData: FormData) {
@@ -75,7 +78,7 @@ export function DealDialog({
         <Field label={tc("company")}>
           <Select name="companyId" defaultValue={deal?.companyId ?? ""}>
             <option value="">—</option>
-            {data.companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+            {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
           </Select>
         </Field>
         <Field label={tc("contact")}>

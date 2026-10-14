@@ -86,7 +86,8 @@
       "1": "Sedang",
       "2": "Tinggi",
       "3": "Sangat tinggi"
-    }
+    },
+    "partyNotAllowed": "Konsultan masuk pipeline Presales dan kontraktor masuk Sales; owner boleh di keduanya."
   },
   "nav": {
     "dashboard": "Dashboard",

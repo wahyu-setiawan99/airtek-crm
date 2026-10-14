@@ -36,3 +36,23 @@ export function slotPrimaryCompany(deal: PartyDeal, company: { id: string; clien
   if (company) setParty(deal, company.client_type, company.id);
   else syncPrimaryCompany(deal);
 }
+
+export type PipelineKind = "sales" | "presales";
+
+/** Pipelines are told apart by name: anything called "Presales" is the presales pipeline. */
+export function pipelineKind(name: string | null | undefined): PipelineKind {
+  return /presales/i.test(name ?? "") ? "presales" : "sales";
+}
+
+/**
+ * Project parties per pipeline (user decision 14 Oct 2026): consultants and owners are handled
+ * in Presales, contractors and owners in Sales.
+ */
+export const PIPELINE_PARTIES: Record<PipelineKind, readonly ClientType[]> = {
+  presales: ["konsultan", "owner"],
+  sales: ["kontraktor", "owner"],
+};
+
+export function partyAllowed(kind: PipelineKind, type: ClientType) {
+  return PIPELINE_PARTIES[kind].includes(type);
+}

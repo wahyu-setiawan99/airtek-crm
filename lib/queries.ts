@@ -219,7 +219,7 @@ export function buildPipeline(store: Store, session: Session, pipelineId: string
     stages,
     companies: store.companies
       .filter((item) => item.organization_id === session.organizationId)
-      .map((item) => ({ id: item.id, name: item.name })),
+      .map((item) => ({ id: item.id, name: item.name, clientType: item.client_type })),
     contacts: store.contacts
       .filter((item) => item.organization_id === session.organizationId)
       .map((item) => ({ id: item.id, name: contactName(item), companyId: item.company_id })),

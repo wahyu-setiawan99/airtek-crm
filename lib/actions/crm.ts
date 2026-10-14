@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { getTranslations } from "next-intl/server";
 import { revalidatePath } from "next/cache";
 import { ActionError, runAction, touch } from "@/lib/action";
-import { isClientType, setParty, slotPrimaryCompany, type ClientType } from "@/lib/client-type";
+import { isClientType, partyAllowed, pipelineKind, setParty, slotPrimaryCompany, type ClientType } from "@/lib/client-type";
 import { companyNamesSimilar, phonesMatch } from "@/lib/duplicates";
 import { cookieOptions, ORG_COOKIE } from "@/lib/constants";
 import { rememberLocale } from "@/lib/session-flags";
@@ -56,6 +56,10 @@ function audit(store: Store, session: Session, entity: string, entityId: string,
   });
   // Demo mode keeps a short window in its JSON file; in Supabase the log is append-only.
   if (!supabaseEnabled) store.audit_logs = store.audit_logs.slice(0, 200);
+}
+
+function kindOfPipeline(store: Store, pipelineId: string) {
+  return pipelineKind(store.pipelines.find((item) => item.id === pipelineId)?.name);
 }
 
 function assertDeal(store: Store, session: Session, dealId: string) {
@@ -173,6 +177,7 @@ export async function saveDealAction(input: unknown) {
         ? store.companies.find((item) => item.id === parsed.data.companyId && item.organization_id === session.organizationId)
         : null;
       if (parsed.data.companyId && !picked) throw new ActionError(t("error"));
+      if (picked && !partyAllowed(kindOfPipeline(store, stage.pipeline_id), picked.client_type)) throw new ActionError(t("partyNotAllowed"));
       slotPrimaryCompany(deal, picked ?? null);
       deal.primary_contact_id = parsed.data.contactId;
       deal.owner_id = ownerId;
@@ -233,6 +238,7 @@ export async function saveDealAction(input: unknown) {
       ? store.companies.find((item) => item.id === parsed.data.companyId && item.organization_id === session.organizationId)
       : null;
     if (parsed.data.companyId && !picked) throw new ActionError(t("error"));
+    if (picked && !partyAllowed(kindOfPipeline(store, stage.pipeline_id), picked.client_type)) throw new ActionError(t("partyNotAllowed"));
     slotPrimaryCompany(deal, picked ?? null);
     placeDeal(store, deal, stage.id);
     store.deals.push(deal);
@@ -253,7 +259,7 @@ export async function saveDealAction(input: unknown) {
     }
     audit(store, session, "deal", dealId, "create", { title: deal.title });
     return dealId;
-  }, ["deals", "stages", "companies", "deal_tags", "deal_contacts"]);
+  }, ["deals", "stages", "pipelines", "companies", "deal_tags", "deal_contacts"]);
 }
 
 export async function quickDealAction(input: unknown) {
@@ -323,6 +329,7 @@ export async function updateDealAction(dealId: string, input: unknown) {
         ? store.companies.find((item) => item.id === patch.companyId && item.organization_id === orgId)
         : null;
       if (patch.companyId && !picked) throw new ActionError(t("error"));
+      if (picked && !partyAllowed(kindOfPipeline(store, deal.pipeline_id), picked.client_type)) throw new ActionError(t("partyNotAllowed"));
       track("company", companyName(deal.company_id), companyName(patch.companyId));
       slotPrimaryCompany(deal, picked ?? null);
     }
@@ -331,6 +338,7 @@ export async function updateDealAction(dealId: string, input: unknown) {
       if (companyId) {
         const company = store.companies.find((item) => item.id === companyId && item.organization_id === orgId);
         if (!company || company.client_type !== type) throw new ActionError(t("error"));
+        if (!partyAllowed(kindOfPipeline(store, deal.pipeline_id), type)) throw new ActionError(t("partyNotAllowed"));
       }
       const current = type === "owner" ? deal.owner_company_id : type === "konsultan" ? deal.consultant_company_id : deal.contractor_company_id;
       track(type, companyName(current), companyName(companyId));
@@ -410,7 +418,7 @@ export async function updateDealAction(dealId: string, input: unknown) {
     touch(deal);
     changes.forEach((change) => audit(store, session, "deal", deal.id, "field", change));
     return null;
-  }, ["deals", "stages", "companies", "contacts", "deal_tags", "deal_contacts", "tags"]);
+  }, ["deals", "stages", "pipelines", "companies", "contacts", "deal_tags", "deal_contacts", "tags"]);
 }
 
 export async function deleteDealAction(dealId: string) {

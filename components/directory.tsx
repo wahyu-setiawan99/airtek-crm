@@ -66,9 +66,9 @@ export function ContactsScreen({
   return (
     <Screen title={t("title")} subtitle={t("subtitle")} actions={
       <>
+        {canCreate ? <Button onClick={() => { setEditing(null); setOpen(true); }}>{t("new")}</Button> : null}
         <Button variant="outline" onClick={() => downloadCsv("kontak.csv", [["name", "email", "phone", "company"], ...rows.map((row) => [row.name, row.email ?? "", row.phone ?? "", row.companyName ?? ""])])}>{tc("export")}</Button>
         {canCreate ? <Button variant="outline" onClick={() => setImportOpen(true)}>{tc("import")}</Button> : null}
-        {canCreate ? <Button onClick={() => { setEditing(null); setOpen(true); }}>{t("new")}</Button> : null}
       </>
     }>
       <FilterBar values={values} owners={owners} extras={["client"]} showMine={false} onChange={apply} />
@@ -205,8 +205,8 @@ export function CompaniesScreen({ rows, owners, canCreate, openNew }: { rows: Co
   return (
     <Screen title={t("title")} subtitle={t("subtitle")} actions={
       <>
-        <Button variant="outline" onClick={() => downloadCsv("perusahaan.csv", [["name", "client_type", "city", "phone"], ...visible.map((row) => [row.name, row.clientType, row.city ?? "", row.phone ?? ""])])}>{tc("export")}</Button>
         {canCreate ? <Button onClick={() => { setEditing(null); setOpen(true); }}>{t("new")}</Button> : null}
+        <Button variant="outline" onClick={() => downloadCsv("perusahaan.csv", [["name", "client_type", "city", "phone"], ...visible.map((row) => [row.name, row.clientType, row.city ?? "", row.phone ?? ""])])}>{tc("export")}</Button>
       </>
     }>
       <FilterBar values={values} owners={owners} extras={["city", "client"]} showMine={false} onChange={apply} />

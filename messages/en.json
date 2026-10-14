@@ -86,7 +86,8 @@
       "1": "Medium",
       "2": "High",
       "3": "Very high"
-    }
+    },
+    "partyNotAllowed": "Consultants belong in the Presales pipeline and contractors in Sales; owners can be in either."
   },
   "nav": {
     "dashboard": "Dashboard",

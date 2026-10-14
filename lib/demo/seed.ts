@@ -30,7 +30,7 @@ const pipe = { sales: u(40, 1), presales: u(40, 2), maint: u(40, 3), umum: u(40,
 const tag = { lift: u(80, 1), pompa: u(80, 2), ac: u(80, 3), hvac: u(80, 4) };
 const reason = { price: u(81, 1), competitor: u(81, 2), budget: u(81, 3), need: u(81, 4), other: u(81, 5) };
 
-type StageKey = "s1" | "s2" | "s3" | "s4" | "s5" | "sWon" | "sLost" | "p1" | "p2" | "p3" | "p4" | "p5" | "pWon" | "pLost" | "m1" | "m2" | "m3" | "mWon" | "mLost";
+type StageKey = "s1" | "s2" | "s3" | "s4" | "s5" | "sWon" | "sLost" | "p1" | "p2" | "p3" | "p4" | "p5" | "p6" | "pWon" | "pClosed" | "pLost" | "m1" | "m2" | "m3" | "mWon" | "mLost";
 
 const stageDefs: [StageKey, string, string, number, number | null, StageType][] = [
   ["s1", pipe.sales, "Kualifikasi", 10, 14, "open"],
@@ -40,13 +40,15 @@ const stageDefs: [StageKey, string, string, number, number | null, StageType][] 
   ["s5", pipe.sales, "Closing", 90, 10, "open"],
   ["sWon", pipe.sales, "Won", 100, null, "won"],
   ["sLost", pipe.sales, "Lost", 0, null, "lost"],
-  ["p1", pipe.presales, "Lead Masuk", 10, 7, "open"],
-  ["p2", pipe.presales, "Survey Lokasi", 25, 10, "open"],
-  ["p3", pipe.presales, "Desain & BOQ", 40, 14, "open"],
-  ["p4", pipe.presales, "Estimasi Biaya", 60, 10, "open"],
-  ["p5", pipe.presales, "Serah ke Sales", 80, 7, "open"],
-  ["pWon", pipe.presales, "Won", 100, null, "won"],
-  ["pLost", pipe.presales, "Lost", 0, null, "lost"],
+  ["p1", pipe.presales, "Approach", 10, 14, "open"],
+  ["p2", pipe.presales, "Design", 25, 14, "open"],
+  ["p3", pipe.presales, "Submitted", 40, 14, "open"],
+  ["p4", pipe.presales, "Ready Tender", 55, 14, "open"],
+  ["p5", pipe.presales, "On Tender", 65, 14, "open"],
+  ["p6", pipe.presales, "On Negotiation", 80, 10, "open"],
+  ["pWon", pipe.presales, "Deal", 100, null, "won"],
+  ["pClosed", pipe.presales, "Closed", 100, null, "won"],
+  ["pLost", pipe.presales, "Loss", 0, null, "lost"],
   ["m1", pipe.maint, "Permintaan", 20, 7, "open"],
   ["m2", pipe.maint, "Survey", 45, 10, "open"],
   ["m3", pipe.maint, "Terjadwal", 80, 7, "open"],
