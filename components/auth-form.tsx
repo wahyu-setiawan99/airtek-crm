@@ -130,7 +130,7 @@ export function AuthScreen({
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,var(--color-border)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-border)_1px,transparent_1px)] bg-[size:48px_48px] opacity-40 [mask-image:radial-gradient(ellipse_at_top_left,black,transparent_70%)]"
       />
-      <section className="relative hidden flex-col justify-between gap-8 border-r px-10 py-10 lg:flex xl:px-14">
+      <section className="auth-hero relative hidden flex-col justify-between gap-8 border-r px-10 py-10 lg:flex xl:px-14">
         <Link href="/" className="inline-flex self-start rounded-md hover:opacity-80">
           <BrandLogo priority className="h-11" />
         </Link>

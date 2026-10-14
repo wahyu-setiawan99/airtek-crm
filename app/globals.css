@@ -160,3 +160,21 @@
 .tag-toggle:checked + .tag-option .tag-check { display: inline; }
 .tag-toggle:checked + .tag-option .tag-dot { display: none; }
 .tag-toggle:focus-visible + .tag-option { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* Sign-in hero panel: brand gradient (logo purple to magenta) under a faint grid. */
+.auth-hero {
+  background:
+    linear-gradient(to right, oklch(0 0 0 / 0.045) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(to bottom, oklch(0 0 0 / 0.045) 1px, transparent 1px) 0 0 / 48px 48px,
+    radial-gradient(70% 55% at 0% 0%, oklch(0.62 0.19 300 / 0.22), transparent 70%),
+    radial-gradient(65% 55% at 100% 100%, oklch(0.6 0.2 5 / 0.2), transparent 70%),
+    linear-gradient(155deg, oklch(0.965 0.025 315), oklch(0.985 0.006 290) 55%, oklch(0.955 0.03 10));
+}
+.dark .auth-hero {
+  background:
+    linear-gradient(to right, oklch(1 0 0 / 0.035) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(to bottom, oklch(1 0 0 / 0.035) 1px, transparent 1px) 0 0 / 48px 48px,
+    radial-gradient(90% 70% at 0% 0%, oklch(0.45 0.2 300 / 0.55), transparent 72%),
+    radial-gradient(85% 70% at 100% 100%, oklch(0.48 0.19 5 / 0.45), transparent 72%),
+    linear-gradient(155deg, oklch(0.21 0.06 300), oklch(0.16 0.02 290) 55%, oklch(0.2 0.06 5));
+}
