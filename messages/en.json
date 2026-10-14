@@ -151,7 +151,11 @@
     "acceptChecking": "Checking your invitation…",
     "acceptInvalid": "This invitation link is invalid or has expired. Ask your administrator to send it again.",
     "acceptSubmit": "Save & sign in",
-    "noAccountInvite": "New accounts are created by administrator invitation."
+    "noAccountInvite": "New accounts are created by administrator invitation.",
+    "heroLead": "Every sales opportunity, in",
+    "heroAccent": "one pipeline.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "dashboard": {
     "title": "Dashboard",

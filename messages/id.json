@@ -150,7 +150,11 @@
     "acceptChecking": "Memeriksa undangan…",
     "acceptInvalid": "Link undangan tidak valid atau sudah kedaluwarsa. Minta administrator mengirim ulang undangan.",
     "acceptSubmit": "Simpan & masuk",
-    "noAccountInvite": "Akun baru dibuat melalui undangan administrator."
+    "noAccountInvite": "Akun baru dibuat melalui undangan administrator.",
+    "heroLead": "Kelola setiap peluang penjualan dalam",
+    "heroAccent": "satu pipeline.",
+    "showPassword": "Tampilkan kata sandi",
+    "hidePassword": "Sembunyikan kata sandi"
   },
   "dashboard": {
     "title": "Dashboard",
