@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select } from "@/components/ui/form";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { PresalesPicker } from "@/components/presales-picker";
 
 export function DealDialog({
   open,
@@ -38,10 +39,20 @@ export function DealDialog({
     contact.id === deal?.contactId || (companyId ? contact.companyId === companyId : !contact.companyId || companyIds.has(contact.companyId)),
   );
   const [pending, setPending] = useState(false);
+  // Sales deals can point to the Presales project they came from; it must share a product tag.
+  const isSales = pipelineKind(data.pipeline.name) === "sales";
+  const [tagIds, setTagIds] = useState<string[]>(deal?.tags.map((item) => item.id) ?? []);
+  const [presalesDealId, setPresalesDealId] = useState<string | null>(deal?.presalesDealId ?? null);
+
+  function toggleTag(tagId: string, on: boolean) {
+    const next = on ? [...tagIds, tagId] : tagIds.filter((id) => id !== tagId);
+    setTagIds(next);
+    const ref = data.presalesDeals.find((item) => item.id === presalesDealId);
+    if (ref && !ref.tagIds.some((id) => next.includes(id))) setPresalesDealId(null);
+  }
 
   async function onSubmit(formData: FormData) {
     setPending(true);
-    const tagIds = formData.getAll("tagIds").map(String);
     const result = await saveDealAction({
       id: deal?.id ?? null,
       title: String(formData.get("title") ?? ""),
@@ -54,6 +65,7 @@ export function DealDialog({
       priority: Number(formData.get("priority") ?? 0),
       expectedCloseDate: String(formData.get("expectedCloseDate") ?? "") || null,
       tagIds,
+      ...(isSales ? { presalesDealId } : {}),
     });
     setPending(false);
     if (!result.ok) {
@@ -114,7 +126,7 @@ export function DealDialog({
           <div className="flex flex-wrap gap-2">
             {data.tags.map((tag) => (
               <label key={tag.id} className="cursor-pointer">
-                <input type="checkbox" name="tagIds" value={tag.id} defaultChecked={deal?.tags.some((item) => item.id === tag.id)} className="tag-toggle sr-only" />
+                <input type="checkbox" value={tag.id} checked={tagIds.includes(tag.id)} onChange={(event) => toggleTag(tag.id, event.target.checked)} className="tag-toggle sr-only" />
                 <span className="tag-option" style={{ "--tag": tag.color } as React.CSSProperties}>
                   <Check aria-hidden className="tag-check h-3.5 w-3.5" strokeWidth={3} />
                   <span aria-hidden className="tag-dot" />
@@ -124,6 +136,12 @@ export function DealDialog({
             ))}
           </div>
         </fieldset>
+        {isSales ? (
+          <div className="grid gap-1.5 text-sm sm:col-span-2">
+            <span className="font-medium">{t("presalesRef")}</span>
+            <PresalesPicker options={data.presalesDeals} tagIds={tagIds} value={presalesDealId} onChange={setPresalesDealId} />
+          </div>
+        ) : null}
         <div className="flex justify-end gap-2 sm:col-span-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tc("cancel")}</Button>
           <Button type="submit" disabled={pending || !data.me.canCreate}>{tc("save")}</Button>

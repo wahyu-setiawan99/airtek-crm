@@ -87,7 +87,9 @@
       "2": "High",
       "3": "Very high"
     },
-    "partyNotAllowed": "Consultants belong in the Presales pipeline and contractors in Sales; owners can be in either."
+    "partyNotAllowed": "Consultants belong in the Presales pipeline and contractors in Sales; owners can be in either.",
+    "presalesRefProduct": "The presales project must have the same product as this deal.",
+    "presalesRefSalesOnly": "Only deals in a Sales pipeline can reference a presales project."
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -332,7 +334,12 @@
       "contact": "contact",
       "owner": "salesperson",
       "tags": "tags",
-      "description": "description"
+      "description": "description",
+      "presalesRef": "presales project",
+      "konsultan": "consultant",
+      "kontraktor": "contractor",
+      "projectCity": "project city",
+      "projectProvince": "project province"
     },
     "stale": "Stale",
     "groupByOwner": "Group by salesperson",
@@ -345,7 +352,13 @@
     "projectCity": "Project city",
     "projectProvince": "Project province",
     "estimatedValue": "Estimated project value",
-    "picSales": "PIC Sales"
+    "picSales": "PIC Sales",
+    "presalesRef": "Presales project",
+    "presalesRefSearch": "Search presales projects",
+    "presalesRefPickTags": "Choose the product (tag) first to see matching presales projects.",
+    "presalesRefNone": "No presales project with the same product.",
+    "presalesRefClear": "Remove reference",
+    "presalesRefLinked": "Sales projects"
   },
   "contacts": {
     "title": "Contacts",

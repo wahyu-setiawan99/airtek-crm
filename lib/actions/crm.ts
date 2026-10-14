@@ -62,6 +62,18 @@ function kindOfPipeline(store: Store, pipelineId: string) {
   return pipelineKind(store.pipelines.find((item) => item.id === pipelineId)?.name);
 }
 
+/**
+ * A Sales deal may reference a Presales project of the same organization that shares at
+ * least one product tag with it (user decision 14 Oct 2026).
+ */
+function assertPresalesRef(store: Store, session: Session, salesPipelineId: string, tagIds: string[], presalesDealId: string, messages: { error: string; salesOnly: string; product: string }) {
+  if (kindOfPipeline(store, salesPipelineId) !== "sales") throw new ActionError(messages.salesOnly);
+  const ref = store.deals.find((item) => item.id === presalesDealId && item.organization_id === session.organizationId);
+  if (!ref || kindOfPipeline(store, ref.pipeline_id) !== "presales") throw new ActionError(messages.error);
+  const refTags = new Set(store.deal_tags.filter((item) => item.deal_id === ref.id).map((item) => item.tag_id));
+  if (!tagIds.some((id) => refTags.has(id))) throw new ActionError(messages.product);
+}
+
 function assertDeal(store: Store, session: Session, dealId: string) {
   const deal = store.deals.find((item) => item.id === dealId && item.organization_id === session.organizationId);
   if (!deal) throw new ActionError("Deal tidak ditemukan.");
@@ -167,6 +179,7 @@ export async function saveDealAction(input: unknown) {
     const stage = store.stages.find((item) => item.id === parsed.data.stageId && item.organization_id === session.organizationId);
     if (!stage) throw new ActionError(t("error"));
     const ownerId = canManage(session.role) ? parsed.data.ownerId : session.userId;
+    const refMessages = { error: t("error"), salesOnly: t("presalesRefSalesOnly"), product: t("presalesRefProduct") };
 
     if (parsed.data.id) {
       const deal = assertDeal(store, session, parsed.data.id);
@@ -184,6 +197,10 @@ export async function saveDealAction(input: unknown) {
       deal.priority = parsed.data.priority;
       deal.expected_close_date = parsed.data.expectedCloseDate;
       if (parsed.data.probabilityOverride !== undefined) deal.probability_override = parsed.data.probabilityOverride;
+      if (parsed.data.presalesDealId !== undefined) {
+        if (parsed.data.presalesDealId) assertPresalesRef(store, session, stage.pipeline_id, parsed.data.tagIds, parsed.data.presalesDealId, refMessages);
+        if (parsed.data.presalesDealId || deal.presales_deal_id) deal.presales_deal_id = parsed.data.presalesDealId;
+      }
       if (previousStage !== stage.id) {
         applyStage(deal, stage, null);
         store.stage_history.push({
@@ -240,6 +257,10 @@ export async function saveDealAction(input: unknown) {
     if (parsed.data.companyId && !picked) throw new ActionError(t("error"));
     if (picked && !partyAllowed(kindOfPipeline(store, stage.pipeline_id), picked.client_type)) throw new ActionError(t("partyNotAllowed"));
     slotPrimaryCompany(deal, picked ?? null);
+    if (parsed.data.presalesDealId) {
+      assertPresalesRef(store, session, stage.pipeline_id, parsed.data.tagIds, parsed.data.presalesDealId, refMessages);
+      deal.presales_deal_id = parsed.data.presalesDealId;
+    }
     placeDeal(store, deal, stage.id);
     store.deals.push(deal);
     parsed.data.tagIds.forEach((tagId) => store.deal_tags.push({ deal_id: dealId, tag_id: tagId }));
@@ -347,6 +368,15 @@ export async function updateDealAction(dealId: string, input: unknown) {
     applyParty("owner", patch.ownerCompanyId);
     applyParty("konsultan", patch.consultantCompanyId);
     applyParty("kontraktor", patch.contractorCompanyId);
+    if (patch.presalesDealId !== undefined) {
+      if (patch.presalesDealId) {
+        const tagIds = patch.tagIds ?? store.deal_tags.filter((item) => item.deal_id === deal.id).map((item) => item.tag_id);
+        assertPresalesRef(store, session, deal.pipeline_id, tagIds, patch.presalesDealId, { error: t("error"), salesOnly: t("presalesRefSalesOnly"), product: t("presalesRefProduct") });
+      }
+      const title = (id: string | null | undefined) => (id ? store.deals.find((item) => item.id === id)?.title ?? null : null);
+      track("presalesRef", title(deal.presales_deal_id), title(patch.presalesDealId));
+      deal.presales_deal_id = patch.presalesDealId;
+    }
     if (patch.projectCity !== undefined) {
       track("projectCity", deal.project_city, patch.projectCity);
       deal.project_city = patch.projectCity;

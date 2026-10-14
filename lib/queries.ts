@@ -5,12 +5,14 @@ import { canEditOwned, canManage, canWrite } from "@/lib/permissions";
 import type { Session } from "@/lib/session";
 import { contactName } from "@/lib/utils";
 import type { Store } from "@/types/crm";
+import { pipelineKind } from "@/lib/client-type";
 import type {
   ActivityRow,
   BoardDeal,
   CompanyRow,
   ContactRow,
   DashboardData,
+  PresalesOption,
   DealDetailData,
   PipelineData,
   ReportData,
@@ -132,7 +134,33 @@ function toBoardDeal(store: Store, session: Session, dealOrId: string | Store["d
     canEdit: canEditOwned(session.role, session.userId, deal.owner_id),
     stageId: deal.stage_id,
     createdAt: deal.created_at,
+    presalesDealId: deal.presales_deal_id ?? null,
   };
+}
+
+/** Presales projects (open or won) of the organization, newest first. */
+function presalesOptions(store: Store, organizationId: string): PresalesOption[] {
+  return memoize(store, `presales:${organizationId}`, () => {
+    const presalesPipelines = new Set(
+      store.pipelines.filter((item) => item.organization_id === organizationId && pipelineKind(item.name) === "presales").map((item) => item.id),
+    );
+    const stages = stageIndex(store);
+    const companies = companyIndex(store);
+    const tags = dealTagIndex(store);
+    return store.deals
+      .filter((deal) => presalesPipelines.has(deal.pipeline_id) && deal.status !== "lost")
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .map((deal) => {
+        const companyId = deal.consultant_company_id ?? deal.owner_company_id ?? deal.company_id;
+        return {
+          id: deal.id,
+          title: deal.title,
+          stageName: stages.get(deal.stage_id)?.name ?? "",
+          companyName: (companyId ? companies.get(companyId)?.name : null) ?? null,
+          tagIds: (tags.get(deal.id) ?? []).map((item) => item.tag_id),
+        };
+      });
+  });
 }
 
 export function buildShell(store: Store, session: Session): ShellData {
@@ -233,6 +261,7 @@ export function buildPipeline(store: Store, session: Session, pipelineId: string
     savedViews: store.saved_views
       .filter((item) => item.organization_id === session.organizationId && (item.user_id === session.userId || item.is_shared) && item.pipeline_id === pipelineId)
       .map((item) => ({ id: item.id, name: item.name, filters: item.filters })),
+    presalesDeals: pipelineKind(pipeline.name) === "sales" ? presalesOptions(store, session.organizationId) : [],
     me: {
       id: session.userId,
       name: session.profile.full_name,
@@ -443,6 +472,7 @@ export function buildDeal(
   const extra = {
     description: deal.description ?? null,
     pipelineName: store.pipelines.find((item) => item.id === deal.pipeline_id)?.name ?? "",
+    ...presalesLinks(store, session, deal),
     nav: {
       index: index + 1,
       total: siblings.length,
@@ -744,4 +774,23 @@ export function entityNotes(store: Store, kind: "contact" | "company", id: strin
   return store.notes
     .filter((note) => (kind === "contact" ? note.contact_id === id : note.company_id === id))
     .map((note) => ({ id: note.id, body: note.body, author: personName(store, note.created_by), createdAt: note.created_at }));
+}
+
+function presalesLinks(store: Store, session: Session, deal: Store["deals"][number]) {
+  const kind = pipelineKind(store.pipelines.find((item) => item.id === deal.pipeline_id)?.name);
+  const options = presalesOptions(store, session.organizationId);
+  const refDeal = deal.presales_deal_id ? dealIndex(store).get(deal.presales_deal_id) : undefined;
+  const presalesRef = refDeal
+    ? options.find((item) => item.id === refDeal.id) ?? { id: refDeal.id, title: refDeal.title, stageName: stageIndex(store).get(refDeal.stage_id)?.name ?? "", companyName: null, tagIds: [] }
+    : null;
+  return {
+    presalesRef,
+    presalesOptions: kind === "sales" ? options : [],
+    salesLinks:
+      kind === "presales"
+        ? store.deals
+            .filter((item) => item.presales_deal_id === deal.id)
+            .map((item) => ({ id: item.id, title: item.title, stageName: stageIndex(store).get(item.stage_id)?.name ?? "" }))
+        : [],
+  };
 }

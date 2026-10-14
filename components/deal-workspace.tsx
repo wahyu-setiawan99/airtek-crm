@@ -57,6 +57,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AttachmentsPanel, type FileRow } from "@/components/attachments-panel";
 import { CustomFieldsPanel, type ExtraField } from "@/components/custom-fields-panel";
 import { partyAllowed, pipelineKind } from "@/lib/client-type";
+import { PresalesPicker } from "@/components/presales-picker";
 
 type DealPatch = {
   title?: string;
@@ -70,6 +71,7 @@ type DealPatch = {
   contractorCompanyId?: string | null;
   projectCity?: string | null;
   projectProvince?: string | null;
+  presalesDealId?: string | null;
   contactId?: string | null;
   ownerId?: string;
   tagIds?: string[];
@@ -603,6 +605,33 @@ export function DealWorkspace({
                 empty={t("notSet")}
                 onSave={(contractorCompanyId) => patch({ contractorCompanyId })}
               /> : null}
+              {kind === "sales" ? (
+                <InfoRow label={t("presalesRef")}>
+                  <div className="py-1">
+                    <PresalesPicker
+                      options={deal.presalesRef && !deal.presalesOptions.some((item) => item.id === deal.presalesRef?.id) ? [deal.presalesRef, ...deal.presalesOptions] : deal.presalesOptions}
+                      tagIds={deal.tags.map((tag) => tag.id)}
+                      value={deal.presalesRef?.id ?? null}
+                      disabled={!deal.canEdit}
+                      onChange={(presalesDealId) => void patch({ presalesDealId })}
+                    />
+                    {deal.presalesRef ? (
+                      <Link href={`/deals/${deal.presalesRef.id}`} className="mt-1 inline-block text-xs text-primary hover:underline">{deal.presalesRef.title} →</Link>
+                    ) : null}
+                  </div>
+                </InfoRow>
+              ) : deal.salesLinks.length > 0 ? (
+                <InfoRow label={t("presalesRefLinked")}>
+                  <ul className="grid gap-1 py-2">
+                    {deal.salesLinks.map((link) => (
+                      <li key={link.id}>
+                        <Link href={`/deals/${link.id}`} className="text-primary hover:underline">{link.title}</Link>
+                        <span className="text-xs text-muted-foreground"> · {link.stageName}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </InfoRow>
+              ) : null}
               <InfoRow label={t("projectCity")}>
                 <InlineInput value={deal.projectCity ?? ""} canEdit={deal.canEdit} onSave={(projectCity) => patch({ projectCity: projectCity.trim() || null })} />
               </InfoRow>

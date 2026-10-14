@@ -15,6 +15,7 @@ User memberi **satu perintah yang sama** setiap sesi: *"Baca AGENTS.md dan lanju
 6. [ ] 🔒 **§14 Impor Odoo** — TERKUNCI sampai user menulis di chat bahwa direktur & semua sales sudah aktif di CRM.
 7. [x] **§20 Mobile-friendly & PWA** — selesai 13 Okt 2026 (kecuali 🔒 web push). Sisa: user mencoba pasang di HP Android & iPhone lalu melapor.
 8. [x] **§15.3, §15.5, §15.6, §15.7** — optimasi besar selesai 13 Okt 2026 (hasil di §15.9). Migration `0008` & `0009` sudah dijalankan user di produksi (13 Okt 2026).
+   - ⚠️ 14 Okt 2026: produksi ternyata tidak punya `deals.description` & `profiles.email` (isi `0002` tidak pernah lengkap) → `0011_repair_server_writes.sql`. Menunggu user menjalankan **0010, 0011, 0012**. Cek skema produksi: bandingkan kolom tiap tabel lokal vs `GET /rest/v1/<tabel>?select=<kolom>&limit=0` dengan anon key (kolom hilang → error 42703).
 9. [ ] 🔒 **Fase 11 AI Gemini** (§17) — TERKUNCI sampai user memberikan `GEMINI_API_KEY` di Vercel/`.env.local`.
 
 Saat item selesai: centang di sini **dan** di checklist fasenya (§5), perbarui status di §13 bila relevan.
@@ -798,6 +799,12 @@ Dibandingkan dengan Pipedrive, HubSpot CRM, Zoho CRM, dan Odoo CRM:
 | Integrasi email/inbox, sekuens email, web form/lead capture, territory, AI scoring, chatbot | ❌ tidak | terlalu kompleks untuk kebutuhan sekarang. |
 | Lead terpisah dari deal (Odoo/Salesforce) | ❌ tidak | pipeline **Presales** sudah menggantikan tahap lead. |
 | Quote/penawaran PDF | ⏸ nanti | cukup lampiran PDF penawaran (§13.4) untuk saat ini. |
+
+### 16.6 Referensi proyek Presales di deal Sales (keputusan user 14 Okt 2026)
+- Kolom `deals.presales_deal_id` (migration `0012`, FK ke `deals`, `on delete set null`).
+- Form deal baru/edit di pipeline Sales: kolom **Proyek presales** = kotak cari (`components/presales-picker.tsx`) yang hanya menampilkan proyek Presales (open/won) yang punya **minimal satu tag produk yang sama** dengan tag yang dipilih; tanpa tag → petunjuk "pilih produk dulu". Melepas tag sehingga tidak ada yang sama → referensi dikosongkan.
+- Server (`assertPresalesRef` di `lib/actions/crm.ts`) menolak referensi bila deal bukan pipeline Sales, target bukan Presales, atau tidak ada tag yang sama.
+- Detail deal Sales: baris **Proyek presales** (ubah/hapus + tautan). Detail deal Presales: baris **Proyek sales** berisi deal Sales yang merujuknya.
 
 ### 16.5 Definition of done
 - Tidak ada label klien selain Konsultan/Kontraktor/Owner di seluruh aplikasi (form, filter, impor, seed, i18n).

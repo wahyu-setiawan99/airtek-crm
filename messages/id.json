@@ -87,7 +87,9 @@
       "2": "Tinggi",
       "3": "Sangat tinggi"
     },
-    "partyNotAllowed": "Konsultan masuk pipeline Presales dan kontraktor masuk Sales; owner boleh di keduanya."
+    "partyNotAllowed": "Konsultan masuk pipeline Presales dan kontraktor masuk Sales; owner boleh di keduanya.",
+    "presalesRefProduct": "Proyek presales harus punya produk yang sama dengan deal ini.",
+    "presalesRefSalesOnly": "Hanya deal di pipeline Sales yang bisa merujuk proyek presales."
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -331,7 +333,12 @@
       "contact": "kontak",
       "owner": "salesperson",
       "tags": "tag",
-      "description": "deskripsi"
+      "description": "deskripsi",
+      "presalesRef": "proyek presales",
+      "konsultan": "konsultan",
+      "kontraktor": "kontraktor",
+      "projectCity": "kota proyek",
+      "projectProvince": "provinsi proyek"
     },
     "stale": "Basi",
     "groupByOwner": "Kelompokkan per salesperson",
@@ -344,7 +351,13 @@
     "projectCity": "Kota proyek",
     "projectProvince": "Provinsi proyek",
     "estimatedValue": "Estimasi nilai proyek",
-    "picSales": "PIC Sales"
+    "picSales": "PIC Sales",
+    "presalesRef": "Proyek presales",
+    "presalesRefSearch": "Cari proyek presales",
+    "presalesRefPickTags": "Pilih produk (tag) dulu untuk melihat proyek presales yang cocok.",
+    "presalesRefNone": "Tidak ada proyek presales dengan produk yang sama.",
+    "presalesRefClear": "Hapus referensi",
+    "presalesRefLinked": "Proyek sales"
   },
   "contacts": {
     "title": "Kontak",

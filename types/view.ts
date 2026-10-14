@@ -32,6 +32,7 @@ export type BoardDeal = {
   projectProvince: string | null;
   ownedBy: string | null;
   createdAt: string;
+  presalesDealId: string | null;
 };
 
 export type BoardStage = {
@@ -43,6 +44,9 @@ export type BoardStage = {
   deals: BoardDeal[];
 };
 
+/** A Presales project a Sales deal can reference. */
+export type PresalesOption = { id: string; title: string; stageName: string; companyName: string | null; tagIds: string[] };
+
 export type PipelineData = {
   pipeline: { id: string; name: string; color: string };
   pipelines: Option[];
@@ -53,6 +57,8 @@ export type PipelineData = {
   tags: TagChip[];
   lostReasons: Option[];
   savedViews: { id: string; name: string; filters: SavedView["filters"] }[];
+  /** Filled for Sales pipelines only. */
+  presalesDeals: PresalesOption[];
   me: { id: string; name: string; role: Role; canCreate: boolean; canManage: boolean };
 };
 
@@ -130,6 +136,11 @@ export type DealDetailData = BoardDeal & {
   /** Time spent per stage (ms) and when the deal last entered it. */
   stageTimes: Record<string, { ms: number; enteredAt: string }>;
   relatedCount: number;
+  presalesRef: PresalesOption | null;
+  /** Sales deals: Presales projects that can be referenced. */
+  presalesOptions: PresalesOption[];
+  /** Presales deals: the Sales deals that reference it. */
+  salesLinks: { id: string; title: string; stageName: string }[];
   primaryContact: { id: string; name: string; jobTitle: string | null; email: string | null; phone: string | null; whatsapp: string | null } | null;
   company: { id: string; name: string; city: string | null; phone: string | null; email: string | null } | null;
   createdByName: string;

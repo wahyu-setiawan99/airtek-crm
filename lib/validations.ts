@@ -37,6 +37,7 @@ export const dealSchema = z.object({
   tagIds: z.array(z.string()),
   probabilityOverride: z.number().min(0).max(100).nullable().optional(),
   description: z.string().max(8000).nullable().optional(),
+  presalesDealId: z.string().nullable().optional(),
 });
 
 export const quickDealSchema = z.object({
@@ -213,6 +214,7 @@ export const dealPatchSchema = z.object({
   stageId: z.string().min(1).optional(),
   projectCity: z.string().max(80).nullable().optional(),
   projectProvince: z.string().max(80).nullable().optional(),
+  presalesDealId: z.string().nullable().optional(),
 });
 
 export const salesTargetSchema = z.object({

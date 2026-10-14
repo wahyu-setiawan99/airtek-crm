@@ -157,6 +157,8 @@ export type Deal = Stamp & {
   last_activity_at: string | null;
   project_city: string | null;
   project_province: string | null;
+  /** Presales project this Sales deal came from (migration 0012). */
+  presales_deal_id?: string | null;
   external_ref?: string | null;
   import_batch_id?: string | null;
 };
