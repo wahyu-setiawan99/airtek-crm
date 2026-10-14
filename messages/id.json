@@ -532,7 +532,18 @@
     "languageHint": "Langsung berlaku di semua halaman.",
     "invalidProfile": "Periksa nama (minimal 2 karakter) dan nomor telepon.",
     "savedProfile": "Profil diperbarui",
-    "tagColor": "Warna tag"
+    "tagColor": "Warna tag",
+    "avatar": "Foto profil",
+    "avatarHint": "Unggah foto (JPG, PNG, atau WebP, maks. 5 MB) atau pilih avatar. Foto dipotong persegi dan dikompres menjadi sekitar 20 KB.",
+    "avatarUpload": "Unggah foto",
+    "avatarRemove": "Hapus foto",
+    "avatarChoose": "Atau pilih avatar",
+    "avatarPreset": "Avatar {number}",
+    "avatarSaved": "Foto profil diperbarui",
+    "avatarUploading": "Mengunggah…",
+    "avatarTooLarge": "Foto terlalu besar. Maksimal 5 MB.",
+    "avatarInvalid": "Pilih gambar JPG, PNG, atau WebP.",
+    "avatarFailed": "Foto gagal disimpan. Coba lagi."
   },
   "command": {
     "placeholder": "Cari atau ketik perintah…",

@@ -8,13 +8,14 @@ import { inviteMemberAction, setMemberRoleAction } from "@/lib/actions/crm";
 import { cancelInvitationAction, deleteMemberAccountAction, resendInvitationAction, setMemberActiveAction } from "@/lib/actions/phase9";
 import type { AppLocale } from "@/i18n/locale";
 import { formatDateTime } from "@/lib/format";
-import { cn, initials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { Role } from "@/types/crm";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select } from "@/components/ui/form";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
-type Member = { userId: string; name: string; email: string; role: Role; disabled: boolean };
+type Member = { userId: string; name: string; avatar: string; email: string; role: Role; disabled: boolean };
 type Invitation = { id: string; email: string; role: Role; expiresAt: string; status: "pending" | "accepted" | "expired" };
 
 const LEVELS = [
@@ -93,7 +94,7 @@ export function MembersPanel({
                 const canRemove = canAdmin && !isBoss && member.userId !== currentUserId;
                 return (
                   <li key={member.userId} className={cn("flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3", member.disabled && "opacity-70")}>
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/15 text-xs font-semibold text-primary">{initials(member.name)}</span>
+                    <UserAvatar avatar={member.avatar} className="h-10 w-10" />
                     <div className="min-w-48 flex-1">
                       <p className="font-medium">{member.name}</p>
                       <p className="text-xs text-muted-foreground">{member.email}</p>

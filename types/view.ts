@@ -19,6 +19,7 @@ export type BoardDeal = {
   contactName: string | null;
   ownerId: string;
   ownerName: string;
+  ownerAvatar: string;
   tags: TagChip[];
   expectedCloseDate: string | null;
   lastActivityAt: string | null;
@@ -65,7 +66,7 @@ export type PipelineData = {
 export type ShellData = {
   /** Running on the local JSON store instead of Supabase. */
   demo?: boolean;
-  user: { id: string; name: string; email: string; role: Role; theme: "light" | "dark" | "system" };
+  user: { id: string; name: string; email: string; role: Role; theme: "light" | "dark" | "system"; avatar: string };
   organization: Option & { demo: boolean };
   organizations: Option[];
   pipelineId: string | null;
@@ -93,6 +94,7 @@ export type DashboardData = {
   sales: {
     id: string;
     name: string;
+    avatar: string;
     open: number;
     pipeline: number;
     weighted: number;

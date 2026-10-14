@@ -27,11 +27,12 @@ import type { AppLocale } from "@/i18n/locale";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/types/crm";
+import { AvatarSettings } from "@/components/avatar-settings";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/form";
 
 type SettingsData = {
-  profile: { fullName: string; email: string; phone: string; locale: AppLocale; theme: "light" | "dark" | "system" };
+  profile: { fullName: string; email: string; phone: string; locale: AppLocale; theme: "light" | "dark" | "system"; avatar: string; avatarUploaded: boolean };
   organization: { name: string };
   canAdmin: boolean;
   canManage: boolean;
@@ -39,7 +40,7 @@ type SettingsData = {
   isOwner: boolean;
   targetMonth: string;
   targets: { userId: string; name: string; amount: number }[];
-  members: { userId: string; name: string; email: string; role: Role; disabled: boolean }[];
+  members: { userId: string; name: string; avatar: string; email: string; role: Role; disabled: boolean }[];
   invitations: { id: string; email: string; role: Role; expiresAt: string; status: "pending" | "accepted" | "expired" }[];
   customFields: { id: string; entity: "deal" | "contact" | "company"; label: string; field_type: "text" | "number" | "date" | "select"; options: string | null }[];
   pipelines: { id: string; name: string; description: string | null; color: string; stages: { id: string; name: string; probability: number; rotting_days: number | null; type: "open" | "won" | "lost" }[] }[];
@@ -76,6 +77,7 @@ export function SettingsScreen({
         <h1 className="text-2xl font-semibold tracking-tight">{t(section)}</h1>
         {section === "profile" ? (
           <>
+            <AvatarSettings avatar={data.profile.avatar} uploaded={data.profile.avatarUploaded} name={data.profile.fullName} />
             <form className="grid max-w-lg gap-3" onSubmit={(event) => {
               event.preventDefault();
               const form = new FormData(event.currentTarget);

@@ -10,12 +10,13 @@ import Link from "next/link";
 import type { AppLocale } from "@/i18n/locale";
 import { formatCompact, formatDate } from "@/lib/format";
 import { downloadCsv } from "@/lib/csv";
-import { cn, initials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { BoardDeal, TagChip } from "@/types/view";
 import { DataTable } from "@/components/data-table";
 import { FilterBar, filtersFromSearch, matchDeal, useFilterQuery } from "@/components/filters/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/form";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 type DealFilters = {
   owners: { id: string; name: string }[];
@@ -110,7 +111,7 @@ export function DealsTable({ rows, filters, locale, canManage = false }: { rows:
         header: t("salesperson"),
         cell: ({ row }) => (
           <span className="inline-flex items-center gap-2 whitespace-nowrap">
-            <span className="grid h-6 w-6 place-items-center rounded-full bg-accent text-[10px] font-semibold text-accent-foreground">{initials(row.original.ownerName)}</span>
+            <UserAvatar avatar={row.original.ownerAvatar} className="h-6 w-6" />
             {row.original.ownerName}
           </span>
         ),
@@ -192,7 +193,7 @@ export function DealsTable({ rows, filters, locale, canManage = false }: { rows:
         <section key={group.owner.id} className="grid gap-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="inline-flex items-center gap-2 text-sm font-semibold">
-              <span className="grid h-7 w-7 place-items-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">{initials(group.owner.name)}</span>
+              <UserAvatar avatar={group.rows[0].ownerAvatar} className="h-7 w-7" />
               {group.owner.name}
             </h2>
             <p className="text-xs text-muted-foreground">

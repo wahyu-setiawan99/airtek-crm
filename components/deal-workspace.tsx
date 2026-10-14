@@ -58,6 +58,7 @@ import { AttachmentsPanel, type FileRow } from "@/components/attachments-panel";
 import { CustomFieldsPanel, type ExtraField } from "@/components/custom-fields-panel";
 import { partyAllowed, pipelineKind } from "@/lib/client-type";
 import { PresalesPicker } from "@/components/presales-picker";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 type DealPatch = {
   title?: string;
@@ -393,7 +394,7 @@ export function DealWorkspace({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2" title={deal.ownerName}>
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-primary/15 text-xs font-semibold text-primary">{initials(deal.ownerName)}</span>
+              <UserAvatar avatar={deal.ownerAvatar} className="h-9 w-9" />
             </div>
           </div>
 
@@ -695,7 +696,7 @@ export function DealWorkspace({
                   onSave={(ownerId) => (ownerId ? patch({ ownerId }) : Promise.resolve(false))}
                   display={
                     <span className="inline-flex items-center gap-2">
-                      <span className="grid h-6 w-6 place-items-center rounded-full bg-accent text-[10px] font-semibold text-accent-foreground">{initials(deal.ownerName)}</span>
+                      <UserAvatar avatar={deal.ownerAvatar} className="h-6 w-6" />
                       {deal.ownerName}
                     </span>
                   }

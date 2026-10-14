@@ -7,11 +7,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { AppLocale } from "@/i18n/locale";
 import { formatCompact, formatDate, formatMonth } from "@/lib/format";
-import { cn, initials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { DashboardData } from "@/types/view";
 import { Select } from "@/components/ui/form";
 import { PeriodPicker } from "@/components/period-picker";
 import { periodQuery } from "@/lib/period";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 const SimpleBarChart = dynamic(() => import("@/components/charts/bar-chart"), {
   ssr: false,
@@ -84,7 +85,7 @@ export function DashboardView({ data, locale }: { data: DashboardData; locale: A
                   <tr key={person.id} className="border-b last:border-b-0 hover:bg-accent/40">
                     <td className="px-4 py-2.5">
                       <Link href={person.href} className="inline-flex items-center gap-2 font-medium hover:underline">
-                        <span className="grid h-6 w-6 place-items-center rounded-full bg-accent text-[10px] font-semibold text-accent-foreground">{initials(person.name)}</span>
+                        <UserAvatar avatar={person.avatar} className="h-6 w-6" />
                         {person.name}
                       </Link>
                     </td>

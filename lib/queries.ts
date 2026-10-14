@@ -6,6 +6,7 @@ import type { Session } from "@/lib/session";
 import { contactName } from "@/lib/utils";
 import type { Role, Store } from "@/types/crm";
 import { pipelineKind } from "@/lib/client-type";
+import { avatarOf, isUploadedAvatar } from "@/lib/avatar";
 import type {
   ActivityRow,
   BoardDeal,
@@ -82,6 +83,10 @@ function personName(store: Store, userId: string | null) {
   return profileIndex(store).get(userId)?.full_name ?? "—";
 }
 
+function personAvatar(store: Store, userId: string | null) {
+  return avatarOf(userId ?? "—", userId ? profileIndex(store).get(userId)?.avatar_url : null);
+}
+
 function visibleOwnerName(store: Store, session: Session, ownerId: string) {
   const membership = membershipIndex(store, session.organizationId).get(ownerId);
   if (session.role !== "owner" && membership?.role === "owner") return "—";
@@ -121,6 +126,7 @@ function toBoardDeal(store: Store, session: Session, dealOrId: string | Store["d
     contactName: contact ? contactName(contact) : null,
     ownerId: deal.owner_id,
     ownerName,
+    ownerAvatar: ownerName === "—" ? avatarOf("—", null) : personAvatar(store, deal.owner_id),
     ownedBy: session.userId !== deal.owner_id && ownerName !== "—" ? ownerName.split(" ")[0] ?? null : null,
     pipelineId: deal.pipeline_id,
     partyNames: [ownerCompany?.name, consultant?.name, contractor?.name].filter(Boolean).join(" "),
@@ -173,6 +179,7 @@ export function buildShell(store: Store, session: Session): ShellData {
       email: session.profile.email,
       role: session.role,
       theme: session.profile.theme ?? "dark",
+      avatar: avatarOf(session.userId, session.profile.avatar_url),
     },
     organization: { id: session.organization.id, name: session.organization.name, demo: session.organization.demo },
     organizations: session.memberships
@@ -345,6 +352,7 @@ export function buildDashboard(
       return {
         id: person.id,
         name: person.full_name,
+        avatar: avatarOf(person.id, person.avatar_url),
         open: openMine.length,
         pipeline: openMine.reduce((sum, deal) => sum + deal.value, 0),
         weighted: openMine.reduce((sum, deal) => sum + weightOf(deal), 0),
@@ -715,6 +723,8 @@ export function buildSettings(store: Store, session: Session) {
       phone: session.profile.phone ?? "",
       locale: session.profile.locale,
       theme: session.profile.theme ?? "dark",
+      avatar: avatarOf(session.userId, session.profile.avatar_url),
+      avatarUploaded: isUploadedAvatar(session.profile.avatar_url),
     },
     organization: session.organization,
     canAdmin: session.role === "owner" || session.role === "admin",
@@ -735,6 +745,7 @@ export function buildSettings(store: Store, session: Session) {
       .map((item) => ({
         userId: item.user_id,
         name: personName(store, item.user_id),
+        avatar: personAvatar(store, item.user_id),
         email: store.profiles.find((profile) => profile.id === item.user_id)?.email ?? "",
         role: item.role,
         disabled: Boolean(item.disabled_at),

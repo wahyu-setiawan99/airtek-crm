@@ -533,7 +533,18 @@
     "demoFile": "Demo mode only stores the file name.",
     "languageHint": "Applies right away, on every page.",
     "invalidProfile": "Check your name (at least 2 characters) and phone number.",
-    "tagColor": "Tag color"
+    "tagColor": "Tag color",
+    "avatar": "Profile photo",
+    "avatarHint": "Upload a photo (JPG, PNG or WebP, max 5 MB) or pick an avatar. Photos are cropped square and compressed to about 20 KB.",
+    "avatarUpload": "Upload photo",
+    "avatarRemove": "Remove photo",
+    "avatarChoose": "Or choose an avatar",
+    "avatarPreset": "Avatar {number}",
+    "avatarSaved": "Profile photo updated",
+    "avatarUploading": "Uploading…",
+    "avatarTooLarge": "The photo is too large. Maximum 5 MB.",
+    "avatarInvalid": "Choose a JPG, PNG or WebP image.",
+    "avatarFailed": "The photo could not be saved. Try again."
   },
   "command": {
     "placeholder": "Search or type a command…",

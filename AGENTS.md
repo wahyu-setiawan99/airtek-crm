@@ -332,6 +332,8 @@ Referensi: form opportunity Odoo, tapi lebih rapi, informatif, dan cepat. Layout
 - Pengaturan: nav tab ada di `app/(app)/settings/layout.tsx` (`components/settings-nav.tsx`) agar posisi gulir tab di HP tidak di-reset saat pindah tab. Baris Tag/Alasan kalah: tombol Save+Delete lebar tetap, tombol "Tambah" selebar keduanya. Toggle bahasa dua kolom sama lebar.
 - Nama aplikasi terpasang (PWA) = **AirtekCRM**.
 - Halaman Kontak & Perusahaan: tombol utama (**Kontak baru** / **Perusahaan baru**) paling depan, lalu Ekspor/Impor.
+- **Label PIC Sales** (keputusan user 14 Okt 2026): "Owner" di aplikasi ini = perusahaan klien (jenis klien). Salesperson pemegang deal selalu disebut **PIC Sales** (`common.owner`), bukan Owner.
+- **Foto profil** (14 Okt 2026): Pengaturan → Profil → Foto profil (`components/avatar-settings.tsx`). 8 avatar bawaan berupa SVG inline (`components/ui/user-avatar.tsx`, `preset:N` di `profiles.avatar_url`); tanpa pilihan → avatar bawaan dari hash id (`avatarOf` di `lib/avatar.ts`). Unggah JPG/PNG/WebP maks. **5 MB** → browser memotong persegi & mengecilkan ke 256 px WebP → server (`lib/actions/avatar.ts`) kompres ulang dengan `sharp` (256 px WebP q78, ±5–30 KB) → bucket publik `avatars` (migration `0013`, juga dibuat otomatis oleh server bila belum ada) → foto lama dihapus. Avatar tampil di topbar, kartu kanban, daftar Deal, detail deal, Anggota, Performa Sales.
 
 ## 8. Environment & Deploy
 `.env.example`:

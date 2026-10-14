@@ -41,6 +41,7 @@ const preloadPalette = () => void import("@/components/command-palette");
 import { ThemeMenu } from "@/components/theme-menu";
 import { Button } from "@/components/ui/button";
 import { MenuContent, MenuItem, Menu, MenuTrigger } from "@/components/ui/dropdown";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 const links = [
   { href: "/dashboard", key: "dashboard", icon: LayoutDashboard },
@@ -322,8 +323,8 @@ export function AppShell({
               }}
             />
             <Menu>
-              <MenuTrigger className="grid h-9 w-9 place-items-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
-                {shell.user.name.slice(0, 1)}
+              <MenuTrigger className="grid h-9 w-9 place-items-center rounded-full" aria-label={shell.user.name}>
+                <UserAvatar avatar={shell.user.avatar} className="h-9 w-9" />
               </MenuTrigger>
               <MenuContent>
                 <div className="px-2 py-1.5">

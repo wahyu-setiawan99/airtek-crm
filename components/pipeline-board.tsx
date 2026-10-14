@@ -24,7 +24,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { AppLocale } from "@/i18n/locale";
 import { formatCompact, formatDate, formatMonth, jakartaParts } from "@/lib/format";
-import { cn, initials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { BoardDeal, BoardStage, PipelineData } from "@/types/view";
 import { DealDialog } from "@/components/deal-dialog";
 import { PIPELINE_PARTIES, pipelineKind } from "@/lib/client-type";
@@ -34,6 +34,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select } from "@/components/ui/form";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { MenuContent, MenuItem, Menu, MenuTrigger } from "@/components/ui/dropdown";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 type Filters = FilterValues & { q: string; owner: string; tag: string; mine: boolean; view: string };
 
@@ -541,7 +542,7 @@ function DealCard({
           <div className="mt-2 flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground">{deal.expectedCloseDate ? formatDate(deal.expectedCloseDate, locale) : t("noClose")}</span>
             <span className="inline-flex items-center gap-1" title={deal.ownerName}>
-              <span className="grid h-6 w-6 place-items-center rounded-full bg-accent text-[10px] font-semibold text-accent-foreground">{initials(deal.ownerName)}</span>
+              <UserAvatar avatar={deal.ownerAvatar} className="h-6 w-6" />
               <span className="text-[11px] text-muted-foreground">{deal.ownerName.split(" ")[0]}</span>
             </span>
           </div>
